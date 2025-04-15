@@ -22,9 +22,9 @@ impl BondingCurve {
         // Calculate final price: base_price * e^(growth_factor * current_market_cap)
         self.base_price
             .checked_mul(exponent)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(1_000_000) // Scaling factor for fixed-point math
-            .ok_or(ErrorCode::MathOverflow.into())
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())
     }
     
     // Calculate total cost to buy a specific amount of tokens
@@ -32,20 +32,20 @@ impl BondingCurve {
         let current_price = self.calculate_price(current_market_cap)?;
         let new_market_cap = current_market_cap
             .checked_add(amount)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         let new_price = self.calculate_price(new_market_cap)?;
         
         // Average price during the purchase
         let avg_price = current_price
             .checked_add(new_price)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(2)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         
         // Total cost = average price * amount
         avg_price
             .checked_mul(amount)
-            .ok_or(ErrorCode::MathOverflow.into())
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())
     }
     
     // Calculate amount received when selling tokens
@@ -53,20 +53,20 @@ impl BondingCurve {
         let current_price = self.calculate_price(current_market_cap)?;
         let new_market_cap = current_market_cap
             .checked_sub(amount)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         let new_price = self.calculate_price(new_market_cap)?;
         
         // Average price during the sale
         let avg_price = current_price
             .checked_add(new_price)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(2)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         
         // Total amount = average price * amount
         avg_price
             .checked_mul(amount)
-            .ok_or(ErrorCode::MathOverflow.into())
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())
     }
     
     // Calculate platform fee (5% of total cost)
@@ -75,9 +75,9 @@ impl BondingCurve {
         
         total_cost
             .checked_mul(fee_percentage)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(100)
-            .ok_or(ErrorCode::MathOverflow.into())
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())
     }
     
     // Calculate net cost after platform fee
@@ -86,7 +86,7 @@ impl BondingCurve {
         
         total_cost
             .checked_sub(platform_fee)
-            .ok_or(ErrorCode::MathOverflow.into())
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())
     }
     
     // Check if market cap has crossed the $69k threshold
@@ -106,9 +106,9 @@ impl BondingCurve {
         // Calculate x = growth_factor * current_market_cap / scaling_factor
         let x = self.growth_factor
             .checked_mul(current_market_cap)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(scaling_factor)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         
         // First term: 1 * scaling_factor
         let mut result = scaling_factor;
@@ -117,43 +117,43 @@ impl BondingCurve {
         let term1 = x;
         result = result
             .checked_add(term1)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         
         // Third term: (x²/2!) * scaling_factor
         let term2 = x
             .checked_mul(x)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(2)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         result = result
             .checked_add(term2)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         
         // Fourth term: (x³/3!) * scaling_factor
         let term3 = x
             .checked_mul(x)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_mul(x)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(6) // 3! = 6
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         result = result
             .checked_add(term3)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         
         // Fifth term: (x⁴/4!) * scaling_factor
         let term4 = x
             .checked_mul(x)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_mul(x)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_mul(x)
-            .ok_or(ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?
             .checked_div(24) // 4! = 24
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         result = result
             .checked_add(term4)
-            .ok_or(ErrorCode::MathOverflow.into())?;
+            .ok_or::<anchor_lang::error::Error>(ErrorCode::MathOverflow.into())?;
         
         Ok(result)
     }

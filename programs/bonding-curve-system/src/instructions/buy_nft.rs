@@ -64,9 +64,9 @@ pub fn buy_nft(ctx: Context<BuyNFT>) -> Result<()> {
         // Secondary sale - 10% increase from last price
         nft_data.last_price
             .checked_mul(110)
-            .ok_or(crate::errors::ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(crate::errors::ErrorCode::MathOverflow.into())?
             .checked_div(100)
-            .ok_or(crate::errors::ErrorCode::MathOverflow.into())?
+            .ok_or::<anchor_lang::error::Error>(crate::errors::ErrorCode::MathOverflow.into())?
     };
     
     // Transfer SOL from buyer to seller

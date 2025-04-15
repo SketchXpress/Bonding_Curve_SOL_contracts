@@ -45,7 +45,7 @@ pub fn create_nft(
     seller_fee_basis_points: u16,
 ) -> Result<()> {
     let nft_data = &mut ctx.accounts.nft_data;
-    let bump = ctx.bumps["nft_data"];
+    let bump = ctx.bumps.nft_data;
     
     // Initialize NFT data
     nft_data.creator = ctx.accounts.creator.key();
