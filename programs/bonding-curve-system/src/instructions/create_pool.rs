@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Mint};
+use anchor_spl::token::{Token, TokenAccount, Mint};
 use crate::state::{BondingCurvePool};
 
 #[derive(Accounts)]
@@ -49,7 +49,7 @@ pub fn create_pool(
     growth_factor: u64,
 ) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
-    let bump = *ctx.bumps.get("pool").unwrap();
+    let bump = ctx.bumps["pool"];
     
     pool.authority = ctx.accounts.authority.key();
     pool.real_token_mint = ctx.accounts.real_token_mint.key();

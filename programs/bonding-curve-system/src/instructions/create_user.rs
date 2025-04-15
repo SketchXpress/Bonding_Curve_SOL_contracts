@@ -20,7 +20,7 @@ pub struct CreateUser<'info> {
 
 pub fn create_user(ctx: Context<CreateUser>, max_nfts: u8) -> Result<()> {
     let user = &mut ctx.accounts.user_account;
-    let bump = *ctx.bumps.get("user_account").unwrap();
+    let bump = ctx.bumps["user_account"];
     
     user.owner = ctx.accounts.owner.key();
     user.real_sol_balance = 0;

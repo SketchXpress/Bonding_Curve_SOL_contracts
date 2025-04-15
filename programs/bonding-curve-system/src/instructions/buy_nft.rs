@@ -11,7 +11,7 @@ pub struct BuyNFT<'info> {
         mut,
         seeds = [b"user-account", buyer.key().as_ref()],
         bump,
-        constraint = user_account.owner == buyer.key(),
+        constraint = buyer_account.owner == buyer.key(),
     )]
     pub buyer_account: Account<'info, UserAccount>,
     
@@ -64,9 +64,9 @@ pub fn buy_nft(ctx: Context<BuyNFT>) -> Result<()> {
         // Secondary sale - 10% increase from last price
         nft_data.last_price
             .checked_mul(110)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?
+            .ok_or(crate::errors::ErrorCode::MathOverflow.into())?
             .checked_div(100)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?
+            .ok_or(crate::errors::ErrorCode::MathOverflow.into())?
     };
     
     // Transfer SOL from buyer to seller
