@@ -9,8 +9,6 @@ pub mod errors;
 pub mod constants;
 
 use instructions::*;
-use state::*;
-use errors::*;
 
 #[program]
 pub mod bonding_curve_system {

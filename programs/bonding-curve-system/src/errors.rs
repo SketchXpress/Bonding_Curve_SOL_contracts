@@ -18,4 +18,6 @@ pub enum ErrorCode {
     InvalidAuthority,
     #[msg("NFT already sold")]
     NFTAlreadySold,
+    #[msg("Insufficient pool balance")]
+    InsufficientPoolBalance,
 }
