@@ -26,7 +26,7 @@ pub fn create_user(ctx: Context<CreateUser>, max_nfts: u8) -> Result<()> {
     user.owner = ctx.accounts.owner.key();
     user.real_sol_balance = 0;
     user.synthetic_sol_balance = 0;
-    user.owned_nfts = Vec::new();
+    user.owned_nfts = Vec::with_capacity(max_nfts as usize); // Use max_nfts to set initial capacity
     user.bump = bump;
     
     Ok(())
