@@ -8,4 +8,3 @@ export const TOKEN_PROGRAM_ID = window.anchor.spl.TOKEN_PROGRAM_ID;
 export const BN = window.anchor.BN;
 export const web3 = window.anchor.web3;
 export const utils = window.anchor.utils;
-// Export other needed components
