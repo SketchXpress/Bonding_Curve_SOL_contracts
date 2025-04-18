@@ -2,6 +2,7 @@
 import { PROGRAM_ID, SOLANA_NETWORK } from '../config/constants.js';
 import { idl } from '../idl.js';
 import { getWallet } from './wallet.js';
+import { AnchorProvider, Program, setProvider } from '../vendor/anchor.js';
 
 let connection = null;
 let provider = null;
@@ -24,14 +25,14 @@ export function getProvider() {
       throw new Error('Wallet not connected');
     }
     
-    provider = new anchor.AnchorProvider(
+    provider = new AnchorProvider(
       getConnection(),
       wallet,
       { commitment: 'processed' }
     );
     
     // Set this as the default provider
-    anchor.setProvider(provider);
+    setProvider(provider);
   }
   return provider;
 }
@@ -45,7 +46,7 @@ export function getProgram() {
       throw new Error('Program IDL not loaded');
     }
     
-    program = new anchor.Program(
+    program = new Program(
       idl,
       new solanaWeb3.PublicKey(PROGRAM_ID),
       provider

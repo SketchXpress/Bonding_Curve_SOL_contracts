@@ -1,6 +1,6 @@
-import * as anchor from '@coral-xyz/anchor';
 import { getConnection } from './program.js';
 import { getWallet } from './wallet.js';
+import { spl, TOKEN_PROGRAM_ID } from '../vendor/anchor.js';
 
 export async function createTokenMint(decimals = 6) {
   const wallet = getWallet();
@@ -10,19 +10,19 @@ export async function createTokenMint(decimals = 6) {
   
   // Create mint account
   const lamports = await connection.getMinimumBalanceForRentExemption(
-    anchor.spl.MintLayout.span
+    spl.MintLayout.span
   );
   
   const createMintAccountIx = solanaWeb3.SystemProgram.createAccount({
     fromPubkey: wallet.publicKey,
     newAccountPubkey: mint.publicKey,
     lamports,
-    space: anchor.spl.MintLayout.span,
-    programId: anchor.spl.TOKEN_PROGRAM_ID,
+    space: spl.MintLayout.span,
+    programId: TOKEN_PROGRAM_ID,
   });
   
   // Initialize mint
-  const initMintIx = anchor.spl.createInitializeMintInstruction(
+  const initMintIx = spl.createInitializeMintInstruction(
     mint.publicKey,
     decimals,
     wallet.publicKey,
@@ -48,7 +48,7 @@ export async function getOrCreateAssociatedTokenAccount(mint) {
   const wallet = getWallet();
   const connection = getConnection();
   
-  const associatedTokenAddress = await anchor.spl.getAssociatedTokenAddress(
+  const associatedTokenAddress = await spl.getAssociatedTokenAddress(
     mint,
     wallet.publicKey
   );
@@ -58,7 +58,7 @@ export async function getOrCreateAssociatedTokenAccount(mint) {
   
   if (!accountInfo) {
     // Create account if it doesn't exist
-    const createATAIx = anchor.spl.createAssociatedTokenAccountInstruction(
+    const createATAIx = spl.createAssociatedTokenAccountInstruction(
       wallet.publicKey,
       associatedTokenAddress,
       wallet.publicKey,
