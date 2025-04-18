@@ -18,13 +18,25 @@
         if (window.solanaWeb3) {
           console.log("Solana Web3.js library loaded successfully");
 
-          // Create a global anchor object if it doesn't exist
-          // This ensures our modules can access it regardless of how the library exposes itself
+          // Create a global anchor object with necessary structure if it doesn't exist
           if (!window.anchor) {
-            console.log("Creating anchor global object");
-            // The Anchor library might be available but not exposed globally
-            // We'll proceed anyway and let the application handle any missing functionality
-            window.anchor = {};
+            console.log(
+              "Creating anchor global object with required structure"
+            );
+            // Create a complete placeholder structure to avoid undefined property errors
+            window.anchor = {
+              AnchorProvider: function () {},
+              Program: function () {},
+              setProvider: function () {},
+              spl: {
+                TOKEN_PROGRAM_ID: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", // Default Solana token program ID
+              },
+              BN: function (n) {
+                return n;
+              },
+              web3: {},
+              utils: {},
+            };
           }
 
           // Load the main module after libraries are ready
