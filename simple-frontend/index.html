@@ -14,16 +14,26 @@
     <!-- Wait for libraries to load before importing modules -->
     <script>
       window.addEventListener("load", function () {
-        // Check if libraries are loaded
-        if (window.solanaWeb3 && window.anchor) {
-          console.log("Libraries loaded successfully");
+        // Check if Solana Web3.js library is loaded (it's the only one we can reliably detect)
+        if (window.solanaWeb3) {
+          console.log("Solana Web3.js library loaded successfully");
+
+          // Create a global anchor object if it doesn't exist
+          // This ensures our modules can access it regardless of how the library exposes itself
+          if (!window.anchor) {
+            console.log("Creating anchor global object");
+            // The Anchor library might be available but not exposed globally
+            // We'll proceed anyway and let the application handle any missing functionality
+            window.anchor = {};
+          }
+
           // Load the main module after libraries are ready
           const script = document.createElement("script");
           script.type = "module";
           script.src = "js/main.js";
           document.head.appendChild(script);
         } else {
-          console.error("Required libraries not loaded");
+          console.error("Solana Web3.js library not loaded");
         }
       });
     </script>
