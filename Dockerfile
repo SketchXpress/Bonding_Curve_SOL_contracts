@@ -30,6 +30,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION} | bash - \
     && apt-get install -y nodejs \
     && npm install -g yarn
 
+RUN npm install -g http-server
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${RUST_VERSION} \
     && . $HOME/.cargo/env \
@@ -54,14 +55,8 @@ RUN mkdir -p /root/.config/solana \
     && solana-keygen new --no-bip39-passphrase -o /root/.config/solana/id.json --force \
     && solana config set --url devnet
 
-# Expose port for potential web UI
-EXPOSE 8080
+# Expose ports
+EXPOSE 8080 3000
 
 # Default command to show help
-CMD ["bash", "-c", "echo 'Solana Bonding Curve Development Environment' && \
-    echo 'Available commands:' && \
-    echo '  - anchor build: Build the program' && \
-    echo '  - anchor test: Run tests' && \
-    echo '  - anchor deploy: Deploy to devnet' && \
-    echo '  - solana airdrop 2: Get SOL for testing' && \
-    bash"]
+CMD ["bash", "-c", "cd /app/simple-frontend && http-server -p 3000 & echo 'Frontend available at http://localhost:3000' && echo 'Solana Bonding Curve Development Environment' && echo 'Available commands:' && echo '  - anchor build: Build the program' && echo '  - anchor test: Run tests' && echo '  - anchor deploy: Deploy to devnet' && echo '  - solana airdrop 2: Get SOL for testing' && bash"]

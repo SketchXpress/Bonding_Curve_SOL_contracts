@@ -1,126 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Solana Bonding Curve System Client</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@project-serum/anchor@latest/dist/browser/anchor.min.js"></script>
-</head>
-<body>
+    <link rel="stylesheet" href="style.css" />
+    <!-- Include Solana Web3.js (specifying version 1.x) -->
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
+
+    <!-- Include Anchor library (current version) -->
+    <script src="https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser/anchor.min.js"></script>
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <h1>Solana Bonding Curve System</h1>
-            <p>Interact with your deployed Solana contract</p>
-        </header>
+      <header>
+        <h1>Solana Bonding Curve System</h1>
+        <p>Interact with your deployed Solana contract</p>
+      </header>
 
-        <section class="wallet-section">
-            <h2>Wallet Connection</h2>
-            <div id="wallet-status">Not connected</div>
-            <button id="connect-wallet">Connect Wallet</button>
-            <div id="wallet-info" class="hidden">
-                <p>Address: <span id="wallet-address"></span></p>
-                <p>Balance: <span id="wallet-balance"></span> SOL</p>
-            </div>
-        </section>
+      <section class="wallet-section">
+        <h2>Wallet Connection</h2>
+        <div id="wallet-status">Not connected</div>
+        <button id="connect-wallet">Connect Wallet</button>
+        <div id="wallet-info" class="hidden">
+          <p>Address: <span id="wallet-address"></span></p>
+          <p>Balance: <span id="wallet-balance"></span> SOL</p>
+        </div>
+      </section>
 
-        <section class="contract-section">
-            <h2>Contract Information</h2>
-            <div class="info-box">
-                <p>Program ID: <span id="program-id">3CJqA1HjKpsFX4ohbzEdA73ryyE5rrJjmngAmfxZJHC1</span></p>
-                <p>Network: <span id="network">Devnet</span></p>
-            </div>
-        </section>
+      <section class="contract-section">
+        <h2>Contract Information</h2>
+        <div class="info-box">
+          <p>
+            Program ID:
+            <span id="program-id"
+              >EQ8z6eXcaVH6ryUWCWhjmnaZRLSamz5ZRAWswJtAjUXR</span
+            >
+          </p>
+          <p>Network: <span id="network">Devnet</span></p>
+        </div>
+      </section>
 
-        <section class="functions-section">
-            <h2>Contract Functions</h2>
-            
-            <div class="function-card">
-                <h3>Create User</h3>
-                <div class="input-group">
-                    <label for="max-nfts">Max NFTs:</label>
-                    <input type="number" id="max-nfts" value="5">
-                </div>
-                <button id="create-user-btn">Create User</button>
-                <div class="result" id="create-user-result"></div>
-            </div>
+      <section class="functions-section">
+        <h2>Contract Functions</h2>
 
-            <div class="function-card">
-                <h3>Create Pool</h3>
-                <div class="input-group">
-                    <label for="base-price">Base Price:</label>
-                    <input type="number" id="base-price" value="1000000">
-                </div>
-                <div class="input-group">
-                    <label for="growth-factor">Growth Factor:</label>
-                    <input type="number" id="growth-factor" value="3606">
-                </div>
-                <button id="create-pool-btn">Create Pool</button>
-                <div class="result" id="create-pool-result"></div>
-            </div>
+        <div class="function-card">
+          <h3>Create User</h3>
+          <div class="input-group">
+            <label for="max-nfts">Max NFTs:</label>
+            <input type="number" id="max-nfts" value="5" />
+          </div>
+          <button id="create-user-btn">Create User</button>
+          <div class="result" id="create-user-result"></div>
+        </div>
 
-            <div class="function-card">
-                <h3>Buy Token</h3>
-                <div class="input-group">
-                    <label for="buy-amount">Amount:</label>
-                    <input type="number" id="buy-amount" value="10000000">
-                </div>
-                <button id="buy-token-btn">Buy Token</button>
-                <div class="result" id="buy-token-result"></div>
-            </div>
+        <div class="function-card">
+          <h3>Create Pool</h3>
+          <div class="input-group">
+            <label for="base-price">Base Price:</label>
+            <input type="number" id="base-price" value="1000000" />
+          </div>
+          <div class="input-group">
+            <label for="growth-factor">Growth Factor:</label>
+            <input type="number" id="growth-factor" value="3606" />
+          </div>
+          <button id="create-pool-btn">Create Pool</button>
+          <div class="result" id="create-pool-result"></div>
+        </div>
 
-            <div class="function-card">
-                <h3>Sell Token</h3>
-                <div class="input-group">
-                    <label for="sell-amount">Amount:</label>
-                    <input type="number" id="sell-amount" value="5000000">
-                </div>
-                <button id="sell-token-btn">Sell Token</button>
-                <div class="result" id="sell-token-result"></div>
-            </div>
+        <div class="function-card">
+          <h3>Buy Token</h3>
+          <div class="input-group">
+            <label for="buy-amount">Amount:</label>
+            <input type="number" id="buy-amount" value="10000000" />
+          </div>
+          <button id="buy-token-btn">Buy Token</button>
+          <div class="result" id="buy-token-result"></div>
+        </div>
 
-            <div class="function-card">
-                <h3>Create NFT</h3>
-                <div class="input-group">
-                    <label for="nft-name">Name:</label>
-                    <input type="text" id="nft-name" value="My NFT">
-                </div>
-                <div class="input-group">
-                    <label for="nft-symbol">Symbol:</label>
-                    <input type="text" id="nft-symbol" value="MNFT">
-                </div>
-                <div class="input-group">
-                    <label for="nft-uri">URI:</label>
-                    <input type="text" id="nft-uri" value="https://example.com/nft.json">
-                </div>
-                <div class="input-group">
-                    <label for="seller-fee">Seller Fee (basis points):</label>
-                    <input type="number" id="seller-fee" value="500">
-                </div>
-                <button id="create-nft-btn">Create NFT</button>
-                <div class="result" id="create-nft-result"></div>
-            </div>
+        <div class="function-card">
+          <h3>Sell Token</h3>
+          <div class="input-group">
+            <label for="sell-amount">Amount:</label>
+            <input type="number" id="sell-amount" value="5000000" />
+          </div>
+          <button id="sell-token-btn">Sell Token</button>
+          <div class="result" id="sell-token-result"></div>
+        </div>
 
-            <div class="function-card">
-                <h3>Buy NFT</h3>
-                <div class="input-group">
-                    <label for="nft-mint">NFT Mint Address:</label>
-                    <input type="text" id="nft-mint" placeholder="Enter NFT mint address">
-                </div>
-                <button id="buy-nft-btn">Buy NFT</button>
-                <div class="result" id="buy-nft-result"></div>
-            </div>
-        </section>
+        <div class="function-card">
+          <h3>Create NFT</h3>
+          <div class="input-group">
+            <label for="nft-name">Name:</label>
+            <input type="text" id="nft-name" value="My NFT" />
+          </div>
+          <div class="input-group">
+            <label for="nft-symbol">Symbol:</label>
+            <input type="text" id="nft-symbol" value="MNFT" />
+          </div>
+          <div class="input-group">
+            <label for="nft-uri">URI:</label>
+            <input
+              type="text"
+              id="nft-uri"
+              value="https://example.com/nft.json"
+            />
+          </div>
+          <div class="input-group">
+            <label for="seller-fee">Seller Fee (basis points):</label>
+            <input type="number" id="seller-fee" value="500" />
+          </div>
+          <button id="create-nft-btn">Create NFT</button>
+          <div class="result" id="create-nft-result"></div>
+        </div>
 
-        <section class="transaction-section">
-            <h2>Transaction History</h2>
-            <div id="transaction-list">
-                <p>No transactions yet</p>
-            </div>
-        </section>
+        <div class="function-card">
+          <h3>Buy NFT</h3>
+          <div class="input-group">
+            <label for="nft-mint">NFT Mint Address:</label>
+            <input
+              type="text"
+              id="nft-mint"
+              placeholder="Enter NFT mint address"
+            />
+          </div>
+          <button id="buy-nft-btn">Buy NFT</button>
+          <div class="result" id="buy-nft-result"></div>
+        </div>
+      </section>
+
+      <section class="transaction-section">
+        <h2>Transaction History</h2>
+        <div id="transaction-list">
+          <p>No transactions yet</p>
+        </div>
+      </section>
     </div>
-
-    <script src="script.js"></script>
-</body>
+  </body>
 </html>

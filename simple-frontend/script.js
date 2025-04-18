@@ -1,26 +1,26 @@
 // Constants
-const PROGRAM_ID = '3CJqA1HjKpsFX4ohbzEdA73ryyE5rrJjmngAmfxZJHC1';
+const PROGRAM_ID = 'EQ8z6eXcaVH6ryUWCWhjmnaZRLSamz5ZRAWswJtAjUXR';
 const NETWORK = 'devnet';
 const SOLANA_NETWORK = 'https://api.devnet.solana.com';
-
-// DOM Elements
-const connectWalletBtn = document.getElementById('connect-wallet');
-const walletStatus = document.getElementById('wallet-status');
-const walletInfo = document.getElementById('wallet-info');
-const walletAddress = document.getElementById('wallet-address');
-const walletBalance = document.getElementById('wallet-balance');
-const createUserBtn = document.getElementById('create-user-btn');
-const createPoolBtn = document.getElementById('create-pool-btn');
-const buyTokenBtn = document.getElementById('buy-token-btn');
-const sellTokenBtn = document.getElementById('sell-token-btn');
-const createNftBtn = document.getElementById('create-nft-btn');
-const buyNftBtn = document.getElementById('buy-nft-btn');
-const transactionList = document.getElementById('transaction-list');
 
 // Global variables
 let wallet = null;
 let connection = null;
 let program = null;
+
+// DOM Elements (declare but don't initialize until DOM is loaded)
+let connectWalletBtn;
+let walletStatus;
+let walletInfo;
+let walletAddress;
+let walletBalance;
+let createUserBtn;
+let createPoolBtn;
+let buyTokenBtn;
+let sellTokenBtn;
+let createNftBtn;
+let buyNftBtn;
+let transactionList;
 
 // Initialize
 async function initialize() {
@@ -39,6 +39,7 @@ async function initialize() {
         updateStatus('Failed to initialize: ' + error.message, 'error');
     }
 }
+
 
 // Connect wallet
 async function connectWallet() {
@@ -567,8 +568,22 @@ function enableFunctionButtons() {
     buyNftBtn.disabled = false;
 }
 
-// Event listeners
+// Event listeners - Move DOM element selection inside DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
+    // Get DOM elements after DOM is loaded
+    connectWalletBtn = document.getElementById('connect-wallet');
+    walletStatus = document.getElementById('wallet-status');
+    walletInfo = document.getElementById('wallet-info');
+    walletAddress = document.getElementById('wallet-address');
+    walletBalance = document.getElementById('wallet-balance');
+    createUserBtn = document.getElementById('create-user-btn');
+    createPoolBtn = document.getElementById('create-pool-btn');
+    buyTokenBtn = document.getElementById('buy-token-btn');
+    sellTokenBtn = document.getElementById('sell-token-btn');
+    createNftBtn = document.getElementById('create-nft-btn');
+    buyNftBtn = document.getElementById('buy-nft-btn');
+    transactionList = document.getElementById('transaction-list');
+    
     // Initialize
     initialize();
     
