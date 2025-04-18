@@ -14,13 +14,12 @@ import { sellToken } from './transactions/sellToken.js';
 import { createNft } from './transactions/createNft.js';
 import { buyNft } from './transactions/buyNft.js';
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize DOM references
-  initializeDom();
-  
-  // Initialize program connection
-  initialize();
+// Add debug logging
+console.log("main.js module loaded");
+
+// Function to set up all event listeners
+function setupEventListeners() {
+  console.log("Setting up event listeners");
   
   // Get button elements
   const connectWalletBtn = document.getElementById('connect-wallet');
@@ -31,45 +30,88 @@ document.addEventListener('DOMContentLoaded', () => {
   const createNftBtn = document.getElementById('create-nft-btn');
   const buyNftBtn = document.getElementById('buy-nft-btn');
   
+  if (!connectWalletBtn) {
+    console.error("Connect wallet button not found!");
+    return;
+  }
+  
+  console.log("Connect wallet button found, adding event listener");
+  
   // Connect wallet button
   connectWalletBtn.addEventListener('click', async () => {
-    // Get wallet connection result
-    const result = await connectWallet();
+    console.log("Connect wallet button clicked");
     
-    if (result.success) {
-      // Update status with success message
-      updateStatus(result.message, 'success');
+    try {
+      // Get wallet connection result
+      const result = await connectWallet();
+      console.log("Wallet connection result:", result);
       
-      // Get wallet balance
-      const balance = await getWalletBalance();
-      
-      // Update UI with wallet and balance
-      updateWalletUI(result.wallet, balance);
-      
-      // Initialize program
-      initializeProgram();
-      
-      // Enable function buttons
-      enableFunctionButtons();
-    } else {
-      // Show error message if connection failed
-      updateStatus('Failed to connect wallet: ' + result.error, 'error');
+      if (result.success) {
+        // Update status with success message
+        updateStatus(result.message, 'success');
+        
+        // Get wallet balance
+        const balance = await getWalletBalance();
+        console.log("Wallet balance:", balance);
+        
+        // Update UI with wallet and balance
+        updateWalletUI(result.wallet, balance);
+        
+        // Initialize program
+        initializeProgram();
+        
+        // Enable function buttons
+        enableFunctionButtons();
+      } else {
+        // Show error message if connection failed
+        updateStatus('Failed to connect wallet: ' + result.error, 'error');
+      }
+    } catch (error) {
+      console.error("Error in wallet connection:", error);
+      updateStatus('Error connecting wallet: ' + error.message, 'error');
     }
   });
   
   // Function buttons
-  createUserBtn.addEventListener('click', createUser);
-  createPoolBtn.addEventListener('click', createPool);
-  buyTokenBtn.addEventListener('click', buyToken);
-  sellTokenBtn.addEventListener('click', sellToken);
-  createNftBtn.addEventListener('click', createNft);
-  buyNftBtn.addEventListener('click', buyNft);
+  if (createUserBtn) createUserBtn.addEventListener('click', createUser);
+  if (createPoolBtn) createPoolBtn.addEventListener('click', createPool);
+  if (buyTokenBtn) buyTokenBtn.addEventListener('click', buyToken);
+  if (sellTokenBtn) sellTokenBtn.addEventListener('click', sellToken);
+  if (createNftBtn) createNftBtn.addEventListener('click', createNft);
+  if (buyNftBtn) buyNftBtn.addEventListener('click', buyNft);
   
   // Disable function buttons until wallet is connected
-  createUserBtn.disabled = true;
-  createPoolBtn.disabled = true;
-  buyTokenBtn.disabled = true;
-  sellTokenBtn.disabled = true;
-  createNftBtn.disabled = true;
-  buyNftBtn.disabled = true;
+  if (createUserBtn) createUserBtn.disabled = true;
+  if (createPoolBtn) createPoolBtn.disabled = true;
+  if (buyTokenBtn) buyTokenBtn.disabled = true;
+  if (sellTokenBtn) sellTokenBtn.disabled = true;
+  if (createNftBtn) createNftBtn.disabled = true;
+  if (buyNftBtn) buyNftBtn.disabled = true;
+  
+  console.log("All event listeners set up successfully");
+}
+
+// Initialize when DOM is loaded
+console.log("Adding DOMContentLoaded event listener");
+document.addEventListener('DOMContentLoaded', () => {
+  console.log("DOMContentLoaded event fired");
+  
+  // Initialize DOM references
+  initializeDom();
+  
+  // Initialize program connection
+  initialize();
+  
+  // Set up event listeners
+  setupEventListeners();
 });
+
+// Backup initialization in case DOMContentLoaded already fired
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  console.log("Document already loaded, initializing immediately");
+  setTimeout(() => {
+    initializeDom();
+    initialize();
+    setupEventListeners();
+  }, 100);
+}
