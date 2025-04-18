@@ -55,6 +55,38 @@ export function getProgram() {
   return program;
 }
 
+// Initialize program with connected wallet
+export function initializeProgram() {
+  try {
+    const wallet = getWallet();
+    if (!wallet) {
+      throw new Error('Wallet not connected');
+    }
+    
+    provider = new AnchorProvider(
+      getConnection(),
+      wallet,
+      { commitment: 'processed' }
+    );
+    
+    // Set this as the default provider
+    setProvider(provider);
+    
+    // Initialize program with the provider
+    program = new Program(
+      idl,
+      new solanaWeb3.PublicKey(PROGRAM_ID),
+      provider
+    );
+    
+    console.log('Program initialized with connected wallet');
+    return program;
+  } catch (error) {
+    console.error('Program initialization error:', error);
+    throw error;
+  }
+}
+
 // Initialize everything
 export function initialize() {
   try {
