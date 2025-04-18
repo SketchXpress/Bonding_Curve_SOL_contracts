@@ -10,7 +10,23 @@
 
     <!-- Include Anchor library (current version) -->
     <script src="https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser/anchor.min.js"></script>
-    <script type="module" src="js/main.js"></script>
+
+    <!-- Wait for libraries to load before importing modules -->
+    <script>
+      window.addEventListener("load", function () {
+        // Check if libraries are loaded
+        if (window.solanaWeb3 && window.anchor) {
+          console.log("Libraries loaded successfully");
+          // Load the main module after libraries are ready
+          const script = document.createElement("script");
+          script.type = "module";
+          script.src = "js/main.js";
+          document.head.appendChild(script);
+        } else {
+          console.error("Required libraries not loaded");
+        }
+      });
+    </script>
   </head>
   <body>
     <div class="container">
