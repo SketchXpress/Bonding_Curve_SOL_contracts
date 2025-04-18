@@ -25,8 +25,12 @@
             );
             // Create a complete placeholder structure to avoid undefined property errors
             window.anchor = {
-              AnchorProvider: function () {},
-              Program: function () {},
+              AnchorProvider: function () {
+                return {};
+              },
+              Program: function () {
+                return {};
+              },
               setProvider: function () {},
               spl: {
                 TOKEN_PROGRAM_ID: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", // Default Solana token program ID
@@ -36,6 +40,35 @@
               },
               web3: {},
               utils: {},
+            };
+          }
+
+          // Create a mock Phantom wallet if it doesn't exist
+          if (!window.solana) {
+            console.log("Creating mock Phantom wallet for testing");
+            window.solana = {
+              isPhantom: true,
+              connect: function () {
+                console.log("Mock wallet connected");
+                return Promise.resolve({
+                  publicKey: new solanaWeb3.PublicKey(
+                    "8YLKoCu7NwqHNS8GzuvA2ibsvLrsg22YMfMDafxh1B4k"
+                  ),
+                  isConnected: true,
+                });
+              },
+              disconnect: function () {
+                console.log("Mock wallet disconnected");
+                return Promise.resolve();
+              },
+              signTransaction: function (transaction) {
+                console.log("Mock transaction signed");
+                return Promise.resolve(transaction);
+              },
+              signAllTransactions: function (transactions) {
+                console.log("Mock transactions signed");
+                return Promise.resolve(transactions);
+              },
             };
           }
 
