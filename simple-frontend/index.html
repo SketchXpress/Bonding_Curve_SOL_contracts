@@ -13,16 +13,18 @@
 
     <!-- Include Buffer polyfill before any other scripts -->
     <script>
-      // Simple Buffer polyfill for browser environment
-      console.log('Initializing Buffer polyfill for browser environment');
-      
+      // Enhanced Buffer polyfill for browser environment
+      console.log(
+        "Initializing enhanced Buffer polyfill for browser environment"
+      );
+
       // Use the browser's TextEncoder and TextDecoder for string conversions
       const textEncoder = new TextEncoder();
       const textDecoder = new TextDecoder();
-      
+
       class BufferPolyfill {
         constructor(input) {
-          if (typeof input === 'string') {
+          if (typeof input === "string") {
             // Convert string to Uint8Array
             this._buffer = textEncoder.encode(input);
           } else if (input instanceof Uint8Array) {
@@ -31,57 +33,72 @@
           } else if (Array.isArray(input)) {
             // Convert array to Uint8Array
             this._buffer = new Uint8Array(input);
-          } else if (typeof input === 'number') {
+          } else if (typeof input === "number") {
             // Create a buffer of specified size
             this._buffer = new Uint8Array(input);
           } else {
-            throw new Error('Unsupported input type for Buffer');
+            throw new Error("Unsupported input type for Buffer");
           }
         }
-        
+
         // Convert to Uint8Array
         toBuffer() {
           return this._buffer;
         }
-        
+
         // Convert to string
-        toString(encoding = 'utf-8') {
+        toString(encoding = "utf-8") {
           return textDecoder.decode(this._buffer);
         }
-        
+
         // Get buffer length
         get length() {
           return this._buffer.length;
         }
       }
-      
+
       // Static method to create buffer from string
-      BufferPolyfill.from = function(input, encoding) {
-        if (typeof input === 'string') {
+      BufferPolyfill.from = function (input, encoding) {
+        if (typeof input === "string") {
           return new BufferPolyfill(input);
         } else if (input instanceof Uint8Array) {
           return new BufferPolyfill(input);
         } else if (Array.isArray(input)) {
           return new BufferPolyfill(input);
         } else {
-          throw new Error('Unsupported input type for Buffer.from');
+          throw new Error("Unsupported input type for Buffer.from");
         }
       };
-      
+
       // Expose Buffer globally
       window.Buffer = BufferPolyfill;
-      console.log('Buffer polyfill initialized successfully');
+      console.log("Buffer polyfill initialized successfully");
     </script>
-    
+
+    <!-- Load our browser-compatible base58 and Solana crypto implementations -->
+    <script type="module">
+      // Pre-load our custom implementations to ensure they're available
+      import bs58 from "./js/utils/bs58-polyfill.js";
+      import { PublicKey } from "./js/utils/solana-crypto.js";
+
+      console.log("Browser-compatible Solana crypto implementations loaded");
+
+      // Make them globally available
+      window.browserCompatible = {
+        bs58,
+        PublicKey,
+      };
+    </script>
+
     <!-- Include main.js directly instead of dynamically loading it -->
     <script type="module" src="js/main.js"></script>
-    
+
     <!-- Setup mock objects before main.js loads -->
     <script>
       // Execute immediately to ensure objects are available before modules load
       (function setupMocks() {
         console.log("Setting up mock objects for Solana development");
-        
+
         // Create a global anchor object with necessary structure
         window.anchor = {
           AnchorProvider: function () {
@@ -100,17 +117,22 @@
           web3: {},
           utils: {},
         };
-        
+
         // Enhance PublicKey prototype with toBuffer method if it doesn't exist
-        if (solanaWeb3 && solanaWeb3.PublicKey && !solanaWeb3.PublicKey.prototype.toBuffer) {
+        if (
+          solanaWeb3 &&
+          solanaWeb3.PublicKey &&
+          !solanaWeb3.PublicKey.prototype.toBuffer
+        ) {
           console.log("Adding toBuffer method to PublicKey prototype");
-          solanaWeb3.PublicKey.prototype.toBuffer = function() {
+          solanaWeb3.PublicKey.prototype.toBuffer = function () {
             // Convert the base58 string to a Uint8Array
             const base58 = this.toString();
             console.log("Converting PublicKey to buffer:", base58);
-            
+
             // Simple base58 to bytes conversion (simplified for common characters)
-            const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+            const ALPHABET =
+              "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
             let bytes = [];
             for (let i = 0; i < base58.length; i++) {
               const char = base58[i];
@@ -119,21 +141,21 @@
                 bytes.push(value);
               }
             }
-            
+
             // Ensure we have at least 32 bytes for a public key
             while (bytes.length < 32) {
               bytes.push(0);
             }
-            
+
             // Trim to 32 bytes if longer
             if (bytes.length > 32) {
               bytes = bytes.slice(0, 32);
             }
-            
+
             return new Uint8Array(bytes);
           };
         }
-        
+
         // Create a mock Phantom wallet with enhanced PublicKey
         window.solana = {
           isPhantom: true,
@@ -142,16 +164,16 @@
             const publicKey = new solanaWeb3.PublicKey(
               "8YLKoCu7NwqHNS8GzuvA2ibsvLrsg22YMfMDafxh1B4k"
             );
-            
+
             // Ensure the publicKey has a toBuffer method
             if (!publicKey.toBuffer) {
-              publicKey.toBuffer = function() {
+              publicKey.toBuffer = function () {
                 console.log("Using instance toBuffer method");
                 // Create a 32-byte buffer for the public key
                 return new Uint8Array(32).fill(1);
               };
             }
-            
+
             return Promise.resolve({
               publicKey: publicKey,
               isConnected: true,
@@ -170,17 +192,17 @@
             return Promise.resolve(transactions);
           },
         };
-        
+
         // Add debug logging for button clicks
-        window.addEventListener("DOMContentLoaded", function() {
+        window.addEventListener("DOMContentLoaded", function () {
           console.log("DOM fully loaded - adding debug listeners");
-          
+
           // Add debug listener to connect wallet button
-          setTimeout(function() {
-            const connectWalletBtn = document.getElementById('connect-wallet');
+          setTimeout(function () {
+            const connectWalletBtn = document.getElementById("connect-wallet");
             if (connectWalletBtn) {
               console.log("Found connect wallet button, adding debug listener");
-              connectWalletBtn.addEventListener('click', function() {
+              connectWalletBtn.addEventListener("click", function () {
                 console.log("Connect wallet button clicked directly");
               });
             } else {
