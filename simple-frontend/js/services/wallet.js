@@ -1,6 +1,8 @@
 // services/wallet.js
 import { getConnection } from './program.js';
-import { updateStatus, updateWalletUI } from '../utils/dom.js';
+
+// Avoid importing from dom.js to break circular dependency
+// import { updateStatus, updateWalletUI } from '../utils/dom.js';
 
 let wallet = null;
 
@@ -14,18 +16,34 @@ export async function connectWallet() {
     const response = await window.solana.connect();
     wallet = response;
     
-    // Update UI and status
-    updateWalletUI(wallet);
-    updateStatus('Wallet connected successfully!', 'success');
-    
-    return wallet;
+    // Return result instead of calling UI functions directly
+    return {
+      success: true,
+      wallet: response,
+      message: 'Wallet connected successfully!'
+    };
   } catch (error) {
     console.error('Connection error:', error);
-    updateStatus('Failed to connect wallet: ' + error.message, 'error');
-    throw error;
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
 export function getWallet() {
   return wallet;
+}
+
+export async function getWalletBalance() {
+  if (!wallet) return 0;
+  
+  try {
+    const connection = getConnection();
+    const balance = await connection.getBalance(wallet.publicKey);
+    return balance; // Return raw balance in lamports
+  } catch (error) {
+    console.error('Balance fetch error:', error);
+    return 0;
+  }
 }

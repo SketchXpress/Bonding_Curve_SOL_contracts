@@ -1,4 +1,5 @@
-import { getWalletBalance } from '../services/wallet.js';
+// utils/dom.js
+// Import only shortenAddress to avoid circular dependency
 import { shortenAddress } from './format.js';
 
 // UI Elements
@@ -19,6 +20,13 @@ export function initializeDom() {
 
 export function updateStatus(message, type = '') {
   console.log(`Status (${type}):`, message);
+  
+  // Optional: display in UI
+  const statusElement = document.createElement('div');
+  statusElement.textContent = message;
+  if (type) statusElement.classList.add(type);
+  
+  // Show status somewhere in the UI if desired
 }
 
 export function updateResult(elementId, htmlContent) {
@@ -28,16 +36,18 @@ export function updateResult(elementId, htmlContent) {
   }
 }
 
-export async function updateWalletUI(wallet) {
+export function updateWalletUI(wallet, balanceInLamports) {
   if (!wallet) return;
   
   walletStatus.textContent = 'Connected';
   walletStatus.classList.add('connected');
   walletAddress.textContent = shortenAddress(wallet.publicKey.toString());
   
-  // Get and display balance
-  const balance = await getWalletBalance();
-  walletBalance.textContent = (balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4);
+  // Format and display balance (pass balance from outside)
+  if (balanceInLamports !== undefined) {
+    const solBalance = (balanceInLamports / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4);
+    walletBalance.textContent = solBalance;
+  }
   
   // Show wallet info
   walletInfo.classList.remove('hidden');

@@ -1,6 +1,12 @@
+// main.js
 import { initialize, initializeProgram } from './services/program.js';
-import { connectWallet } from './services/wallet.js';
-import { initializeDom, enableFunctionButtons } from './utils/dom.js';
+import { connectWallet, getWalletBalance } from './services/wallet.js';
+import { 
+  initializeDom, 
+  enableFunctionButtons, 
+  updateStatus,
+  updateWalletUI
+} from './utils/dom.js';
 import { createUser } from './transactions/createUser.js';
 import { createPool } from './transactions/createPool.js';
 import { buyToken } from './transactions/buyToken.js';
@@ -27,9 +33,28 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Connect wallet button
   connectWalletBtn.addEventListener('click', async () => {
-    await connectWallet();
-    initializeProgram();
-    enableFunctionButtons();
+    // Get wallet connection result
+    const result = await connectWallet();
+    
+    if (result.success) {
+      // Update status with success message
+      updateStatus(result.message, 'success');
+      
+      // Get wallet balance
+      const balance = await getWalletBalance();
+      
+      // Update UI with wallet and balance
+      updateWalletUI(result.wallet, balance);
+      
+      // Initialize program
+      initializeProgram();
+      
+      // Enable function buttons
+      enableFunctionButtons();
+    } else {
+      // Show error message if connection failed
+      updateStatus('Failed to connect wallet: ' + result.error, 'error');
+    }
   });
   
   // Function buttons
