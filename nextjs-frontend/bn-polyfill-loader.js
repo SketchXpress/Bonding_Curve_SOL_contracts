@@ -1,5 +1,5 @@
 // bn-polyfill-loader.js
-// This script ensures the bigint-buffer polyfill is loaded early in the Docker environment
+// This script ensures the bigint-buffer polyfill is loaded early in the environment
 
 // Import the polyfill
 require('./src/utils/bn-polyfill');
@@ -18,9 +18,18 @@ function patchGlobalBNInstances() {
     Object.keys(global).forEach(key => {
       try {
         const obj = global[key];
-        if (obj && typeof obj === 'object' && obj._bn === undefined && typeof obj.toBN === 'function') {
-          obj._bn = new BN(0);
-          console.log(`Fixed undefined _bn property on global.${key}`);
+        if (obj && typeof obj === 'object') {
+          // Fix for objects with toBN function but missing _bn property
+          if (obj._bn === undefined && typeof obj.toBN === 'function') {
+            obj._bn = new BN(0);
+            console.log(`Fixed undefined _bn property on global.${key}`);
+          }
+          
+          // Fix for BN instances without _bn property
+          if (obj.constructor && obj.constructor.name === 'BN' && obj._bn === undefined) {
+            obj._bn = obj;
+            console.log(`Fixed BN instance without _bn property on global.${key}`);
+          }
         }
       } catch (e) {
         // Ignore errors
@@ -32,4 +41,16 @@ function patchGlobalBNInstances() {
 // Run the global patching
 patchGlobalBNInstances();
 
-console.log('Docker-specific bigint-buffer polyfill loaded successfully');
+// Patch BN.prototype to ensure all instances have _bn property
+if (BN.prototype && !BN.prototype._bn) {
+  Object.defineProperty(BN.prototype, '_bn', {
+    get: function() {
+      return this;
+    },
+    configurable: true,
+    enumerable: false
+  });
+  console.log('Patched BN.prototype with _bn property');
+}
+
+console.log('bigint-buffer polyfill loaded successfully');

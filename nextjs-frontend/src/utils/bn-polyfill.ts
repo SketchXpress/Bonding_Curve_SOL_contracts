@@ -1,5 +1,5 @@
 /**
- * Enhanced polyfill and safety wrapper for BN.js to handle bigint binding issues in Docker
+ * Enhanced polyfill and safety wrapper for BN.js to handle bigint binding issues
  */
 
 import BN from 'bn.js';
@@ -18,25 +18,50 @@ interface BigIntBuffer {
 if (typeof global !== 'undefined') {
   // Use a more specific type than 'any'
   (global as { BN?: typeof BN }).BN = BN;
+  
+  // Ensure BN prototype has _bn property
+  if (BN.prototype && !Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+    Object.defineProperty(BN.prototype, '_bn', {
+      get: function() {
+        return this;
+      },
+      configurable: true,
+      enumerable: false
+    });
+    console.log('Added _bn property to BN.prototype');
+  }
 }
 
 // Ensure BN prototype methods exist
 function ensureBNPrototype() {
   if (typeof BN !== 'undefined' && BN.prototype) {
     if (!BN.prototype.toString) {
-        BN.prototype.toString = function() {
-          return '0';
+        BN.prototype.toString = function(base?: number) {
+          try {
+            return Object.getPrototypeOf(this).toString.call(this, base);
+          } catch (_) {
+            return '0';
+          }
         };
     }
       
     if (!BN.prototype.toNumber) {
       BN.prototype.toNumber = function() {
-        return 0;
+        try {
+          return Object.getPrototypeOf(this).toNumber.call(this);
+        } catch (_) {
+          return 0;
+        }
       };
     }
+    
     if (!BN.prototype.toJSON) {
       BN.prototype.toJSON = function() {
-        return '0';
+        try {
+          return this.toString();
+        } catch (_) {
+          return '0';
+        }
       };
     }
   }
@@ -69,7 +94,18 @@ export function safeBN(value: string | number | BN | Buffer | null | undefined, 
       return new BN(0); // Return BN(0) instead of null for better safety
     }
     
-    return new BN(value, base);
+    const bn = new BN(value, base);
+    
+    // Ensure _bn property exists
+    if (bn && !bn._bn) {
+      Object.defineProperty(bn, '_bn', {
+        value: bn,
+        configurable: true,
+        enumerable: false
+      });
+    }
+    
+    return bn;
   } catch (error) {
     console.error('Error creating BN instance:', error);
     return new BN(0); // Return BN(0) instead of null for better safety
@@ -260,7 +296,7 @@ export class SafeBN {
 }
 
 /**
- * Enhanced patch for bigint-buffer to handle missing native bindings in Docker
+ * Enhanced patch for bigint-buffer to handle missing native bindings
  */
 export function patchBigintBuffer() {
   try {
@@ -380,6 +416,22 @@ function patchExistingInstances(obj: unknown, depth = 0, visited = new Set()) {
       console.log('Fixed undefined _bn property on object');
     }
     
+    // Check if this is a BN instance without _bn property
+    const isBN = (o: unknown): o is BN => 
+        o !== null && 
+        typeof o === 'object' && 
+        (o as Record<string, unknown>).constructor && 
+        (o as Record<string, unknown>).constructor.name === 'BN';
+        
+    if (isBN(obj) && (obj as Record<string, unknown>)._bn === undefined) {
+      Object.defineProperty(obj, '_bn', {
+        value: obj,
+        configurable: true,
+        enumerable: false
+      });
+      console.log('Fixed BN instance without _bn property');
+    }
+    
     // Recursively check properties
     if (obj !== null && typeof obj === 'object') {
       try {
@@ -405,9 +457,37 @@ function patchExistingInstances(obj: unknown, depth = 0, visited = new Set()) {
 // Apply the patch immediately when this module is imported
 patchBigintBuffer();
 
-// Set environment variable to indicate we're in Docker
-if (typeof process !== 'undefined' && process.env) {
-  process.env.DOCKER_ENVIRONMENT = 'true';
+// Monkey patch the BN constructor to ensure all instances have _bn
+if (typeof BN === 'function') {
+  const originalBN = BN;
+  
+
+  function PatchedBN(...args: unknown[]) {
+    // @ts-expect-error - Intentionally bypassing TypeScript's type checking
+    const instance = new originalBN(...args);
+    
+    // Ensure the instance has _bn property
+    if (!instance._bn) {
+      Object.defineProperty(instance, '_bn', {
+        value: instance,
+        configurable: true,
+        enumerable: false
+      });
+    }
+    
+    return instance;
+  }
+  
+  // Copy prototype and static properties
+  PatchedBN.prototype = originalBN.prototype;
+  Object.setPrototypeOf(PatchedBN, originalBN);
+  
+  // Replace the global BN constructor
+  if (typeof global !== 'undefined') {
+    (global as Record<string, unknown>).BN = PatchedBN;
+  }
+  
+  console.log('Monkey patched BN constructor to ensure _bn property');
 }
 
 export default SafeBN;

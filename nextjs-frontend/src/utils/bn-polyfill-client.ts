@@ -1,474 +1,173 @@
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = patchBigIntBuffer;
-
-var _bnJs = _interopRequireDefault(require("bn.js"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
 /**
- * Enhanced client-side patch for BigInt buffer handling
+ * Client-side polyfill for BN.js to handle bigint binding issues
  */
-function patchBigIntBuffer() {
-  try {
-    console.log('Applying enhanced client-side BigInt buffer patch for Solana wallet');
+
+import BN from 'bn.js';
+import * as bigintBufferModule from 'bigint-buffer';
+
+// Define proper types for bigint-buffer methods
+interface BigIntBuffer {
+  toBigIntLE?: (buffer: Buffer) => bigint;
+  toBufferLE?: (value: bigint, length: number) => Buffer;
+  toBigIntBE?: (buffer: Buffer) => bigint;
+  toBufferBE?: (value: bigint, length: number) => Buffer;
+}
+
+// Apply client-side patches for BN.js
+export function applyClientPatches() {
+  console.log('Applying client-side BN.js patches');
+  
+  // Ensure BN is available globally
+  if (typeof window !== 'undefined') {
     
-    // Apply client-side specific patches
-    if (typeof window !== 'undefined') {
-      // Patch the BN constructor to handle undefined _bn property
-      patchBNConstructor();
-      
-      // Patch specific Solana libraries that use BN
-      patchSolanaLibraries();
-      
-      // Recursively patch all BN instances in the window object
-      patchAllBNInstances();
-      
-      // Add serialization support for BigInt in JSON
-      addBigIntJSONSupport();
-      
-      // Add defensive getters and setters for _bn property
-      addDefensiveBNPropertyHandling();
-      
-      // Set up a mutation observer to reapply patches when DOM changes
-      setupMutationObserver();
-      
-      console.log('Enhanced client-side BigInt buffer patch applied successfully');
-    }
-  } catch (error) {
-    console.error('Error applying enhanced client-side BigInt buffer patch:', error);
-  }
-}
-
-/**
- * Patch the BN constructor to ensure _bn property exists
- */
-function patchBNConstructor() {
-  try {
-    if (typeof window !== 'undefined') {
-      // First patch the BN prototype
-      patchBNPrototype();
-      
-      // Then patch the global BN constructor if it exists
-      if (window.BN) {
-        const originalBN = window.BN;
-        
-        // Create a patched constructor
-        window.BN = function(...args) {
-          const instance = new originalBN(...args);
-          
-          // Ensure _bn property exists and points to itself
-          if (!instance._bn) {
-            Object.defineProperty(instance, '_bn', {
-              value: instance,
-              configurable: true,
-              enumerable: false,
-              writable: true
-            });
-          }
-          
-          return instance;
-        };
-        
-        // Copy prototype and static properties
-        window.BN.prototype = originalBN.prototype;
-        Object.setPrototypeOf(window.BN, originalBN);
-        
-        console.log('Monkey patched BN constructor to ensure _bn property');
-      }
-    }
-  } catch (error) {
-    console.error('Error patching BN constructor:', error);
-  }
-}
-
-/**
- * Patch the BN prototype with necessary methods and property definitions
- */
-function patchBNPrototype() {
-  try {
-    // Add defensive methods to BN.prototype
-    if (_bnJs.default && _bnJs.default.prototype) {
-      // Add toJSON method if missing
-      if (!_bnJs.default.prototype.toJSON) {
-        _bnJs.default.prototype.toJSON = function() {
-          try {
-            return this.toString(10);
-          } catch (e) {
-            console.error('Error in BN.prototype.toJSON:', e);
-            return '0';
-          }
-        };
-      }
-      
-      // Add toNumber method if missing
-      if (!_bnJs.default.prototype.toNumber) {
-        _bnJs.default.prototype.toNumber = function() {
-          try {
-            return parseInt(this.toString(10), 10);
-          } catch (e) {
-            console.error('Error in BN.prototype.toNumber:', e);
-            return 0;
-          }
-        };
-      }
-      
-      // Add toBN method if missing
-      if (!_bnJs.default.prototype.toBN) {
-        _bnJs.default.prototype.toBN = function() {
+    window.BN = BN;
+    
+    // Ensure BN prototype has _bn property
+    if (BN.prototype && !Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+      Object.defineProperty(BN.prototype, '_bn', {
+        get: function() {
           return this;
-        };
-      }
-      
-      // Define _bn property on the prototype with a getter that returns this
-      // This is a fallback if the direct property assignment fails
-      if (!Object.getOwnPropertyDescriptor(_bnJs.default.prototype, '_bn')) {
-        Object.defineProperty(_bnJs.default.prototype, '_bn', {
-          get: function() {
-            // If _bn is undefined, return this
-            if (this._bnValue === undefined) {
-              this._bnValue = this;
-            }
-            return this._bnValue;
-          },
-          set: function(value) {
-            this._bnValue = value;
-          },
-          configurable: true,
-          enumerable: false
-        });
-      }
-      
-      console.log('Patched BN.prototype with _bn property');
+        },
+        configurable: true,
+        enumerable: false
+      });
+      console.log('Added _bn property to BN.prototype on client');
     }
-  } catch (error) {
-    console.error('Error patching BN prototype:', error);
   }
+  
+  // Patch bigint-buffer for client-side
+  patchClientBigintBuffer();
+  
+  // Patch any existing BN instances in the client environment
+  patchExistingClientInstances();
+  
+  console.log('Client-side BN.js patches applied successfully');
 }
 
 /**
- * Add defensive getters and setters for _bn property
+ * Patch bigint-buffer for client-side use
  */
-function addDefensiveBNPropertyHandling() {
+function patchClientBigintBuffer() {
   try {
-    // Monkey patch Object.prototype.hasOwnProperty to handle _bn property specially
-    const originalHasOwnProperty = Object.prototype.hasOwnProperty;
-    Object.prototype.hasOwnProperty = function(prop) {
-      // Special case for _bn property on BN-like objects
-      if (prop === '_bn' && 
-          this && 
-          typeof this === 'object' && 
-          (this.constructor && this.constructor.name === 'BN' || typeof this.toBN === 'function')) {
-        return true;
-      }
-      return originalHasOwnProperty.call(this, prop);
-    };
+    // Use the imported module with proper typing
+    const bigintBuffer = bigintBufferModule as BigIntBuffer;
     
-    // Monkey patch Object.prototype.propertyIsEnumerable to handle _bn property specially
-    const originalPropertyIsEnumerable = Object.prototype.propertyIsEnumerable;
-    Object.prototype.propertyIsEnumerable = function(prop) {
-      // Special case for _bn property on BN-like objects
-      if (prop === '_bn' && 
-          this && 
-          typeof this === 'object' && 
-          (this.constructor && this.constructor.name === 'BN' || typeof this.toBN === 'function')) {
-        return false;
-      }
-      return originalPropertyIsEnumerable.call(this, prop);
-    };
-    
-    console.log('Added defensive property handling for _bn property');
-  } catch (error) {
-    console.error('Error adding defensive property handling:', error);
-  }
-}
-
-/**
- * Patch specific Solana libraries that use BN
- */
-function patchSolanaLibraries() {
-  try {
-    // Check for Solana wallet adapter
-    if (window.solana) {
-      console.log('Patching Solana wallet adapter');
+    // Check if the module has the expected methods
+    if (!bigintBuffer.toBigIntLE || !bigintBuffer.toBufferLE) {
+      console.warn('Client-side bigint-buffer methods missing, applying polyfill');
       
-      // Patch solana.BN if it exists
-      if (window.solana.BN) {
-        const originalSolanaBN = window.solana.BN;
-        
-        window.solana.BN = function(...args) {
-          const instance = new originalSolanaBN(...args);
-          
-          // Ensure _bn property exists and points to itself
-          if (!instance._bn) {
-            Object.defineProperty(instance, '_bn', {
-              value: instance,
-              configurable: true,
-              enumerable: false,
-              writable: true
-            });
-          }
-          
-          return instance;
-        };
-        
-        window.solana.BN.prototype = originalSolanaBN.prototype;
-        Object.setPrototypeOf(window.solana.BN, originalSolanaBN);
-      }
-      
-      // Patch wallet methods
-      if (window.solana.connect) {
-        const originalConnect = window.solana.connect;
-        window.solana.connect = async function(...args) {
+      // Simple polyfill for toBigIntLE if missing
+      if (!bigintBuffer.toBigIntLE) {
+        bigintBuffer.toBigIntLE = function(buffer: Buffer): bigint {
           try {
-            const result = await originalConnect.apply(this, args);
-            // After connection, reapply patches to ensure BN instances are properly handled
-            setTimeout(() => {
-              patchAllBNInstances();
-              console.log('Reapplied BN patches after wallet connection');
-            }, 100);
+            // Simple implementation for little-endian conversion
+            let result = 0n;
+            for (let i = buffer.length - 1; i >= 0; i--) {
+              result = (result << 8n) + BigInt(buffer[i]);
+            }
             return result;
           } catch (error) {
-            console.error('Error in patched connect method:', error);
-            throw error;
+            console.error('Error in client toBigIntLE polyfill:', error);
+            return 0n;
+          }
+        };
+      }
+      
+      // Simple polyfill for toBufferLE if missing
+      if (!bigintBuffer.toBufferLE) {
+        bigintBuffer.toBufferLE = function(value: bigint, length: number): Buffer {
+          try {
+            const buffer = Buffer.alloc(length);
+            let tempValue = value;
+            for (let i = 0; i < length; i++) {
+              buffer[i] = Number(tempValue & 0xffn);
+              tempValue = tempValue >> 8n;
+            }
+            return buffer;
+          } catch (error) {
+            console.error('Error in client toBufferLE polyfill:', error);
+            return Buffer.alloc(length);
           }
         };
       }
     }
     
-    // Check for @solana/web3.js
-    if (window.solanaWeb3) {
-      console.log('Patching @solana/web3.js');
-      patchObjectRecursively(window.solanaWeb3);
-    }
-    
-    // Check for @coral-xyz/anchor
-    if (window.anchor) {
-      console.log('Patching @coral-xyz/anchor');
-      patchObjectRecursively(window.anchor);
-    }
-    
-    // Patch any global BN-related objects
-    if (window.BN) patchObjectRecursively(window.BN);
-    
-    console.log('Completed Solana libraries patching');
+    console.log('Client-side bigint-buffer patched successfully');
+    return true;
   } catch (error) {
-    console.error('Error in patchSolanaLibraries:', error);
+    console.error('Failed to patch client-side bigint-buffer:', error);
+    return false;
   }
 }
 
 /**
- * Recursively patch all BN instances in an object
+ * Patch existing BN instances in the client environment
  */
-function patchObjectRecursively(obj, depth = 0, visited = new Set()) {
-  // Prevent infinite recursion and cycles
-  if (depth > 5 || obj === null || typeof obj !== 'object' || visited.has(obj)) return;
+function patchExistingClientInstances() {
+  if (typeof window !== 'undefined') {
+    try {
+      // Recursively patch objects in window
+      patchObjectRecursively(window, 0, new Set());
+      console.log('Patched existing client BN instances');
+    } catch (error) {
+      console.error('Error patching client instances:', error);
+    }
+  }
+}
+
+/**
+ * Recursively patch objects that might be using BN
+ */
+function patchObjectRecursively(obj: unknown, depth = 0, visited = new Set()) {
+  // Prevent infinite recursion
+  if (depth > 2 || visited.has(obj)) return;
   visited.add(obj);
   
-  // Check if this is a BN instance
-  const isBNInstance = obj.constructor && 
-      (obj.constructor.name === 'BN' || obj.constructor.name === 'BigNumber');
-  
-  if (isBNInstance) {
-    if (!obj._bn) {
-      Object.defineProperty(obj, '_bn', {
-        value: obj,
-        configurable: true,
-        enumerable: false,
-        writable: true
-      });
-    }
-  }
-  
-  // Check if this has a toBN method but missing _bn property
-  if (typeof obj.toBN === 'function' && !obj._bn) {
-    try {
-      const bn = obj.toBN();
-      if (bn) {
-        Object.defineProperty(obj, '_bn', {
-          value: bn,
-          configurable: true,
-          enumerable: false,
-          writable: true
-        });
-      }
-    } catch (e) {
-      // If toBN() fails, set _bn to a default BN instance
-      Object.defineProperty(obj, '_bn', {
-        value: new _bnJs.default(0),
-        configurable: true,
-        enumerable: false,
-        writable: true
-      });
-    }
-  }
-  
-  // Recursively check all properties
   try {
-    for (const key in obj) {
+    // Skip null/undefined
+    if (obj === null || obj === undefined) return;
+    
+    // Check if this is an object
+    if (typeof obj === 'object') {
+      // Check if this is a BN instance without _bn property
+      if (obj.constructor && obj.constructor.name === 'BN' && !('_bn' in obj)) {
+        // @ts-expect-error - Intentionally adding _bn property
+        obj._bn = obj;
+        console.log('Fixed client BN instance without _bn property');
+      }
+      
+      // Check if this object has toBN method but missing _bn property
+      if ('toBN' in obj && typeof obj.toBN === 'function' && !('_bn' in obj)) {
+        // @ts-expect-error - Intentionally adding _bn property
+        obj._bn = new BN(0);
+        console.log('Fixed client object with toBN but missing _bn property');
+      }
+      
+      // Recursively check properties
       try {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-          const value = obj[key];
-          if (value && typeof value === 'object') {
-            patchObjectRecursively(value, depth + 1, visited);
+        Object.keys(obj as object).forEach(key => {
+          try {
+            // @ts-expect-error - Accessing properties dynamically
+            const value = obj[key];
+            if (value !== null && typeof value === 'object') {
+              patchObjectRecursively(value, depth + 1, visited);
+            }
+          } catch (_) {
+            // Ignore errors on individual properties
           }
-        }
-      } catch {
-        // Ignore errors on individual properties
+        });
+      } catch (_) {
+        // Ignore errors on Object.keys
       }
     }
-  } catch {
-    // Ignore errors on iteration
+  } catch (_) {
+    // Ignore any errors
   }
 }
 
-/**
- * Recursively patch all BN instances in the window object
- */
-function patchAllBNInstances() {
-  try {
-    // Start patching from the window object
-    patchObjectRecursively(window);
-    
-    // Specifically target wallet connection objects
-    const solanaWindow = window;
-    
-    if (solanaWindow.solana && solanaWindow.solana.connect) {
-      // Monkey patch the connect method
-      const originalConnect = solanaWindow.solana.connect;
-      
-      solanaWindow.solana.connect = async function(...args) {
-        try {
-          const result = await originalConnect.apply(this, args);
-          
-          // After connection, patch any new BN instances
-          setTimeout(() => {
-            patchObjectRecursively(solanaWindow.solana);
-            console.log('Patched BN instances after wallet connection');
-          }, 100);
-          
-          return result;
-        } catch (error) {
-          console.error('Error in patched connect method:', error);
-          throw error;
-        }
-      };
-      
-      console.log('Monkey patched wallet connect method');
-    }
-    
-    console.log('Completed recursive patching of BN instances');
-  } catch (error) {
-    console.error('Error in patchAllBNInstances:', error);
-  }
+// Apply patches immediately when this module is imported in client context
+if (typeof window !== 'undefined') {
+  applyClientPatches();
 }
 
-/**
- * Add JSON serialization support for BigInt
- */
-function addBigIntJSONSupport() {
-  try {
-    // Save the original JSON.stringify method
-    const originalStringify = JSON.stringify;
-    
-    // Override JSON.stringify to handle BigInt values
-    JSON.stringify = function(value, replacer, space) {
-      // Custom replacer to handle BigInt values
-      const bigintReplacer = (key, value) => {
-        // Handle BigInt values
-        if (typeof value === 'bigint') {
-          return value.toString();
-        }
-        
-        // Use custom replacer if provided
-        if (replacer) {
-          return replacer(key, value);
-        }
-        
-        return value;
-      };
-      
-      // Call the original stringify with our custom replacer
-      return originalStringify(value, bigintReplacer, space);
-    };
-    
-    console.log('Added BigInt support to JSON.stringify');
-  } catch (error) {
-    console.error('Error adding BigInt JSON support:', error);
-  }
-}
-
-/**
- * Set up a mutation observer to reapply patches when DOM changes
- */
-function setupMutationObserver() {
-  try {
-    if (typeof MutationObserver !== 'undefined') {
-      // Create a BigIntPatcher object to track state
-      window.BigIntPatcher = {
-        isPatching: false,
-        patchCount: 0,
-        lastPatchTime: Date.now()
-      };
-      
-      // Create a mutation observer to watch for DOM changes
-      const observer = new MutationObserver((mutations) => {
-        // Avoid repatching too frequently
-        const now = Date.now();
-        if (window.BigIntPatcher.isPatching || 
-            (now - window.BigIntPatcher.lastPatchTime < 1000 && window.BigIntPatcher.patchCount > 5)) {
-          return;
-        }
-        
-        // Look for wallet-related DOM changes
-        let shouldRepatch = false;
-        for (const mutation of mutations) {
-          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            for (const node of mutation.addedNodes) {
-              if (node.nodeType === 1) { // Element node
-                // Check if this might be a wallet-related element
-                const innerHTML = node.innerHTML || '';
-                if (innerHTML.includes('wallet') || 
-                    innerHTML.includes('connect') || 
-                    innerHTML.includes('solana') || 
-                    innerHTML.includes('phantom')) {
-                  shouldRepatch = true;
-                  break;
-                }
-              }
-            }
-          }
-          if (shouldRepatch) break;
-        }
-        
-        if (shouldRepatch) {
-          console.log('BigIntPatcher: Detected wallet-related DOM changes, reapplying patch');
-          window.BigIntPatcher.isPatching = true;
-          window.BigIntPatcher.patchCount++;
-          window.BigIntPatcher.lastPatchTime = now;
-          
-          // Reapply patches
-          try {
-            patchBigIntBuffer();
-            console.log('BigIntPatcher: Patch reapplied after DOM changes');
-          } finally {
-            window.BigIntPatcher.isPatching = false;
-          }
-        }
-      });
-      
-      // Start observing the document with the configured parameters
-      observer.observe(document.body, { 
-        childList: true, 
-        subtree: true 
-      });
-      
-      console.log('BigIntPatcher: Initial patch applied successfully');
-    }
-  } catch (error) {
-    console.error('Error setting up mutation observer:', error);
-  }
-}
+export default applyClientPatches;
