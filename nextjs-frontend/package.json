@@ -38,6 +38,6 @@
     "node-gyp": "^11.2.0",
     "patch-package": "^8.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }

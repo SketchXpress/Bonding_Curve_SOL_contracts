@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { patchBigIntBuffer } from '../utils/bn-polyfill-client';
+// Import from compiled JS file instead of TS file
+import { patchBigIntBuffer } from '../utils/compiled/bn-polyfill-client';
 
 /**
  * Enhanced component that applies the BigInt buffer patch on the client side

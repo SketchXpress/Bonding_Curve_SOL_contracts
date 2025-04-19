@@ -9,6 +9,7 @@ import { useMemo, useEffect } from "react";
 
 // Import BN polyfill patches
 import "../utils/compiled/bn-polyfill";
+import "../utils/compiled/bn-polyfill-client";
 import "../utils/bn-polyfill-direct";
 import "../utils/error-handler";
 
