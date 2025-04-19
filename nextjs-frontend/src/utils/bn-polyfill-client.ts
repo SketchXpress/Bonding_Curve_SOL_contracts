@@ -1,96 +1,72 @@
-'use client';
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = patchBigIntBuffer;
+
+var _bnJs = _interopRequireDefault(require("bn.js"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
- * Enhanced client-side polyfill for BN.js and BigInt functionality
- * This ensures that objects have the _bn property even when native bindings aren't available
- * Specifically targets Solana wallet adapter and Anchor framework BN instances
+ * Enhanced client-side patch for BigInt buffer handling
  */
-export function patchBigIntBuffer() {
+function patchBigIntBuffer() {
   try {
-    // Check if we're in a browser environment
+    console.log('Applying enhanced client-side BigInt buffer patch for Solana wallet');
+    
+    // Apply client-side specific patches
     if (typeof window !== 'undefined') {
-      console.log('Applying enhanced client-side BigInt buffer patch for Solana wallet');
+      // Patch the BN constructor to handle undefined _bn property
+      patchBNConstructor();
       
-      // Store original console.error to restore later
-      const originalConsoleError = console.error;
+      // Patch specific Solana libraries that use BN
+      patchSolanaLibraries();
       
-      // Temporarily suppress specific errors during patching
-      console.error = function(...args) {
-        const errorMessage = args.join(' ');
-        if (errorMessage.includes('_bn') || errorMessage.includes('bigint')) {
-          // Suppress specific errors
-          return;
-        }
-        return originalConsoleError.apply(console, args);
-      };
+      // Recursively patch all BN instances in the window object
+      patchAllBNInstances();
       
-      // Patch BN.prototype directly if it exists
-      if (typeof window.BN !== 'undefined') {
-        const BNPrototype = window.BN.prototype;
-        
-        // Add _bn property to BN prototype if it doesn't exist
-        if (!BNPrototype._bn) {
-          Object.defineProperty(BNPrototype, '_bn', {
-            get: function() {
-              // Return this as the _bn property (self-reference)
-              return this;
-            },
-            configurable: true,
-            enumerable: false
-          });
-          console.log('Patched BN.prototype with _bn property');
-        }
-      }
+      // Add serialization support for BigInt in JSON
+      addBigIntJSONSupport();
       
-      // Patch Buffer.prototype if needed
-      if (typeof Buffer !== 'undefined' && Buffer.prototype) {
-        const BufferPrototype = Buffer.prototype;
-        if (!BufferPrototype._bn) {
-          Object.defineProperty(BufferPrototype, '_bn', {
-            get: function() {
-              // Create a fallback _bn property
-              return {
-                toString: () => this.toString('hex')
-              };
-            },
-            configurable: true,
-            enumerable: false
-          });
-        }
-      }
+      // Add defensive getters and setters for _bn property
+      addDefensiveBNPropertyHandling();
       
-      // Patch global BigInt if needed
-      if (typeof BigInt !== 'undefined') {
-        const BigIntPrototype = BigInt.prototype;
-        if (!BigIntPrototype._bn) {
-          Object.defineProperty(BigIntPrototype, '_bn', {
-            get: function() {
-              return {
-                toString: () => this.toString()
-              };
-            },
-            configurable: true,
-            enumerable: false
-          });
-        }
-      }
+      // Set up a mutation observer to reapply patches when DOM changes
+      setupMutationObserver();
       
-      // Monkey patch the BN constructor to ensure all instances have _bn
-      if (typeof window.BN === 'function') {
+      console.log('Enhanced client-side BigInt buffer patch applied successfully');
+    }
+  } catch (error) {
+    console.error('Error applying enhanced client-side BigInt buffer patch:', error);
+  }
+}
+
+/**
+ * Patch the BN constructor to ensure _bn property exists
+ */
+function patchBNConstructor() {
+  try {
+    if (typeof window !== 'undefined') {
+      // First patch the BN prototype
+      patchBNPrototype();
+      
+      // Then patch the global BN constructor if it exists
+      if (window.BN) {
         const originalBN = window.BN;
         
-        // @ts-ignore - Intentionally bypassing TypeScript's type checking for constructor patching
+        // Create a patched constructor
         window.BN = function(...args) {
-          // Call the original constructor with arguments
-          // @ts-ignore - Intentionally bypassing TypeScript's spread argument check
           const instance = new originalBN(...args);
           
-          // Ensure the instance has _bn property
+          // Ensure _bn property exists and points to itself
           if (!instance._bn) {
             Object.defineProperty(instance, '_bn', {
               value: instance,
               configurable: true,
-              enumerable: false
+              enumerable: false,
+              writable: true
             });
           }
           
@@ -103,35 +79,110 @@ export function patchBigIntBuffer() {
         
         console.log('Monkey patched BN constructor to ensure _bn property');
       }
-      
-      // Patch specific Solana libraries
-      patchSolanaLibraries();
-      
-      // Add a global error handler to catch and fix _bn errors
-      window.addEventListener('error', function(event) {
-        if (event.error && event.error.message && 
-            (event.error.message.includes("Cannot read properties of undefined (reading '_bn')") ||
-             event.error.message.includes("Cannot read property '_bn' of undefined"))) {
-          console.warn('Caught _bn error, attempting to fix dynamically');
-          
-          // Try to find and fix the BN instances in the current context
-          setTimeout(() => {
-            patchAllBNInstances();
-            patchSolanaLibraries();
-          }, 0);
-          
-          // Prevent the error from propagating
-          event.preventDefault();
-        }
-      });
-      
-      // Restore original console.error
-      console.error = originalConsoleError;
-      
-      console.log('Enhanced client-side BigInt buffer patch applied successfully');
     }
   } catch (error) {
-    console.error('Error applying enhanced client-side BigInt buffer patch:', error);
+    console.error('Error patching BN constructor:', error);
+  }
+}
+
+/**
+ * Patch the BN prototype with necessary methods and property definitions
+ */
+function patchBNPrototype() {
+  try {
+    // Add defensive methods to BN.prototype
+    if (_bnJs.default && _bnJs.default.prototype) {
+      // Add toJSON method if missing
+      if (!_bnJs.default.prototype.toJSON) {
+        _bnJs.default.prototype.toJSON = function() {
+          try {
+            return this.toString(10);
+          } catch (e) {
+            console.error('Error in BN.prototype.toJSON:', e);
+            return '0';
+          }
+        };
+      }
+      
+      // Add toNumber method if missing
+      if (!_bnJs.default.prototype.toNumber) {
+        _bnJs.default.prototype.toNumber = function() {
+          try {
+            return parseInt(this.toString(10), 10);
+          } catch (e) {
+            console.error('Error in BN.prototype.toNumber:', e);
+            return 0;
+          }
+        };
+      }
+      
+      // Add toBN method if missing
+      if (!_bnJs.default.prototype.toBN) {
+        _bnJs.default.prototype.toBN = function() {
+          return this;
+        };
+      }
+      
+      // Define _bn property on the prototype with a getter that returns this
+      // This is a fallback if the direct property assignment fails
+      if (!Object.getOwnPropertyDescriptor(_bnJs.default.prototype, '_bn')) {
+        Object.defineProperty(_bnJs.default.prototype, '_bn', {
+          get: function() {
+            // If _bn is undefined, return this
+            if (this._bnValue === undefined) {
+              this._bnValue = this;
+            }
+            return this._bnValue;
+          },
+          set: function(value) {
+            this._bnValue = value;
+          },
+          configurable: true,
+          enumerable: false
+        });
+      }
+      
+      console.log('Patched BN.prototype with _bn property');
+    }
+  } catch (error) {
+    console.error('Error patching BN prototype:', error);
+  }
+}
+
+/**
+ * Add defensive getters and setters for _bn property
+ */
+function addDefensiveBNPropertyHandling() {
+  try {
+    // Monkey patch Object.prototype.hasOwnProperty to handle _bn property specially
+    const originalHasOwnProperty = Object.prototype.hasOwnProperty;
+    Object.prototype.hasOwnProperty = function(prop) {
+      // Special case for _bn property on BN-like objects
+      if (prop === '_bn' && 
+          this && 
+          typeof this === 'object' && 
+          (this.constructor && this.constructor.name === 'BN' || typeof this.toBN === 'function')) {
+        return true;
+      }
+      return originalHasOwnProperty.call(this, prop);
+    };
+    
+    // Monkey patch Object.prototype.propertyIsEnumerable to handle _bn property specially
+    const originalPropertyIsEnumerable = Object.prototype.propertyIsEnumerable;
+    Object.prototype.propertyIsEnumerable = function(prop) {
+      // Special case for _bn property on BN-like objects
+      if (prop === '_bn' && 
+          this && 
+          typeof this === 'object' && 
+          (this.constructor && this.constructor.name === 'BN' || typeof this.toBN === 'function')) {
+        return false;
+      }
+      return originalPropertyIsEnumerable.call(this, prop);
+    };
+    
+    console.log('Added defensive property handling for _bn property');
+  } catch (error) {
+    console.error('Error adding defensive property handling:', error);
   }
 }
 
@@ -148,26 +199,43 @@ function patchSolanaLibraries() {
       if (window.solana.BN) {
         const originalSolanaBN = window.solana.BN;
         
-        // @ts-ignore - Intentionally bypassing TypeScript's type checking
         window.solana.BN = function(...args) {
-          // @ts-ignore - Intentionally bypassing TypeScript's type checking
           const instance = new originalSolanaBN(...args);
           
+          // Ensure _bn property exists and points to itself
           if (!instance._bn) {
             Object.defineProperty(instance, '_bn', {
               value: instance,
               configurable: true,
-              enumerable: false
+              enumerable: false,
+              writable: true
             });
           }
           
           return instance;
         };
         
-        // @ts-ignore - Intentionally bypassing TypeScript's type checking
         window.solana.BN.prototype = originalSolanaBN.prototype;
-        // @ts-ignore - Intentionally bypassing TypeScript's type checking
         Object.setPrototypeOf(window.solana.BN, originalSolanaBN);
+      }
+      
+      // Patch wallet methods
+      if (window.solana.connect) {
+        const originalConnect = window.solana.connect;
+        window.solana.connect = async function(...args) {
+          try {
+            const result = await originalConnect.apply(this, args);
+            // After connection, reapply patches to ensure BN instances are properly handled
+            setTimeout(() => {
+              patchAllBNInstances();
+              console.log('Reapplied BN patches after wallet connection');
+            }, 100);
+            return result;
+          } catch (error) {
+            console.error('Error in patched connect method:', error);
+            throw error;
+          }
+        };
       }
     }
     
@@ -195,30 +263,55 @@ function patchSolanaLibraries() {
 /**
  * Recursively patch all BN instances in an object
  */
-function patchObjectRecursively(obj: unknown, depth = 0, visited = new Set<object>()) {
+function patchObjectRecursively(obj, depth = 0, visited = new Set()) {
   // Prevent infinite recursion and cycles
-  if (depth > 5 || obj === null || typeof obj !== 'object' || visited.has(obj as object)) return;
-  visited.add(obj as object);
+  if (depth > 5 || obj === null || typeof obj !== 'object' || visited.has(obj)) return;
+  visited.add(obj);
   
   // Check if this is a BN instance
-  const objRecord = obj as Record<string, unknown>;
-  if (objRecord.constructor && 
-      (objRecord.constructor.name === 'BN' || objRecord.constructor.name === 'BigNumber')) {
-    if (!objRecord._bn) {
-      Object.defineProperty(objRecord, '_bn', {
+  const isBNInstance = obj.constructor && 
+      (obj.constructor.name === 'BN' || obj.constructor.name === 'BigNumber');
+  
+  if (isBNInstance) {
+    if (!obj._bn) {
+      Object.defineProperty(obj, '_bn', {
         value: obj,
         configurable: true,
-        enumerable: false
+        enumerable: false,
+        writable: true
+      });
+    }
+  }
+  
+  // Check if this has a toBN method but missing _bn property
+  if (typeof obj.toBN === 'function' && !obj._bn) {
+    try {
+      const bn = obj.toBN();
+      if (bn) {
+        Object.defineProperty(obj, '_bn', {
+          value: bn,
+          configurable: true,
+          enumerable: false,
+          writable: true
+        });
+      }
+    } catch (e) {
+      // If toBN() fails, set _bn to a default BN instance
+      Object.defineProperty(obj, '_bn', {
+        value: new _bnJs.default(0),
+        configurable: true,
+        enumerable: false,
+        writable: true
       });
     }
   }
   
   // Recursively check all properties
   try {
-    for (const key in objRecord) {
+    for (const key in obj) {
       try {
-        if (Object.prototype.hasOwnProperty.call(objRecord, key)) {
-          const value = objRecord[key];
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          const value = obj[key];
           if (value && typeof value === 'object') {
             patchObjectRecursively(value, depth + 1, visited);
           }
@@ -241,25 +334,14 @@ function patchAllBNInstances() {
     patchObjectRecursively(window);
     
     // Specifically target wallet connection objects
-    const solanaWindow = window as unknown as {
-      solana?: {
-        // @ts-ignore - Intentionally bypassing TypeScript's type checking
-        connect: (...args: any[]) => Promise<any>;
-        BN?: unknown;
-      };
-      solanaWeb3?: unknown;
-      anchor?: unknown;
-      BN?: unknown;
-    };
+    const solanaWindow = window;
     
     if (solanaWindow.solana && solanaWindow.solana.connect) {
       // Monkey patch the connect method
       const originalConnect = solanaWindow.solana.connect;
       
-      // @ts-ignore - Intentionally bypassing TypeScript's type checking
       solanaWindow.solana.connect = async function(...args) {
         try {
-          // @ts-ignore - Intentionally bypassing TypeScript's type checking
           const result = await originalConnect.apply(this, args);
           
           // After connection, patch any new BN instances
@@ -284,14 +366,109 @@ function patchAllBNInstances() {
   }
 }
 
-// Add global type definitions for the window object
-declare global {
-  interface Window {
-    BN: unknown;
-    solana?: unknown;
-    solanaWeb3?: unknown;
-    anchor?: unknown;
+/**
+ * Add JSON serialization support for BigInt
+ */
+function addBigIntJSONSupport() {
+  try {
+    // Save the original JSON.stringify method
+    const originalStringify = JSON.stringify;
+    
+    // Override JSON.stringify to handle BigInt values
+    JSON.stringify = function(value, replacer, space) {
+      // Custom replacer to handle BigInt values
+      const bigintReplacer = (key, value) => {
+        // Handle BigInt values
+        if (typeof value === 'bigint') {
+          return value.toString();
+        }
+        
+        // Use custom replacer if provided
+        if (replacer) {
+          return replacer(key, value);
+        }
+        
+        return value;
+      };
+      
+      // Call the original stringify with our custom replacer
+      return originalStringify(value, bigintReplacer, space);
+    };
+    
+    console.log('Added BigInt support to JSON.stringify');
+  } catch (error) {
+    console.error('Error adding BigInt JSON support:', error);
   }
 }
 
-export default patchBigIntBuffer;
+/**
+ * Set up a mutation observer to reapply patches when DOM changes
+ */
+function setupMutationObserver() {
+  try {
+    if (typeof MutationObserver !== 'undefined') {
+      // Create a BigIntPatcher object to track state
+      window.BigIntPatcher = {
+        isPatching: false,
+        patchCount: 0,
+        lastPatchTime: Date.now()
+      };
+      
+      // Create a mutation observer to watch for DOM changes
+      const observer = new MutationObserver((mutations) => {
+        // Avoid repatching too frequently
+        const now = Date.now();
+        if (window.BigIntPatcher.isPatching || 
+            (now - window.BigIntPatcher.lastPatchTime < 1000 && window.BigIntPatcher.patchCount > 5)) {
+          return;
+        }
+        
+        // Look for wallet-related DOM changes
+        let shouldRepatch = false;
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            for (const node of mutation.addedNodes) {
+              if (node.nodeType === 1) { // Element node
+                // Check if this might be a wallet-related element
+                const innerHTML = node.innerHTML || '';
+                if (innerHTML.includes('wallet') || 
+                    innerHTML.includes('connect') || 
+                    innerHTML.includes('solana') || 
+                    innerHTML.includes('phantom')) {
+                  shouldRepatch = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (shouldRepatch) break;
+        }
+        
+        if (shouldRepatch) {
+          console.log('BigIntPatcher: Detected wallet-related DOM changes, reapplying patch');
+          window.BigIntPatcher.isPatching = true;
+          window.BigIntPatcher.patchCount++;
+          window.BigIntPatcher.lastPatchTime = now;
+          
+          // Reapply patches
+          try {
+            patchBigIntBuffer();
+            console.log('BigIntPatcher: Patch reapplied after DOM changes');
+          } finally {
+            window.BigIntPatcher.isPatching = false;
+          }
+        }
+      });
+      
+      // Start observing the document with the configured parameters
+      observer.observe(document.body, { 
+        childList: true, 
+        subtree: true 
+      });
+      
+      console.log('BigIntPatcher: Initial patch applied successfully');
+    }
+  } catch (error) {
+    console.error('Error setting up mutation observer:', error);
+  }
+}
