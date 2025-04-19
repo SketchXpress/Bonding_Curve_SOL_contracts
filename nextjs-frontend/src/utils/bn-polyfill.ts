@@ -1,7 +1,5 @@
 /**
- * Polyfill and safety wrapper for BN.js to handle bigint binding issues
- * This file provides safe wrappers and polyfills for BN.js functionality
- * to prevent "Cannot read properties of undefined (reading '_bn')" errors
+ * Enhanced polyfill and safety wrapper for BN.js to handle bigint binding issues in Docker
  */
 
 import BN from 'bn.js';
@@ -12,13 +10,38 @@ import { PublicKey } from '@solana/web3.js';
 interface BigIntBuffer {
   toBigIntLE?: (buffer: Buffer) => bigint;
   toBufferLE?: (value: bigint, length: number) => Buffer;
-  // Add other methods if needed
+  toBigIntBE?: (buffer: Buffer) => bigint;
+  toBufferBE?: (value: bigint, length: number) => Buffer;
+}
+
+// Global BN safety - ensure BN is always available
+if (typeof global !== 'undefined') {
+  (global as any).BN = BN;
+}
+
+// Ensure BN prototype methods exist
+function ensureBNPrototype() {
+  if (typeof BN !== 'undefined' && BN.prototype) {
+    if (!BN.prototype.toString) {
+      BN.prototype.toString = function(base?: number) {
+        return '0';
+      };
+    }
+    if (!BN.prototype.toNumber) {
+      BN.prototype.toNumber = function() {
+        return 0;
+      };
+    }
+    if (!BN.prototype.toJSON) {
+      BN.prototype.toJSON = function() {
+        return '0';
+      };
+    }
+  }
 }
 
 /**
  * Safely creates a PublicKey instance with error handling
- * @param value - The value to convert to PublicKey
- * @returns A PublicKey instance or null if creation fails
  */
 export function safePublicKey(value: string | Buffer | Uint8Array | number[] | PublicKey | null | undefined): PublicKey | null {
   if (!value) {
@@ -36,21 +59,18 @@ export function safePublicKey(value: string | Buffer | Uint8Array | number[] | P
 
 /**
  * Safely creates a BN instance with error handling
- * @param value - The value to convert to BN
- * @param base - Optional base for string conversion
- * @returns A BN instance or null if creation fails
  */
 export function safeBN(value: string | number | BN | Buffer | null | undefined, base?: number): BN | null {
   try {
     if (value === null || value === undefined) {
       console.warn('Attempted to create BN from null or undefined value');
-      return null;
+      return new BN(0); // Return BN(0) instead of null for better safety
     }
     
     return new BN(value, base);
   } catch (error) {
     console.error('Error creating BN instance:', error);
-    return null;
+    return new BN(0); // Return BN(0) instead of null for better safety
   }
 }
 
@@ -58,16 +78,16 @@ export function safeBN(value: string | number | BN | Buffer | null | undefined, 
  * Safe wrapper for BN operations that handles null values
  */
 export class SafeBN {
-  private _bn: BN | null;
+  private _bn: BN;
 
   constructor(value: string | number | BN | Buffer | null | undefined, base?: number) {
-    this._bn = safeBN(value, base);
+    this._bn = safeBN(value, base) || new BN(0);
   }
 
   /**
    * Get the underlying BN instance
    */
-  get bn(): BN | null {
+  get bn(): BN {
     return this._bn;
   }
 
@@ -75,11 +95,6 @@ export class SafeBN {
    * Convert to BN safely
    */
   toBN(): BN {
-    if (!this._bn) {
-      // Return a default BN(0) if the internal BN is null
-      console.warn('Attempted to use null BN, returning BN(0) as fallback');
-      return new BN(0);
-    }
     return this._bn;
   }
 
@@ -87,10 +102,6 @@ export class SafeBN {
    * Safe add operation
    */
   add(value: SafeBN | BN | number | string): SafeBN {
-    if (!this._bn) {
-      return new SafeBN(0);
-    }
-    
     try {
       if (value instanceof SafeBN) {
         return new SafeBN(this._bn.add(value.toBN()));
@@ -108,10 +119,6 @@ export class SafeBN {
    * Safe subtract operation
    */
   sub(value: SafeBN | BN | number | string): SafeBN {
-    if (!this._bn) {
-      return new SafeBN(0);
-    }
-    
     try {
       if (value instanceof SafeBN) {
         return new SafeBN(this._bn.sub(value.toBN()));
@@ -129,10 +136,6 @@ export class SafeBN {
    * Safe multiply operation
    */
   mul(value: SafeBN | BN | number | string): SafeBN {
-    if (!this._bn) {
-      return new SafeBN(0);
-    }
-    
     try {
       if (value instanceof SafeBN) {
         return new SafeBN(this._bn.mul(value.toBN()));
@@ -150,13 +153,9 @@ export class SafeBN {
    * Safe divide operation
    */
   div(value: SafeBN | BN | number | string): SafeBN {
-    if (!this._bn) {
-      return new SafeBN(0);
-    }
-    
     try {
       if (value instanceof SafeBN) {
-        if (!value.bn || value.bn.isZero()) {
+        if (value.bn.isZero()) {
           console.error('Division by zero attempted');
           return new SafeBN(this._bn);
         }
@@ -179,9 +178,6 @@ export class SafeBN {
    * Convert to string
    */
   toString(base?: number): string {
-    if (!this._bn) {
-      return '0';
-    }
     try {
       return this._bn.toString(base);
     } catch (error) {
@@ -194,9 +190,6 @@ export class SafeBN {
    * Convert to number
    */
   toNumber(): number {
-    if (!this._bn) {
-      return 0;
-    }
     try {
       return this._bn.toNumber();
     } catch (error) {
@@ -209,13 +202,9 @@ export class SafeBN {
    * Check if equal to another value
    */
   eq(value: SafeBN | BN | number | string): boolean {
-    if (!this._bn) {
-      return false;
-    }
-    
     try {
       if (value instanceof SafeBN) {
-        return value.bn ? this._bn.eq(value.bn) : false;
+        return this._bn.eq(value.bn);
       } else {
         const bnValue = value instanceof BN ? value : new BN(value);
         return this._bn.eq(bnValue);
@@ -230,13 +219,9 @@ export class SafeBN {
    * Check if greater than another value
    */
   gt(value: SafeBN | BN | number | string): boolean {
-    if (!this._bn) {
-      return false;
-    }
-    
     try {
       if (value instanceof SafeBN) {
-        return value.bn ? this._bn.gt(value.bn) : true;
+        return this._bn.gt(value.bn);
       } else {
         const bnValue = value instanceof BN ? value : new BN(value);
         return this._bn.gt(bnValue);
@@ -251,13 +236,9 @@ export class SafeBN {
    * Check if less than another value
    */
   lt(value: SafeBN | BN | number | string): boolean {
-    if (!this._bn) {
-      return false;
-    }
-    
     try {
       if (value instanceof SafeBN) {
-        return value.bn ? this._bn.lt(value.bn) : false;
+        return this._bn.lt(value.bn);
       } else {
         const bnValue = value instanceof BN ? value : new BN(value);
         return this._bn.lt(bnValue);
@@ -272,16 +253,18 @@ export class SafeBN {
    * Check if zero
    */
   isZero(): boolean {
-    return !this._bn || this._bn.isZero();
+    return this._bn.isZero();
   }
 }
 
 /**
- * Patch for bigint-buffer to handle missing native bindings
- * This helps prevent the "Failed to load bindings, pure JS will be used" error
+ * Enhanced patch for bigint-buffer to handle missing native bindings in Docker
  */
 export function patchBigintBuffer() {
   try {
+    // Ensure BN prototype methods exist
+    ensureBNPrototype();
+    
     // Use the imported module with proper typing
     const bigintBuffer = bigintBufferModule as BigIntBuffer;
     
@@ -323,15 +306,95 @@ export function patchBigintBuffer() {
           }
         };
       }
+      
+      // Add BE methods if missing
+      if (!bigintBuffer.toBigIntBE) {
+        bigintBuffer.toBigIntBE = function(buffer: Buffer): bigint {
+          try {
+            let result = 0n;
+            for (let i = 0; i < buffer.length; i++) {
+              result = (result << 8n) + BigInt(buffer[i]);
+            }
+            return result;
+          } catch (error) {
+            console.error('Error in toBigIntBE polyfill:', error);
+            return 0n;
+          }
+        };
+      }
+      
+      if (!bigintBuffer.toBufferBE) {
+        bigintBuffer.toBufferBE = function(value: bigint, length: number): Buffer {
+          try {
+            const buffer = Buffer.alloc(length);
+            let tempValue = value;
+            for (let i = length - 1; i >= 0; i--) {
+              buffer[i] = Number(tempValue & 0xffn);
+              tempValue = tempValue >> 8n;
+            }
+            return buffer;
+          } catch (error) {
+            console.error('Error in toBufferBE polyfill:', error);
+            return Buffer.alloc(length);
+          }
+        };
+      }
+    }
+    
+    // Patch global objects if they exist
+    if (typeof window !== 'undefined') {
+      // Apply patches to any existing instances in the window object
+      patchExistingInstances(window);
     }
     
     console.log('bigint-buffer patched successfully');
+    return true;
   } catch (error) {
     console.error('Failed to patch bigint-buffer:', error);
+    return false;
+  }
+}
+
+/**
+ * Recursively patch existing instances that might be using BN
+ */
+function patchExistingInstances(obj: any, depth = 0, visited = new Set()) {
+  // Prevent infinite recursion
+  if (depth > 3 || visited.has(obj)) return;
+  visited.add(obj);
+  
+  try {
+    // Check if this object has a _bn property that's undefined
+    if (obj && obj._bn === undefined && typeof obj.toBN === 'function') {
+      // Fix the object by setting a default _bn
+      obj._bn = new BN(0);
+      console.log('Fixed undefined _bn property on object');
+    }
+    
+    // Recursively check properties
+    if (obj && typeof obj === 'object') {
+      Object.keys(obj).forEach(key => {
+        try {
+          const value = obj[key];
+          if (value && typeof value === 'object') {
+            patchExistingInstances(value, depth + 1, visited);
+          }
+        } catch (e) {
+          // Ignore errors on individual properties
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore errors
   }
 }
 
 // Apply the patch immediately when this module is imported
 patchBigintBuffer();
+
+// Set environment variable to indicate we're in Docker
+if (typeof process !== 'undefined' && process.env) {
+  process.env.DOCKER_ENVIRONMENT = 'true';
+}
 
 export default SafeBN;

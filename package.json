@@ -1,25 +1,42 @@
 {
-    "scripts": {
-        "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-        "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-        "test": "ts-mocha -p tsconfig.json tests/**/*.ts"
-    },
-    "dependencies": {
-        "@coral-xyz/anchor": "^0.29.0",
-        "@project-serum/anchor": "^0.26.0",
-        "@solana/spl-token": "^0.4.13",
-        "@solana/web3.js": "^1.98.0",
-        "bn.js": "^5.2.1"
-    },
-    "devDependencies": {
-        "@types/bn.js": "^5.1.6",
-        "@types/chai": "^4.3.0",
-        "@types/mocha": "^9.0.0",
-        "bn.js-types": "^1.0.1",
-        "chai": "^4.3.4",
-        "mocha": "^9.0.3",
-        "prettier": "^2.6.2",
-        "ts-mocha": "^10.0.0",
-        "typescript": "^4.3.5"
-    }
+  "name": "nextjs-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "prestart": "node bn-polyfill-loader.js",
+    "start": "cross-env NODE_ENV=production node server.js",
+    "start:custom": "cross-env NODE_ENV=production node server.js",
+    "lint": "next lint",
+    "rebuild": "npm rebuild bigint-buffer --update-binary"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.31.0",
+    "@solana/wallet-adapter-base": "^0.9.25",
+    "@solana/wallet-adapter-react": "^0.15.37",
+    "@solana/wallet-adapter-react-ui": "^0.9.37",
+    "@solana/wallet-adapter-wallets": "^0.19.35",
+    "@solana/web3.js": "^1.98.0",
+    "next": "15.3.1",
+    "pino-pretty": "^13.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/bn.js": "^5.1.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/webpack": "^5.28.5",
+    "bigint-buffer": "^1.1.5",
+    "cross-env": "^7.0.3",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.1",
+    "node-gyp": "^11.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
 }

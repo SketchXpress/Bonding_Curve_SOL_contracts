@@ -1,14 +1,14 @@
 FROM ubuntu:22.04
-
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
-
 # Set up environment variables
 ENV PATH="/root/.cargo/bin:/root/.local/share/solana/install/active_release/bin:${PATH}"
 ENV RUST_VERSION=1.81.0
 ENV SOLANA_VERSION=1.18.26
 ENV ANCHOR_VERSION=0.29.0
 ENV NODE_VERSION=20.x
+# Set Docker environment flag
+ENV DOCKER_ENVIRONMENT=true
 
 # Install basic dependencies
 RUN apt-get update && apt-get install -y \
@@ -23,6 +23,9 @@ RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     ca-certificates \
+    # Add these dependencies for node-gyp
+    make \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js
@@ -56,7 +59,16 @@ RUN mkdir -p /root/.config/solana \
 
 # Build and setup NextJS frontend
 WORKDIR /app/nextjs-frontend
+
+# Install dependencies with proper environment for native modules
 RUN npm install
+
+# Add specific rebuild step for bigint-buffer
+COPY nextjs-frontend/rebuild-native-modules.sh /app/nextjs-frontend/
+RUN chmod +x /app/nextjs-frontend/rebuild-native-modules.sh
+RUN /app/nextjs-frontend/rebuild-native-modules.sh
+
+# Build the Next.js application
 RUN npm run build
 
 # Expose ports (NextJS typically uses 3000)
