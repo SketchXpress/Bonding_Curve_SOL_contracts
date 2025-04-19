@@ -16,17 +16,19 @@ interface BigIntBuffer {
 
 // Global BN safety - ensure BN is always available
 if (typeof global !== 'undefined') {
-  (global as any).BN = BN;
+  // Use a more specific type than 'any'
+  (global as { BN?: typeof BN }).BN = BN;
 }
 
 // Ensure BN prototype methods exist
 function ensureBNPrototype() {
   if (typeof BN !== 'undefined' && BN.prototype) {
     if (!BN.prototype.toString) {
-      BN.prototype.toString = function(base?: number) {
-        return '0';
-      };
+        BN.prototype.toString = function() {
+          return '0';
+        };
     }
+      
     if (!BN.prototype.toNumber) {
       BN.prototype.toNumber = function() {
         return 0;
@@ -358,33 +360,44 @@ export function patchBigintBuffer() {
 /**
  * Recursively patch existing instances that might be using BN
  */
-function patchExistingInstances(obj: any, depth = 0, visited = new Set()) {
+function patchExistingInstances(obj: unknown, depth = 0, visited = new Set()) {
   // Prevent infinite recursion
   if (depth > 3 || visited.has(obj)) return;
   visited.add(obj);
   
   try {
+    // Type guard to check if object has the right structure
+    const hasToBN = (o: unknown): o is { toBN: () => unknown, _bn?: unknown } => 
+        o !== null && 
+        typeof o === 'object' && 
+        'toBN' in o && 
+        typeof (o as Record<string, unknown>).toBN === 'function';      
+    
     // Check if this object has a _bn property that's undefined
-    if (obj && obj._bn === undefined && typeof obj.toBN === 'function') {
+    if (hasToBN(obj) && obj._bn === undefined) {
       // Fix the object by setting a default _bn
       obj._bn = new BN(0);
       console.log('Fixed undefined _bn property on object');
     }
     
     // Recursively check properties
-    if (obj && typeof obj === 'object') {
-      Object.keys(obj).forEach(key => {
-        try {
-          const value = obj[key];
-          if (value && typeof value === 'object') {
-            patchExistingInstances(value, depth + 1, visited);
+    if (obj !== null && typeof obj === 'object') {
+      try {
+        Object.keys(obj as object).forEach(key => {
+          try {
+            const value = (obj as Record<string, unknown>)[key];
+            if (value !== null && typeof value === 'object') {
+              patchExistingInstances(value, depth + 1, visited);
+            }
+          } catch {
+            // Ignore errors on individual properties
           }
-        } catch (e) {
-          // Ignore errors on individual properties
-        }
-      });
+        });
+      } catch {
+        // Ignore errors on Object.keys
+      }
     }
-  } catch (e) {
+  } catch  {
     // Ignore errors
   }
 }
