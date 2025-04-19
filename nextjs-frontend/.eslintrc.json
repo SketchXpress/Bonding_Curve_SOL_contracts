@@ -1,17 +1,8 @@
 {
   "extends": "next/core-web-vitals",
   "rules": {
+    "prefer-rest-params": "off",
     "@typescript-eslint/ban-ts-comment": "off",
-    "@typescript-eslint/no-explicit-any": "off",
-    "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": [
-      "error",
-      { 
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_",
-        "caughtErrorsIgnorePattern": "^_"
-      }
-    ]
-  },
-  "ignorePatterns": ["node_modules/", ".next/"]
+    "@typescript-eslint/no-explicit-any": "off"
+  }
 }

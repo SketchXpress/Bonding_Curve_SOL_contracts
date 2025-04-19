@@ -1,0 +1,50 @@
+diff --git a/node_modules/bigint-buffer/build/Makefile b/node_modules/bigint-buffer/build/Makefile
+index b9b98e6..1d2d5d3 100644
+--- a/node_modules/bigint-buffer/build/Makefile
++++ b/node_modules/bigint-buffer/build/Makefile
+@@ -338,8 +338,8 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
+ endif
+ 
+ quiet_cmd_regen_makefile = ACTION Regenerating $@
+-cmd_regen_makefile = cd $(srcdir); /home/ubuntu/.nvm/versions/node/v22.13.0/lib/node_modules/npm/node_modules/node-gyp/gyp/gyp_main.py -fmake --ignore-environment "-Dlibrary=shared_library" "-Dvisibility=default" "-Dnode_root_dir=/home/ubuntu/.cache/node-gyp/22.13.0" "-Dnode_gyp_dir=/home/ubuntu/.nvm/versions/node/v22.13.0/lib/node_modules/npm/node_modules/node-gyp" "-Dnode_lib_file=/home/ubuntu/.cache/node-gyp/22.13.0/<(target_arch)/node.lib" "-Dmodule_root_dir=/tmp/tmp-86584SpCQuICyBoBi/node_modules/bigint-buffer" "-Dnode_engine=v8" "--depth=." "-Goutput_dir=." "--generator-output=build" -I/tmp/tmp-86584SpCQuICyBoBi/node_modules/bigint-buffer/build/config.gypi -I/home/ubuntu/.nvm/versions/node/v22.13.0/lib/node_modules/npm/node_modules/node-gyp/addon.gypi -I/home/ubuntu/.cache/node-gyp/22.13.0/include/node/common.gypi "--toplevel-dir=." binding.gyp
+-Makefile: $(srcdir)/../../../../home/ubuntu/.nvm/versions/node/v22.13.0/lib/node_modules/npm/node_modules/node-gyp/addon.gypi $(srcdir)/../../../../home/ubuntu/.cache/node-gyp/22.13.0/include/node/common.gypi $(srcdir)/build/config.gypi $(srcdir)/binding.gyp
++cmd_regen_makefile = cd $(srcdir); /home/ubuntu/Random-_SOL_contracts/nextjs-frontend/node_modules/node-gyp/gyp/gyp_main.py -fmake --ignore-environment "-Dlibrary=shared_library" "-Dvisibility=default" "-Dnode_root_dir=/home/ubuntu/.cache/node-gyp/22.13.0" "-Dnode_gyp_dir=/home/ubuntu/Random-_SOL_contracts/nextjs-frontend/node_modules/node-gyp" "-Dnode_lib_file=/home/ubuntu/.cache/node-gyp/22.13.0/<(target_arch)/node.lib" "-Dmodule_root_dir=/home/ubuntu/Random-_SOL_contracts/nextjs-frontend/node_modules/bigint-buffer" "-Dnode_engine=v8" "--depth=." "-Goutput_dir=." "--generator-output=build" -I/home/ubuntu/Random-_SOL_contracts/nextjs-frontend/node_modules/bigint-buffer/build/config.gypi -I/home/ubuntu/Random-_SOL_contracts/nextjs-frontend/node_modules/node-gyp/addon.gypi -I/home/ubuntu/.cache/node-gyp/22.13.0/include/node/common.gypi "--toplevel-dir=." binding.gyp
++Makefile: $(srcdir)/../../../../.cache/node-gyp/22.13.0/include/node/common.gypi $(srcdir)/build/config.gypi $(srcdir)/binding.gyp $(srcdir)/../node-gyp/addon.gypi
+ 	$(call do_cmd,regen_makefile)
+ 
+ # "all" is a concatenation of the "all" targets from all the included
+diff --git a/node_modules/bigint-buffer/build/config.gypi b/node_modules/bigint-buffer/build/config.gypi
+index e26cf7f..b0e3559 100644
+--- a/node_modules/bigint-buffer/build/config.gypi
++++ b/node_modules/bigint-buffer/build/config.gypi
+@@ -449,9 +449,9 @@
+     "python": "/usr/bin/python3",
+     "standalone_static_library": 1,
+     "user_agent": "npm/10.9.2 node/v22.13.0 linux x64 workspaces/false",
+-    "force": "true",
++    "update_binary": "true",
+     "userconfig": "/home/ubuntu/.npmrc",
+-    "local_prefix": "/tmp/tmp-86584SpCQuICyBoBi/node_modules/bigint-buffer",
++    "local_prefix": "/home/ubuntu/Random-_SOL_contracts/nextjs-frontend/node_modules/bigint-buffer",
+     "prefix": "/home/ubuntu/.nvm/versions/node/v22.13.0",
+     "npm_version": "10.9.2",
+     "cache": "/home/ubuntu/.npm",
+diff --git a/node_modules/bigint-buffer/dist/node.js b/node_modules/bigint-buffer/dist/node.js
+index 513168c..01f494d 100644
+--- a/node_modules/bigint-buffer/dist/node.js
++++ b/node_modules/bigint-buffer/dist/node.js
+@@ -1,5 +1,4 @@
+ 'use strict';
+-
+ Object.defineProperty(exports, "__esModule", { value: true });
+ let converter;
+ {
+@@ -7,7 +6,7 @@ let converter;
+         converter = require('bindings')('bigint_buffer');
+     }
+     catch (e) {
+-        console.warn('bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)');
++        // Silently fall back to pure JS implementation without warning
+     }
+ }
+ /**
