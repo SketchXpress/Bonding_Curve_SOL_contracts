@@ -2,6 +2,7 @@ import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { useState } from 'react';
+import { SafeBN, safePublicKey } from '@/utils/bn-polyfill';
 
 export const useBuyToken = () => {
   const { program } = useAnchorContext();
@@ -21,7 +22,11 @@ export const useBuyToken = () => {
     setTxSignature(null);
 
     try {
-      const pool = new PublicKey(poolAddress);
+      // Use safePublicKey instead of direct PublicKey instantiation
+      const pool = safePublicKey(poolAddress);
+      if (!pool) {
+        throw new Error('Invalid pool address');
+      }
       
       // Get pool account data to find other accounts
       // @ts-expect-error - Ignoring type error for now to allow build to complete
@@ -29,7 +34,7 @@ export const useBuyToken = () => {
       await program.account.bondingCurvePool.fetch(pool);
       
       // In a real implementation, we would create or get token accounts
-      // For now, we'll use mock addresses that would be replaced
+      // For now, we'll use mock addresses that would be replaced with proper token accounts
       const buyerRealTokenAccount = new PublicKey('11111111111111111111111111111111');
       const buyerSyntheticTokenAccount = new PublicKey('11111111111111111111111111111111');
 
@@ -39,9 +44,12 @@ export const useBuyToken = () => {
         program.programId
       );
 
+      // Use SafeBN for amount to prevent bigint binding issues
+      const safeAmount = new SafeBN(amount).toBN();
+
       // Execute the transaction
       const tx = await program.methods
-        .buyToken(amount)
+        .buyToken(safeAmount)
         .accounts({
           pool,
           userAccount,
@@ -82,7 +90,11 @@ export const useSellToken = () => {
     setTxSignature(null);
 
     try {
-      const pool = new PublicKey(poolAddress);
+      // Use safePublicKey instead of direct PublicKey instantiation
+      const pool = safePublicKey(poolAddress);
+      if (!pool) {
+        throw new Error('Invalid pool address');
+      }
       
       // Get pool account data to find other accounts
       // @ts-expect-error - Ignoring type error for now to allow build to complete
@@ -100,9 +112,12 @@ export const useSellToken = () => {
         program.programId
       );
 
+      // Use SafeBN for amount to prevent bigint binding issues
+      const safeAmount = new SafeBN(amount).toBN();
+
       // Execute the transaction
       const tx = await program.methods
-        .sellToken(amount)
+        .sellToken(safeAmount)
         .accounts({
           pool,
           userAccount,
@@ -132,7 +147,7 @@ export const useCreateUser = () => {
   const [error, setError] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
 
-  const createUser = async () => {
+  const createUser = async (maxNfts: number = 5) => {
     if (!program || !wallet.publicKey) {
       setError('Wallet not connected or program not initialized');
       return;
@@ -151,10 +166,11 @@ export const useCreateUser = () => {
 
       // Execute the transaction
       const tx = await program.methods
-        .createUser()
+        .createUser(maxNfts)
         .accounts({
           userAccount,
-          user: wallet.publicKey,
+          owner: wallet.publicKey,
+          systemProgram: PublicKey.default,
         })
         .rpc();
 
@@ -194,9 +210,13 @@ export const useCreatePool = () => {
     setTxSignature(null);
 
     try {
-      // Convert string addresses to PublicKey objects
-      const realMint = new PublicKey(realTokenMint);
-      const syntheticMint = new PublicKey(syntheticTokenMint);
+      // Use safePublicKey instead of direct PublicKey instantiation
+      const realMint = safePublicKey(realTokenMint);
+      const syntheticMint = safePublicKey(syntheticTokenMint);
+      
+      if (!realMint || !syntheticMint) {
+        throw new Error('Invalid token mint address');
+      }
 
       // Find pool account PDA
       const [poolAccount] = PublicKey.findProgramAddressSync(
@@ -210,15 +230,22 @@ export const useCreatePool = () => {
         program.programId
       );
 
+      // Use SafeBN for numeric parameters to prevent bigint binding issues
+      const safeInitialPrice = new SafeBN(initialPrice).toBN();
+      const safeSlope = new SafeBN(slope).toBN();
+
       // Execute the transaction
       const tx = await program.methods
-        .createPool(initialPrice, slope)
+        .createPool(safeInitialPrice, safeSlope)
         .accounts({
           pool: poolAccount,
           userAccount,
-          creator: wallet.publicKey,
+          authority: wallet.publicKey,
           realTokenMint: realMint,
           syntheticTokenMint: syntheticMint,
+          systemProgram: PublicKey.default,
+          tokenProgram: PublicKey.default,
+          rent: PublicKey.default,
         })
         .rpc();
 
