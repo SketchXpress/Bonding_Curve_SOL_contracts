@@ -6,6 +6,14 @@ import BN from 'bn.js';
 import * as bigintBufferModule from 'bigint-buffer';
 import { PublicKey } from '@solana/web3.js';
 
+
+// Add this type declaration to extend BN with the _bn property
+declare module 'bn.js' {
+    interface BN {
+      _bn?: BN;
+    }
+  }
+
 // Define proper types for bigint-buffer methods
 interface BigIntBuffer {
   toBigIntLE?: (buffer: Buffer) => bigint;
@@ -39,7 +47,7 @@ function ensureBNPrototype() {
         BN.prototype.toString = function(base?: number) {
           try {
             return Object.getPrototypeOf(this).toString.call(this, base);
-          } catch (_) {
+          } catch {
             return '0';
           }
         };
@@ -49,7 +57,7 @@ function ensureBNPrototype() {
       BN.prototype.toNumber = function() {
         try {
           return Object.getPrototypeOf(this).toNumber.call(this);
-        } catch (_) {
+        } catch {
           return 0;
         }
       };
@@ -59,7 +67,7 @@ function ensureBNPrototype() {
       BN.prototype.toJSON = function() {
         try {
           return this.toString();
-        } catch (_) {
+        } catch {
           return '0';
         }
       };
@@ -97,7 +105,7 @@ export function safeBN(value: string | number | BN | Buffer | null | undefined, 
     const bn = new BN(value, base);
     
     // Ensure _bn property exists
-    if (bn && !bn._bn) {
+    if (isBN(obj) && !((obj as any)._bn)) {
       Object.defineProperty(bn, '_bn', {
         value: bn,
         configurable: true,
@@ -396,7 +404,7 @@ export function patchBigintBuffer() {
 /**
  * Recursively patch existing instances that might be using BN
  */
-function patchExistingInstances(obj: unknown, depth = 0, visited = new Set()) {
+function patchExistingInstances(obj: unknown, depth = 0, visited = new Set<unknown>()) {
   // Prevent infinite recursion
   if (depth > 3 || visited.has(obj)) return;
   visited.add(obj);
@@ -420,10 +428,11 @@ function patchExistingInstances(obj: unknown, depth = 0, visited = new Set()) {
     const isBN = (o: unknown): o is BN => 
         o !== null && 
         typeof o === 'object' && 
-        (o as Record<string, unknown>).constructor && 
-        (o as Record<string, unknown>).constructor.name === 'BN';
+        o.constructor && 
+        typeof o.constructor === 'function' &&
+        o.constructor.name === 'BN';
         
-    if (isBN(obj) && (obj as Record<string, unknown>)._bn === undefined) {
+    if (isBN(obj) && !('_bn' in obj)) {
       Object.defineProperty(obj, '_bn', {
         value: obj,
         configurable: true,
@@ -467,7 +476,7 @@ if (typeof BN === 'function') {
     const instance = new originalBN(...args);
     
     // Ensure the instance has _bn property
-    if (!instance._bn) {
+    if (isBN(obj) && !((obj as any)._bn)) {
       Object.defineProperty(instance, '_bn', {
         value: instance,
         configurable: true,

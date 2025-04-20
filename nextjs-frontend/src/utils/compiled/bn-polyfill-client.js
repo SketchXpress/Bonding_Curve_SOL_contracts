@@ -14,7 +14,7 @@ function applyClientPatches() {
     
     // Ensure BN is available globally
     if (typeof window !== 'undefined') {
-        // @ts-ignore
+        // @ts-expect-error - Intentionally bypassing TypeScript's type checking
         window.BN = bn_js_1.default;
         
         // Ensure BN prototype has _bn property

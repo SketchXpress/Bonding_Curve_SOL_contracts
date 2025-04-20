@@ -152,15 +152,15 @@ function patchObjectRecursively(obj: unknown, depth = 0, visited = new Set()) {
             if (value !== null && typeof value === 'object') {
               patchObjectRecursively(value, depth + 1, visited);
             }
-          } catch (_) {
+          } catch {
             // Ignore errors on individual properties
           }
         });
-      } catch (_) {
+      } catch {
         // Ignore errors on Object.keys
       }
     }
-  } catch (_) {
+  } catch {
     // Ignore any errors
   }
 }

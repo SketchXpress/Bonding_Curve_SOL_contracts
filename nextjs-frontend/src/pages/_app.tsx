@@ -13,21 +13,7 @@ import "../utils/compiled/bn-polyfill-client";
 import "../utils/bn-polyfill-direct";
 import "../utils/error-handler";
 
-// Import BN type
-import BN from 'bn.js';
-
-// Add BN to Window interface
-declare global {
-  interface Window {
-    BN: typeof BN & {
-      prototype: BN & {
-        _bn?: BN;
-        _bnValue?: BN;
-      };
-    };
-    solana?: any;
-  }
-}
+// BN type is imported in global.d.ts
 
 // Default styles that can be overridden by your app
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -95,7 +81,7 @@ export default function App({ Component, pageProps }: AppProps) {
             // Apply emergency fix to global objects
             if (window.solana) {
               try {
-                const patchObject = (obj: Record<string, any>): void => {
+                const patchObject = (obj: Record<string, unknown>): void => {
                   if (!obj || typeof obj !== 'object') return;
                   
                   // If object has toBN method but no _bn property
@@ -122,7 +108,7 @@ export default function App({ Component, pageProps }: AppProps) {
                 
                 // Don't show the original error
                 return;
-              } catch (e) {
+              } catch {
                 // If patching fails, show original error
               }
             }
@@ -131,8 +117,8 @@ export default function App({ Component, pageProps }: AppProps) {
           // Call original error function
           originalError.apply(console, args);
         };
-      } catch (e) {
-        console.warn("Error applying additional BN patches:", e);
+      } catch (error) {
+        console.warn("Error applying additional BN patches:", error);
       }
     }
   }, []);
