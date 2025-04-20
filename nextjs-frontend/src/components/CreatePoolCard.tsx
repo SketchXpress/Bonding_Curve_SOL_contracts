@@ -11,9 +11,16 @@ const CreatePoolCard = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock token mint addresses for testing purposes
-    const realTokenMint = "11111111111111111111111111111111";
-    const syntheticTokenMint = "22222222222222222222222222222222";
+    // Using valid Solana token mint addresses in base58 format
+    // For real token mint, using wrapped SOL token mint address
+    const realTokenMint = "So11111111111111111111111111111111111111112";
+    
+    // For synthetic token mint, we don't need to provide an actual address
+    // The contract will create it as a PDA derived from the real token mint
+    // But we need to provide a valid public key format for the frontend validation
+    // Using a different known token address for demonstration
+    const syntheticTokenMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+    
     const result = await createPool(basePrice, growthFactor, realTokenMint, syntheticTokenMint);
     if (result) {
       setPoolAddress("Generated Pool Address"); // In a real implementation, we would get this from the transaction result

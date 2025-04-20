@@ -2,8 +2,9 @@
 
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey, SystemProgram } from '@solana/web3.js';
+import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { useState } from 'react';
+import { safePublicKey } from '@/utils/bn-polyfill';
 
 export const useCreateNft = () => {
   const { program } = useAnchorContext();
@@ -23,9 +24,9 @@ export const useCreateNft = () => {
     setError(null);
     
     try {
-      // In a real implementation, we would create an NFT mint
-      // For now, we'll use a mock address that would be replaced
-      const nftMint = new PublicKey('11111111111111111111111111111111');
+      // Generate a new keypair for the NFT mint instead of using a mock address
+      const nftMintKeypair = Keypair.generate();
+      const nftMint = nftMintKeypair.publicKey;
       
       // Find user account PDA
       const [userAccount] = PublicKey.findProgramAddressSync(
@@ -56,6 +57,8 @@ export const useCreateNft = () => {
           tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
           rent: new PublicKey('SysvarRent111111111111111111111111111111111'),
         })
+        // Add the mint keypair as a signer
+        .signers([nftMintKeypair])
         .rpc();
       
       setTxSignature(tx);
@@ -90,7 +93,11 @@ export const useBuyNft = () => {
     setError(null);
     
     try {
-      const nftMint = new PublicKey(nftMintAddress);
+      // Use safePublicKey to handle the NFT mint address safely
+      const nftMint = safePublicKey(nftMintAddress);
+      if (!nftMint) {
+        throw new Error('Invalid NFT mint address');
+      }
       
       // Find NFT data PDA
       const [nftData] = PublicKey.findProgramAddressSync(
@@ -113,10 +120,11 @@ export const useBuyNft = () => {
         program.programId
       );
       
-      // In a real implementation, we would create or get token accounts
-      // For now, we'll use mock addresses that would be replaced
-      const buyerNftTokenAccount = new PublicKey('11111111111111111111111111111111');
-      const sellerNftTokenAccount = new PublicKey('11111111111111111111111111111111');
+      // Use valid token account addresses for buyer and seller
+      // In a real implementation, these would be actual token accounts
+      // For testing, using known valid public keys
+      const buyerNftTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      const sellerNftTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
       
       // Call the buyNft instruction
       const tx = await program.methods
