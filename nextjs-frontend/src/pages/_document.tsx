@@ -6,8 +6,8 @@ class MyDocument extends Document {
     return (
       <Html>
         <Head>
-          {/* Load the BN global polyfill before any other scripts */}
-          <Script src="/bn-global-polyfill.js" strategy="beforeInteractive" />
+          {/* Load the BN ultra polyfill before any other scripts */}
+          <Script src="/bn-ultra-polyfill.js" strategy="beforeInteractive" />
         </Head>
         <body>
           <Main />

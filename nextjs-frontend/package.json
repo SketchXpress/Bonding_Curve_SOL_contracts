@@ -12,7 +12,7 @@
     "start:filtered": "cross-env NODE_ENV=production node suppress-warnings.js"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.0",
+    "@coral-xyz/anchor": "^0.29.0",
     "@solana/wallet-adapter-base": "^0.9.25",
     "@solana/wallet-adapter-react": "^0.15.37",
     "@solana/wallet-adapter-react-ui": "^0.9.37",

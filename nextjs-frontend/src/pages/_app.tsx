@@ -1,5 +1,4 @@
 import "@/styles/global.css";
-import '../utils/bn-global-polyfill';
 import type { AppProps } from "next/app";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
