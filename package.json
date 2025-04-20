@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
+    "@solana/spl-token": "^0.4.13",
     "@solana/wallet-adapter-base": "^0.9.25",
     "@solana/wallet-adapter-react": "^0.15.37",
     "@solana/wallet-adapter-react-ui": "^0.9.37",

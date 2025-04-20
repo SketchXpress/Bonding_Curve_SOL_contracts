@@ -2,12 +2,13 @@
 
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey } from '@/utils/bn-polyfill';
 
 export const useCreateNft = () => {
-  const { program } = useAnchorContext();
+  const { program, provider } = useAnchorContext();
   const wallet = useWallet();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,8 +16,8 @@ export const useCreateNft = () => {
   const [nftMintAddress, setNftMintAddress] = useState<string | null>(null);
 
   const createNft = async (name: string, symbol: string, uri: string, sellerFeeBasisPoints: number) => {
-    if (!program || !wallet.publicKey) {
-      setError('Program not initialized or wallet not connected');
+    if (!program || !wallet.publicKey || !provider || !wallet.signTransaction) {
+      setError('Program not initialized, wallet not connected, or signTransaction not available');
       return null;
     }
 
@@ -24,9 +25,11 @@ export const useCreateNft = () => {
     setError(null);
     
     try {
-      // Generate a new keypair for the NFT mint instead of using a mock address
+      // Generate a new keypair for the NFT mint
       const nftMintKeypair = Keypair.generate();
       const nftMint = nftMintKeypair.publicKey;
+      
+      console.log('Generated NFT mint keypair:', nftMintKeypair.publicKey.toString());
       
       // Find user account PDA
       const [userAccount] = PublicKey.findProgramAddressSync(
@@ -40,8 +43,8 @@ export const useCreateNft = () => {
         program.programId
       );
       
-      // Call the createNft instruction
-      const tx = await program.methods
+      // Create a transaction manually instead of using program.methods directly
+      const transaction = await program.methods
         .createNft(
           name,
           symbol,
@@ -54,16 +57,30 @@ export const useCreateNft = () => {
           nftData: nftData,
           userAccount: userAccount,
           systemProgram: SystemProgram.programId,
-          tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-          rent: new PublicKey('SysvarRent111111111111111111111111111111111'),
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: SYSVAR_RENT_PUBKEY,
         })
-        // Add the mint keypair as a signer
-        .signers([nftMintKeypair])
-        .rpc();
+        .transaction(); // Get the transaction object instead of sending it directly
       
-      setTxSignature(tx);
+      // Add the keypair as a signer to the transaction
+      transaction.feePayer = wallet.publicKey;
+      transaction.recentBlockhash = (await provider.connection.getLatestBlockhash()).blockhash;
+      
+      // Sign the transaction with the NFT mint keypair
+      transaction.partialSign(nftMintKeypair);
+      
+      // Have the wallet sign the transaction - we've already checked wallet.signTransaction is not undefined
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send the signed transaction
+      const signature = await provider.connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Wait for confirmation
+      await provider.connection.confirmTransaction(signature, 'confirmed');
+      
+      setTxSignature(signature);
       setNftMintAddress(nftMint.toString());
-      return { tx, nftMint: nftMint.toString() };
+      return { tx: signature, nftMint: nftMint.toString() };
     } catch (err) {
       console.error('Create NFT error:', err);
       setError(err instanceof Error ? err.message : String(err));
@@ -137,10 +154,13 @@ export const useBuyNft = () => {
           nftMint: nftMint,
           sellerNftTokenAccount: sellerNftTokenAccount,
           buyerNftTokenAccount: buyerNftTokenAccount,
-          tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+          tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
-        .rpc();
+        .rpc({
+          skipPreflight: false, // Ensure preflight checks are performed
+          commitment: 'confirmed' // Use confirmed commitment level
+        });
       
       setTxSignature(tx);
       return tx;

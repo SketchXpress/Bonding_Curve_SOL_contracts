@@ -1,6 +1,7 @@
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, SystemProgram, Keypair, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useState } from 'react';
 import { SafeBN, safePublicKey } from '@/utils/bn-polyfill';
 
@@ -30,13 +31,16 @@ export const useBuyToken = () => {
       
       // Get pool account data to find other accounts
       // @ts-expect-error - Ignoring type error for now to allow build to complete
-      // Removed unused variable
-      await program.account.bondingCurvePool.fetch(pool);
+      const poolData = await program.account.bondingCurvePool.fetch(pool);
+      
+      // Use the real token vault from pool data
+      const realTokenVault = poolData.realTokenVault;
+      const syntheticTokenMint = poolData.syntheticTokenMint;
       
       // In a real implementation, we would create or get token accounts
-      // For now, we'll use mock addresses that would be replaced with proper token accounts
-      const buyerRealTokenAccount = new PublicKey('11111111111111111111111111111111');
-      const buyerSyntheticTokenAccount = new PublicKey('11111111111111111111111111111111');
+      // For now, we'll use valid public keys for token accounts
+      const buyerRealTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      const buyerSyntheticTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
 
       // Find user account PDA
       const [userAccount] = PublicKey.findProgramAddressSync(
@@ -56,8 +60,14 @@ export const useBuyToken = () => {
           buyer: wallet.publicKey,
           buyerRealTokenAccount,
           buyerSyntheticTokenAccount,
+          realTokenVault,
+          syntheticTokenMint,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
-        .rpc();
+        .rpc({
+          skipPreflight: false,
+          commitment: 'confirmed'
+        });
 
       setTxSignature(tx);
       return tx;
@@ -98,13 +108,16 @@ export const useSellToken = () => {
       
       // Get pool account data to find other accounts
       // @ts-expect-error - Ignoring type error for now to allow build to complete
-      // Removed unused variable
-      await program.account.bondingCurvePool.fetch(pool);
+      const poolData = await program.account.bondingCurvePool.fetch(pool);
+      
+      // Use the real token vault from pool data
+      const realTokenVault = poolData.realTokenVault;
+      const syntheticTokenMint = poolData.syntheticTokenMint;
       
       // In a real implementation, we would create or get token accounts
-      // For now, we'll use mock addresses that would be replaced
-      const sellerRealTokenAccount = new PublicKey('11111111111111111111111111111111');
-      const sellerSyntheticTokenAccount = new PublicKey('11111111111111111111111111111111');
+      // For now, we'll use valid public keys for token accounts
+      const sellerRealTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      const sellerSyntheticTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
 
       // Find user account PDA
       const [userAccount] = PublicKey.findProgramAddressSync(
@@ -124,8 +137,14 @@ export const useSellToken = () => {
           seller: wallet.publicKey,
           sellerRealTokenAccount,
           sellerSyntheticTokenAccount,
+          realTokenVault,
+          syntheticTokenMint,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
-        .rpc();
+        .rpc({
+          skipPreflight: false,
+          commitment: 'confirmed'
+        });
 
       setTxSignature(tx);
       return tx;
@@ -170,9 +189,12 @@ export const useCreateUser = () => {
         .accounts({
           userAccount,
           owner: wallet.publicKey,
-          systemProgram: PublicKey.default,
+          systemProgram: SystemProgram.programId,
         })
-        .rpc();
+        .rpc({
+          skipPreflight: false,
+          commitment: 'confirmed'
+        });
 
       setTxSignature(tx);
       return tx;
@@ -188,7 +210,7 @@ export const useCreateUser = () => {
 };
 
 export const useCreatePool = () => {
-  const { program } = useAnchorContext();
+  const { program, provider } = useAnchorContext();
   const wallet = useWallet();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +222,7 @@ export const useCreatePool = () => {
     realTokenMint: string,
     syntheticTokenMint: string
   ) => {
-    if (!program || !wallet.publicKey) {
+    if (!program || !wallet.publicKey || !provider) {
       setError('Wallet not connected or program not initialized');
       return;
     }
@@ -212,15 +234,20 @@ export const useCreatePool = () => {
     try {
       // Use safePublicKey instead of direct PublicKey instantiation
       const realMint = safePublicKey(realTokenMint);
-      const syntheticMint = safePublicKey(syntheticTokenMint);
-      
-      if (!realMint || !syntheticMint) {
-        throw new Error('Invalid token mint address');
+      if (!realMint) {
+        throw new Error('Invalid real token mint address');
       }
+
+      // For synthetic token mint, we'll use a PDA derived from the real token mint
+      // This is how the contract expects it to be created
+      const [syntheticMintPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from('synthetic-mint'), realMint.toBuffer()],
+        program.programId
+      );
 
       // Find pool account PDA
       const [poolAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('bonding-curve-pool'), wallet.publicKey.toBuffer()],
+        [Buffer.from('bonding-curve-pool'), realMint.toBuffer()],
         program.programId
       );
 
@@ -229,25 +256,44 @@ export const useCreatePool = () => {
         [Buffer.from('user-account'), wallet.publicKey.toBuffer()],
         program.programId
       );
+      
+      // Find real token vault PDA
+      const [realTokenVault] = PublicKey.findProgramAddressSync(
+        [Buffer.from('token-vault'), realMint.toBuffer()],
+        program.programId
+      );
 
       // Use SafeBN for numeric parameters to prevent bigint binding issues
       const safeInitialPrice = new SafeBN(initialPrice).toBN();
       const safeSlope = new SafeBN(slope).toBN();
 
-      // Execute the transaction
+      console.log('Creating pool with accounts:', {
+        authority: wallet.publicKey.toString(),
+        realTokenMint: realMint.toString(),
+        syntheticTokenMint: syntheticMintPDA.toString(),
+        realTokenVault: realTokenVault.toString(),
+        pool: poolAccount.toString(),
+        userAccount: userAccount.toString()
+      });
+
+      // Execute the transaction with explicit account mapping
       const tx = await program.methods
         .createPool(safeInitialPrice, safeSlope)
         .accounts({
-          pool: poolAccount,
-          userAccount,
           authority: wallet.publicKey,
           realTokenMint: realMint,
-          syntheticTokenMint: syntheticMint,
-          systemProgram: PublicKey.default,
-          tokenProgram: PublicKey.default,
-          rent: PublicKey.default,
+          syntheticTokenMint: syntheticMintPDA,
+          realTokenVault: realTokenVault,
+          pool: poolAccount,
+          userAccount: userAccount,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: SYSVAR_RENT_PUBKEY,
         })
-        .rpc();
+        .rpc({
+          skipPreflight: false, // Ensure preflight checks are performed
+          commitment: 'confirmed' // Use confirmed commitment level
+        });
 
       setTxSignature(tx);
       return tx;
