@@ -67,13 +67,13 @@ The wallet integration is handled by the `WalletContextProvider.tsx` which uses 
 
 ```typescript
 // src/contexts/WalletContextProvider.tsx
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
 
 // Available wallet adapters
-const wallets = [
-  new PhantomWalletAdapter(),
-  new SolflareWalletAdapter(),
-];
+const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
 ```
 
 This provider makes wallet functionality available throughout the application.
@@ -135,21 +135,25 @@ The `components` directory contains React components for each contract function:
 To get started with the NextJS frontend:
 
 1. Clone the repository:
+
    ```
    git clone https://github.com/mrarejimmyz/Random-_SOL_contracts.git
    ```
 
 2. Navigate to the NextJS frontend directory:
+
    ```
    cd Random-_SOL_contracts/nextjs-frontend
    ```
 
 3. Install dependencies:
+
    ```
    npm install
    ```
 
 4. Start the development server:
+
    ```
    npm run dev
    ```
@@ -176,6 +180,7 @@ To get started with the NextJS frontend:
 To deploy the NextJS frontend:
 
 1. Build the application:
+
    ```
    npm run build
    ```
@@ -183,6 +188,7 @@ To deploy the NextJS frontend:
 2. Deploy to your preferred hosting platform (Vercel, Netlify, etc.)
 
 For local testing, you can start the production server:
+
 ```
 npm run start
 ```
@@ -196,7 +202,7 @@ The frontend integrates with the Solana smart contracts using Anchor. The contra
 The Solana program ID is defined in `AnchorContextProvider.tsx`:
 
 ```typescript
-const PROGRAM_ID = 'EQ8z6eXcaVH6ryUWCWhjmnaZRLSamz5ZRAWswJtAjUXR';
+const PROGRAM_ID = "AvJTBKWtdp1Vr5KANbG3kW1aXnj32KekX8A7jXEwYYLT";
 ```
 
 ### IDL
