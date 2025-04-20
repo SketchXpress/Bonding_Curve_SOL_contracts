@@ -105,7 +105,7 @@ export function safeBN(value: string | number | BN | Buffer | null | undefined, 
     const bn = new BN(value, base);
     
     // Ensure _bn property exists
-    if (isBN(obj) && !((obj as any)._bn)) {
+    if (value instanceof BN && !(value as any)._bn) {
       Object.defineProperty(bn, '_bn', {
         value: bn,
         configurable: true,
@@ -476,7 +476,7 @@ if (typeof BN === 'function') {
     const instance = new originalBN(...args);
     
     // Ensure the instance has _bn property
-    if (isBN(obj) && !((obj as any)._bn)) {
+    if (instance instanceof BN && !(instance as any)._bn) {
       Object.defineProperty(instance, '_bn', {
         value: instance,
         configurable: true,
