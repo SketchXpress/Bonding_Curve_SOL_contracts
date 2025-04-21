@@ -130,10 +130,10 @@ export const useCreateNft = () => {
         throw new Error(`Failed to create mint account: ${mintErr instanceof Error ? mintErr.message : String(mintErr)}`);
       }
       
-      // APPROACH 2: Now create the NFT data using the program's rpc method directly
+      // APPROACH 2: Now create the NFT data using the program's transaction method instead of rpc
       try {
-        // Use the program's rpc method directly, which handles signers properly
-        const nftTxId = await program.methods
+        // Use the program's transaction method instead of rpc to have more control over signing
+        const transaction = await program.methods
           .createNft(
             name,
             symbol,
@@ -149,16 +149,26 @@ export const useCreateNft = () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .signers([nftMintKeypair]) // Explicitly add the mint keypair as a signer
-          .rpc({
-            skipPreflight: false,
-            preflightCommitment: 'confirmed'
-          });
+          .transaction(); // Use transaction() instead of rpc()
+        
+        // Get a fresh blockhash
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet.publicKey;
+        
+        // Sign the transaction with both wallet and mint keypair
+        const signedTx = await wallet.signTransaction(transaction);
+        signedTx.partialSign(nftMintKeypair); // Explicitly sign with the mint keypair
+        
+        // Send the raw transaction
+        const nftTxId = await provider.connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed'
+        });
         
         console.log('NFT data created with transaction:', nftTxId);
         
         // Wait for confirmation
-        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
         await provider.connection.confirmTransaction({
           signature: nftTxId,
           blockhash,
@@ -436,48 +446,39 @@ export const useCreatePool = () => {
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = wallet.publicKey;
         
-        // Sign with the wallet
+        // Sign the transaction
         if (wallet.signTransaction) {
           const signedTx = await wallet.signTransaction(transaction);
           
-          // Send with more detailed options
-          const signature = await provider.connection.sendRawTransaction(signedTx.serialize(), {
-            skipPreflight: true, // Skip preflight to avoid simulation errors
-            maxRetries: 5,
+          // Send the transaction
+          const txId = await provider.connection.sendRawTransaction(signedTx.serialize(), {
+            skipPreflight: false,
             preflightCommitment: 'confirmed'
           });
           
-          console.log('Pool creation transaction sent:', signature);
+          console.log('Pool creation transaction sent:', txId);
           
-          // Wait for confirmation with more detailed error handling
-          try {
-            const confirmation = await provider.connection.confirmTransaction({
-              signature,
-              blockhash,
-              lastValidBlockHeight
-            }, 'confirmed');
-            
-            if (confirmation.value.err) {
-              throw new Error(`Transaction confirmed but failed: ${JSON.stringify(confirmation.value.err)}`);
-            }
-            
-            console.log('Pool creation transaction confirmed successfully');
-            setTxSignature(signature);
-            return signature;
-          } catch (confirmErr) {
-            console.error('Error confirming pool creation transaction:', confirmErr);
-            throw new Error(`Transaction sent but confirmation failed: ${confirmErr instanceof Error ? confirmErr.message : String(confirmErr)}`);
-          }
+          // Wait for confirmation
+          await provider.connection.confirmTransaction({
+            signature: txId,
+            blockhash,
+            lastValidBlockHeight
+          }, 'confirmed');
+          
+          console.log('Pool creation confirmed');
+          setTxSignature(txId);
+          return txId;
         } else {
           throw new Error('Wallet does not support signTransaction');
         }
       } catch (pdaErr) {
-        console.error('Error finding PDAs:', pdaErr);
-        throw new Error(`Failed to find PDAs: ${pdaErr instanceof Error ? pdaErr.message : String(pdaErr)}`);
+        console.error('Error with PDAs:', pdaErr);
+        throw new Error(`Failed to process PDAs: ${pdaErr instanceof Error ? pdaErr.message : String(pdaErr)}`);
       }
     } catch (err) {
-      console.error('Error creating pool:', err);
+      console.error('Create pool error:', err);
       setError(err instanceof Error ? err.message : String(err));
+      return null;
     } finally {
       setLoading(false);
     }
@@ -485,6 +486,3 @@ export const useCreatePool = () => {
 
   return { createPool, loading, error, txSignature };
 };
-
-// Re-export hooks as named exports to ensure compatibility
-export { useCreateNft as default };
