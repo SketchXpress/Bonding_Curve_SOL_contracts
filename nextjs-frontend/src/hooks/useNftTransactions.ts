@@ -2,8 +2,8 @@
 
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createInitializeMintInstruction, MINT_SIZE, getMinimumBalanceForRentExemptMint, createMintToInstruction } from '@solana/spl-token';
+import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, sendAndConfirmTransaction, Connection } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createInitializeMintInstruction, MINT_SIZE, getMinimumBalanceForRentExemptMint } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
 import * as anchor from '@project-serum/anchor';
@@ -70,7 +70,7 @@ export const useCreateNft = () => {
         rent: SYSVAR_RENT_PUBKEY.toString()
       });
       
-      // APPROACH 1: Create the mint account first in a separate transaction
+      // STEP 1: Create the mint account first in a separate transaction
       try {
         // Calculate rent for mint
         const lamports = await getMinimumBalanceForRentExemptMint(provider.connection);
@@ -134,10 +134,41 @@ export const useCreateNft = () => {
         throw new Error(`Failed to create mint account: ${mintErr instanceof Error ? mintErr.message : String(mintErr)}`);
       }
       
-      // APPROACH 4: Use direct transaction creation and signing instead of custom provider
+      // STEP 2: Create NFT data using a modified approach
       try {
-        // Create the transaction for NFT data creation
-        const createNftDataIx = await program.methods
+        // Create a modified IDL that correctly marks nftMint as a signer
+        const modifiedIdl = JSON.parse(JSON.stringify(program.idl));
+        
+        // Find the createNft instruction in the IDL
+        const createNftInstruction = modifiedIdl.instructions.find(
+          (ix: any) => ix.name === 'createNft'
+        );
+        
+        if (!createNftInstruction) {
+          throw new Error('Could not find createNft instruction in IDL');
+        }
+        
+        // Find the nftMint account in the instruction accounts
+        const nftMintAccount = createNftInstruction.accounts.find(
+          (acc: any) => acc.name === 'nftMint'
+        );
+        
+        if (!nftMintAccount) {
+          throw new Error('Could not find nftMint account in createNft instruction');
+        }
+        
+        // Mark nftMint as a signer in the IDL
+        nftMintAccount.isSigner = true;
+        
+        // Create a new program instance with the modified IDL
+        const modifiedProgram = new anchor.Program(
+          modifiedIdl,
+          program.programId,
+          provider
+        );
+        
+        // Get the instruction with the modified IDL
+        const ix = await modifiedProgram.methods
           .createNft(
             name,
             symbol,
@@ -155,43 +186,49 @@ export const useCreateNft = () => {
           })
           .instruction();
         
-        // Create a new transaction and add the instruction
-        const nftDataTx = new Transaction();
-        nftDataTx.add(createNftDataIx);
+        // Create a new transaction
+        const tx = new Transaction();
+        tx.add(ix);
         
         // Get a fresh blockhash
         const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
-        nftDataTx.recentBlockhash = blockhash;
-        nftDataTx.feePayer = wallet.publicKey;
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = wallet.publicKey;
         
-        // Sign the transaction with both wallet and mint keypair
+        // Create a connection object directly
+        const connection = provider.connection;
+        
+        // Check if wallet adapter supports signing
         if (!wallet.signTransaction) {
-          throw new Error('Wallet does not support signTransaction');
+          throw new Error('Wallet does not support transaction signing');
         }
         
-        const signedNftDataTx = await wallet.signTransaction(nftDataTx);
-        signedNftDataTx.partialSign(nftMintKeypair);
+        // Sign with wallet first
+        const partiallySignedTx = await wallet.signTransaction(tx);
         
-        // Send the transaction
-        const nftTxId = await provider.connection.sendRawTransaction(signedNftDataTx.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: 'confirmed'
-        });
+        // Then sign with the mint keypair
+        partiallySignedTx.partialSign(nftMintKeypair);
         
-        console.log('NFT data created with transaction:', nftTxId);
+        // Send and confirm transaction
+        const signature = await connection.sendRawTransaction(
+          partiallySignedTx.serialize(),
+          { skipPreflight: false, preflightCommitment: 'confirmed' }
+        );
+        
+        console.log('Transaction sent:', signature);
         
         // Wait for confirmation
-        await provider.connection.confirmTransaction({
-          signature: nftTxId,
+        await connection.confirmTransaction({
+          signature,
           blockhash,
           lastValidBlockHeight
         }, 'confirmed');
         
-        console.log('NFT data creation confirmed');
+        console.log('NFT data creation confirmed with signature:', signature);
         
-        setTxSignature(nftTxId);
+        setTxSignature(signature);
         setNftMintAddress(nftMint.toString());
-        return { tx: nftTxId, nftMint: nftMint.toString() };
+        return { tx: signature, nftMint: nftMint.toString() };
       } catch (nftErr) {
         console.error('Error creating NFT data:', nftErr);
         throw new Error(`Failed to create NFT data: ${nftErr instanceof Error ? nftErr.message : String(nftErr)}`);
