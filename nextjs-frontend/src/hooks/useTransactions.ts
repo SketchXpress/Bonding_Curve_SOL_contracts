@@ -3,7 +3,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram, Keypair, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useState } from 'react';
-import { SafeBN, safePublicKey } from '@/utils/bn-polyfill';
+import { SafeBN, safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
 
 export const useBuyToken = () => {
   const { program } = useAnchorContext();
@@ -23,6 +23,11 @@ export const useBuyToken = () => {
     setTxSignature(null);
 
     try {
+      // Validate pool address format before attempting to create PublicKey
+      if (typeof poolAddress !== 'string' || !isValidPublicKeyFormat(poolAddress)) {
+        throw new Error('Invalid pool address format');
+      }
+      
       // Use safePublicKey instead of direct PublicKey instantiation
       const pool = safePublicKey(poolAddress);
       if (!pool) {
@@ -100,6 +105,11 @@ export const useSellToken = () => {
     setTxSignature(null);
 
     try {
+      // Validate pool address format before attempting to create PublicKey
+      if (typeof poolAddress !== 'string' || !isValidPublicKeyFormat(poolAddress)) {
+        throw new Error('Invalid pool address format');
+      }
+      
       // Use safePublicKey instead of direct PublicKey instantiation
       const pool = safePublicKey(poolAddress);
       if (!pool) {
@@ -183,6 +193,12 @@ export const useCreateUser = () => {
         program.programId
       );
 
+      console.log('Creating user with accounts:', {
+        owner: wallet.publicKey.toString(),
+        userAccount: userAccount.toString(),
+        systemProgram: SystemProgram.programId.toString()
+      });
+
       // Execute the transaction
       const tx = await program.methods
         .createUser(maxNfts)
@@ -232,6 +248,11 @@ export const useCreatePool = () => {
     setTxSignature(null);
 
     try {
+      // Validate real token mint format before attempting to create PublicKey
+      if (typeof realTokenMint !== 'string' || !isValidPublicKeyFormat(realTokenMint)) {
+        throw new Error('Invalid real token mint format');
+      }
+      
       // Use safePublicKey instead of direct PublicKey instantiation
       const realMint = safePublicKey(realTokenMint);
       if (!realMint) {
@@ -245,9 +266,9 @@ export const useCreatePool = () => {
         program.programId
       );
 
-      // Find pool account PDA
+      // Find pool account PDA - FIXED: using 'bonding-pool' to match contract
       const [poolAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('bonding-curve-pool'), realMint.toBuffer()],
+        [Buffer.from('bonding-pool'), realMint.toBuffer()],
         program.programId
       );
 
@@ -273,7 +294,9 @@ export const useCreatePool = () => {
         syntheticTokenMint: syntheticMintPDA.toString(),
         realTokenVault: realTokenVault.toString(),
         pool: poolAccount.toString(),
-        userAccount: userAccount.toString()
+        systemProgram: SystemProgram.programId.toString(),
+        tokenProgram: TOKEN_PROGRAM_ID.toString(),
+        rent: SYSVAR_RENT_PUBKEY.toString()
       });
 
       // Execute the transaction with explicit account mapping
@@ -285,7 +308,6 @@ export const useCreatePool = () => {
           syntheticTokenMint: syntheticMintPDA,
           realTokenVault: realTokenVault,
           pool: poolAccount,
-          userAccount: userAccount,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: SYSVAR_RENT_PUBKEY,

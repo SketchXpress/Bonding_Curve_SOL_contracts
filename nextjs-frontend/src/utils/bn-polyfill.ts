@@ -76,7 +76,27 @@ function ensureBNPrototype() {
 }
 
 /**
- * Safely creates a PublicKey instance with error handling
+ * Validates if a string is a valid Solana public key format
+ * @param value The string to validate
+ * @returns boolean indicating if the string is a valid public key format
+ */
+export function isValidPublicKeyFormat(value: string): boolean {
+  // Check if string is not empty
+  if (typeof value !== 'string' || value.trim() === '') {
+    return false;
+  }
+  
+  // Try to create a PublicKey directly - this is the most reliable validation
+  try {
+    new PublicKey(value);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Safely creates a PublicKey instance with enhanced error handling and validation
  */
 export function safePublicKey(value: string | Buffer | Uint8Array | number[] | PublicKey | null | undefined): PublicKey | null {
   if (!value) {
@@ -84,8 +104,14 @@ export function safePublicKey(value: string | Buffer | Uint8Array | number[] | P
     return null;
   }
   
+  // If value is already a PublicKey, return it directly
+  if (value instanceof PublicKey) {
+    return value;
+  }
+  
   try {
-    return new PublicKey(value);
+    const pubKey = new PublicKey(value);
+    return pubKey;
   } catch (error) {
     console.error('Error creating PublicKey:', error);
     return null;
