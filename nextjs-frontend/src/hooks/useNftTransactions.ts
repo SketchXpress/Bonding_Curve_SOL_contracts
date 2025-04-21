@@ -2,7 +2,7 @@
 
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, sendAndConfirmTransaction, Connection } from '@solana/web3.js';
+import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, Connection } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createInitializeMintInstruction, MINT_SIZE, getMinimumBalanceForRentExemptMint } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
@@ -70,7 +70,23 @@ export const useCreateNft = () => {
         rent: SYSVAR_RENT_PUBKEY.toString()
       });
       
-      // STEP 1: Create the mint account first in a separate transaction
+      // STEP 1: Check if the NFT data account already exists
+      let nftDataAccountExists = false;
+      try {
+        const accountInfo = await provider.connection.getAccountInfo(nftData);
+        nftDataAccountExists = accountInfo !== null;
+        if (nftDataAccountExists) {
+          console.log('NFT data account already exists, generating a new mint keypair');
+          // If the account exists, we need to generate a new mint keypair and try again
+          return createNft(name, symbol, uri, sellerFeeBasisPoints);
+        }
+      } catch (error) {
+        console.log('Error checking NFT data account:', error);
+        // If there's an error checking the account, assume it doesn't exist
+        nftDataAccountExists = false;
+      }
+      
+      // STEP 2: Create the mint account first in a separate transaction
       try {
         // Calculate rent for mint
         const lamports = await getMinimumBalanceForRentExemptMint(provider.connection);
@@ -134,7 +150,22 @@ export const useCreateNft = () => {
         throw new Error(`Failed to create mint account: ${mintErr instanceof Error ? mintErr.message : String(mintErr)}`);
       }
       
-      // STEP 2: Create NFT data using a modified approach
+      // STEP 3: Check again if the NFT data account exists (it might have been created by another transaction)
+      try {
+        const accountInfo = await provider.connection.getAccountInfo(nftData);
+        nftDataAccountExists = accountInfo !== null;
+        if (nftDataAccountExists) {
+          console.log('NFT data account already exists after mint creation, generating a new mint keypair');
+          // If the account exists, we need to generate a new mint keypair and try again
+          return createNft(name, symbol, uri, sellerFeeBasisPoints);
+        }
+      } catch (error) {
+        console.log('Error checking NFT data account after mint creation:', error);
+        // If there's an error checking the account, assume it doesn't exist
+        nftDataAccountExists = false;
+      }
+      
+      // STEP 4: Create NFT data using a modified IDL approach
       try {
         // Create a modified IDL that correctly marks nftMint as a signer
         const modifiedIdl = JSON.parse(JSON.stringify(program.idl));
@@ -231,6 +262,14 @@ export const useCreateNft = () => {
         return { tx: signature, nftMint: nftMint.toString() };
       } catch (nftErr) {
         console.error('Error creating NFT data:', nftErr);
+        
+        // Check if the error is due to account already in use
+        if (nftErr instanceof Error && nftErr.message.includes('already in use')) {
+          console.log('NFT data account already in use, trying again with a new mint keypair');
+          // If the account exists, we need to generate a new mint keypair and try again
+          return createNft(name, symbol, uri, sellerFeeBasisPoints);
+        }
+        
         throw new Error(`Failed to create NFT data: ${nftErr instanceof Error ? nftErr.message : String(nftErr)}`);
       }
     } catch (err) {
