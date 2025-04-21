@@ -71,7 +71,6 @@ export const useCreateNft = () => {
       });
       
       // APPROACH 1: Create the mint account first in a separate transaction
-      // This ensures the mint account exists before we try to use it in the NFT creation
       try {
         // Calculate rent for mint
         const lamports = await getMinimumBalanceForRentExemptMint(provider.connection);
@@ -106,11 +105,9 @@ export const useCreateNft = () => {
         createMintTx.recentBlockhash = blockhash;
         createMintTx.feePayer = wallet.publicKey;
         
-        // Sign with both the wallet and the mint keypair
-        createMintTx.sign(nftMintKeypair);
-        
-        // Have the wallet sign the transaction
+        // Sign with the mint keypair
         const signedMintTx = await wallet.signTransaction(createMintTx);
+        signedMintTx.partialSign(nftMintKeypair);
         
         // Send the transaction
         const mintTxId = await provider.connection.sendRawTransaction(signedMintTx.serialize(), {
@@ -133,11 +130,10 @@ export const useCreateNft = () => {
         throw new Error(`Failed to create mint account: ${mintErr instanceof Error ? mintErr.message : String(mintErr)}`);
       }
       
-      // APPROACH 2: Now create the NFT data with a separate transaction
-      // This transaction doesn't need the mint keypair as a signer since the mint account already exists
+      // APPROACH 2: Now create the NFT data using the program's rpc method directly
       try {
-        // Create the NFT data
-        const createNftTx = await program.methods
+        // Use the program's rpc method directly, which handles signers properly
+        const nftTxId = await program.methods
           .createNft(
             name,
             symbol,
@@ -153,25 +149,16 @@ export const useCreateNft = () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .transaction();
-        
-        // Get a fresh blockhash
-        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
-        createNftTx.recentBlockhash = blockhash;
-        createNftTx.feePayer = wallet.publicKey;
-        
-        // Sign with just the wallet (no need for mint keypair since it's already initialized)
-        const signedNftTx = await wallet.signTransaction(createNftTx);
-        
-        // Send the transaction
-        const nftTxId = await provider.connection.sendRawTransaction(signedNftTx.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: 'confirmed'
-        });
+          .signers([nftMintKeypair]) // Explicitly add the mint keypair as a signer
+          .rpc({
+            skipPreflight: false,
+            preflightCommitment: 'confirmed'
+          });
         
         console.log('NFT data created with transaction:', nftTxId);
         
         // Wait for confirmation
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
         await provider.connection.confirmTransaction({
           signature: nftTxId,
           blockhash,

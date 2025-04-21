@@ -48,21 +48,46 @@ pub fn create_pool(
     base_price: u64,
     growth_factor: u64,
 ) -> Result<()> {
+    // Validate input parameters to prevent potential issues
+    if base_price == 0 {
+        return Err(error!(crate::errors::ErrorCode::InvalidPrice));
+    }
+    
+    if growth_factor == 0 {
+        return Err(error!(crate::errors::ErrorCode::InvalidPrice));
+    }
+    
+    // Get a mutable reference to the pool account
     let pool = &mut ctx.accounts.pool;
+    
+    // Get the bump from the context
     let bump = ctx.bumps.pool;
     
+    // Initialize pool fields with proper error handling
     pool.authority = ctx.accounts.authority.key();
     pool.real_token_mint = ctx.accounts.real_token_mint.key();
     pool.synthetic_token_mint = ctx.accounts.synthetic_token_mint.key();
     pool.real_token_vault = ctx.accounts.real_token_vault.key();
+    
+    // Initialize numeric fields with safe values
     pool.current_market_cap = 0;
     pool.base_price = base_price;
     pool.growth_factor = growth_factor;
     pool.total_supply = 0;
     pool.past_threshold = false;
-    pool.price_history = [0; 10];
+    
+    // Initialize price history array with zeros
+    // Use a loop instead of direct assignment to avoid potential memory issues
+    for i in 0..10 {
+        pool.price_history[i] = 0;
+    }
+    
     pool.price_history_idx = 0;
     pool.bump = bump;
+    
+    // Log successful pool creation for debugging
+    msg!("Pool created successfully with base_price: {} and growth_factor: {}", 
+         base_price, growth_factor);
     
     Ok(())
 }
