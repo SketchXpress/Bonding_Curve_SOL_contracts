@@ -4,6 +4,14 @@ import { PublicKey, SystemProgram, Keypair, SYSVAR_RENT_PUBKEY } from '@solana/w
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useState } from 'react';
 import { SafeBN, safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
+import * as anchor from '@project-serum/anchor';
+
+// Define interfaces for the account data structures
+interface BondingCurvePool {
+  realTokenVault: PublicKey;
+  syntheticTokenMint: PublicKey;
+  // Add other fields as needed
+}
 
 export const useBuyToken = () => {
   const { program } = useAnchorContext();
@@ -35,12 +43,12 @@ export const useBuyToken = () => {
       }
       
       // Get pool account data to find other accounts
-      // @ts-expect-error - Ignoring type error for now to allow build to complete
-      const poolData = await program.account.bondingCurvePool.fetch(pool);
+      // Use proper type assertion instead of @ts-expect-error
+      const poolData = await program.account.bondingCurvePool.fetch(pool) as unknown as BondingCurvePool;
       
-      // Use the real token vault from pool data
-      const realTokenVault = poolData.realTokenVault;
-      const syntheticTokenMint = poolData.syntheticTokenMint;
+      // Use the real token vault from pool data with proper type assertion
+      const realTokenVault = poolData.realTokenVault as PublicKey;
+      const syntheticTokenMint = poolData.syntheticTokenMint as PublicKey;
       
       // In a real implementation, we would create or get token accounts
       // For now, we'll use valid public keys for token accounts
@@ -117,12 +125,12 @@ export const useSellToken = () => {
       }
       
       // Get pool account data to find other accounts
-      // @ts-expect-error - Ignoring type error for now to allow build to complete
-      const poolData = await program.account.bondingCurvePool.fetch(pool);
+      // Use proper type assertion instead of @ts-expect-error
+      const poolData = await program.account.bondingCurvePool.fetch(pool) as unknown as BondingCurvePool;
       
-      // Use the real token vault from pool data
-      const realTokenVault = poolData.realTokenVault;
-      const syntheticTokenMint = poolData.syntheticTokenMint;
+      // Use the real token vault from pool data with proper type assertion
+      const realTokenVault = poolData.realTokenVault as PublicKey;
+      const syntheticTokenMint = poolData.syntheticTokenMint as PublicKey;
       
       // In a real implementation, we would create or get token accounts
       // For now, we'll use valid public keys for token accounts

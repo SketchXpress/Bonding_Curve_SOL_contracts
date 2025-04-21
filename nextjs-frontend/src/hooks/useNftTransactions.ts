@@ -3,10 +3,18 @@
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createInitializeMintInstruction, MINT_SIZE, getMinimumBalanceForRentExemptMint, createMintToInstruction } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
+import * as anchor from '@project-serum/anchor';
 
+// Define interfaces for the account data structures
+interface NftData {
+  owner: PublicKey;
+  // Add other fields as needed
+}
+
+// Named export for useCreateNft
 export const useCreateNft = () => {
   const { program, provider } = useAnchorContext();
   const wallet = useWallet();
@@ -62,41 +70,123 @@ export const useCreateNft = () => {
         rent: SYSVAR_RENT_PUBKEY.toString()
       });
       
-      // Use the program's methods to create the transaction
-      // This approach uses the program's built-in transaction creation
-      // which properly handles the NFT mint keypair as a signer
-      const tx = await program.methods
-        .createNft(
-          name,
-          symbol,
-          uri,
-          sellerFeeBasisPoints
-        )
-        .accounts({
-          creator: wallet.publicKey,
-          nftMint: nftMint,
-          nftData: nftData,
-          userAccount: userAccount,
-          systemProgram: SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          rent: SYSVAR_RENT_PUBKEY,
-        })
-        .signers([nftMintKeypair]) // Explicitly add the NFT mint keypair as a signer
-        .rpc({
+      // APPROACH 1: Create the mint account first in a separate transaction
+      // This ensures the mint account exists before we try to use it in the NFT creation
+      try {
+        // Calculate rent for mint
+        const lamports = await getMinimumBalanceForRentExemptMint(provider.connection);
+        
+        // Create a transaction to initialize the mint
+        const createMintTx = new Transaction();
+        
+        // Add instruction to create account for mint
+        createMintTx.add(
+          SystemProgram.createAccount({
+            fromPubkey: wallet.publicKey,
+            newAccountPubkey: nftMint,
+            space: MINT_SIZE,
+            lamports,
+            programId: TOKEN_PROGRAM_ID,
+          })
+        );
+        
+        // Add instruction to initialize mint
+        createMintTx.add(
+          createInitializeMintInstruction(
+            nftMint,
+            0, // decimals
+            wallet.publicKey, // mint authority
+            wallet.publicKey, // freeze authority (optional)
+            TOKEN_PROGRAM_ID
+          )
+        );
+        
+        // Get a fresh blockhash
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
+        createMintTx.recentBlockhash = blockhash;
+        createMintTx.feePayer = wallet.publicKey;
+        
+        // Sign with both the wallet and the mint keypair
+        createMintTx.sign(nftMintKeypair);
+        
+        // Have the wallet sign the transaction
+        const signedMintTx = await wallet.signTransaction(createMintTx);
+        
+        // Send the transaction
+        const mintTxId = await provider.connection.sendRawTransaction(signedMintTx.serialize(), {
           skipPreflight: false,
-          preflightCommitment: 'confirmed',
-          commitment: 'confirmed'
+          preflightCommitment: 'confirmed'
         });
+        
+        console.log('Mint account created with transaction:', mintTxId);
+        
+        // Wait for confirmation
+        await provider.connection.confirmTransaction({
+          signature: mintTxId,
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
+        
+        console.log('Mint account creation confirmed');
+      } catch (mintErr) {
+        console.error('Error creating mint account:', mintErr);
+        throw new Error(`Failed to create mint account: ${mintErr instanceof Error ? mintErr.message : String(mintErr)}`);
+      }
       
-      console.log('NFT creation transaction sent:', tx);
-      
-      // Wait for confirmation
-      await provider.connection.confirmTransaction(tx, 'confirmed');
-      console.log('NFT creation transaction confirmed successfully');
-      
-      setTxSignature(tx);
-      setNftMintAddress(nftMint.toString());
-      return { tx, nftMint: nftMint.toString() };
+      // APPROACH 2: Now create the NFT data with a separate transaction
+      // This transaction doesn't need the mint keypair as a signer since the mint account already exists
+      try {
+        // Create the NFT data
+        const createNftTx = await program.methods
+          .createNft(
+            name,
+            symbol,
+            uri,
+            sellerFeeBasisPoints
+          )
+          .accounts({
+            creator: wallet.publicKey,
+            nftMint: nftMint,
+            nftData: nftData,
+            userAccount: userAccount,
+            systemProgram: SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .transaction();
+        
+        // Get a fresh blockhash
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
+        createNftTx.recentBlockhash = blockhash;
+        createNftTx.feePayer = wallet.publicKey;
+        
+        // Sign with just the wallet (no need for mint keypair since it's already initialized)
+        const signedNftTx = await wallet.signTransaction(createNftTx);
+        
+        // Send the transaction
+        const nftTxId = await provider.connection.sendRawTransaction(signedNftTx.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed'
+        });
+        
+        console.log('NFT data created with transaction:', nftTxId);
+        
+        // Wait for confirmation
+        await provider.connection.confirmTransaction({
+          signature: nftTxId,
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
+        
+        console.log('NFT data creation confirmed');
+        
+        setTxSignature(nftTxId);
+        setNftMintAddress(nftMint.toString());
+        return { tx: nftTxId, nftMint: nftMint.toString() };
+      } catch (nftErr) {
+        console.error('Error creating NFT data:', nftErr);
+        throw new Error(`Failed to create NFT data: ${nftErr instanceof Error ? nftErr.message : String(nftErr)}`);
+      }
     } catch (err) {
       console.error('Create NFT error:', err);
       setError(err instanceof Error ? err.message : String(err));
@@ -109,6 +199,7 @@ export const useCreateNft = () => {
   return { createNft, loading, error, txSignature, nftMintAddress };
 };
 
+// Named export for useBuyNft
 export const useBuyNft = () => {
   const { program, provider } = useAnchorContext();
   const wallet = useWallet();
@@ -145,8 +236,8 @@ export const useBuyNft = () => {
       
       // Get NFT data to find seller
       try {
-        // @ts-expect-error - Ignoring type error for now to allow build to complete
-        const nftDataAccount = await program.account.nftData.fetch(nftData);
+        // Use proper type assertion instead of @ts-expect-error
+        const nftDataAccount = await program.account.nftData.fetch(nftData) as unknown as NftData;
         
         // Find buyer and seller account PDAs
         const [buyerAccount] = PublicKey.findProgramAddressSync(
@@ -154,8 +245,11 @@ export const useBuyNft = () => {
           program.programId
         );
         
+        // Use proper type assertion for nftDataAccount.owner
+        const ownerPublicKey = nftDataAccount.owner as PublicKey;
+        
         const [sellerAccount] = PublicKey.findProgramAddressSync(
-          [Buffer.from('user-account'), nftDataAccount.owner.toBuffer()],
+          [Buffer.from('user-account'), ownerPublicKey.toBuffer()],
           program.programId
         );
         
@@ -167,7 +261,7 @@ export const useBuyNft = () => {
         
         const sellerNftTokenAccount = await getAssociatedTokenAddress(
           nftMint,
-          nftDataAccount.owner
+          ownerPublicKey
         );
         
         console.log('Buying NFT with accounts:', {
@@ -266,3 +360,144 @@ export const useBuyNft = () => {
 
   return { buyNft, loading, error, txSignature };
 };
+
+// Named export for useCreatePool with improved error handling
+export const useCreatePool = () => {
+  const { program, provider } = useAnchorContext();
+  const wallet = useWallet();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [txSignature, setTxSignature] = useState<string | null>(null);
+
+  const createPool = async (
+    initialPrice: number,
+    slope: number,
+    realTokenMint: string
+  ) => {
+    if (!program || !wallet.publicKey || !provider) {
+      setError('Wallet not connected or program not initialized');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setTxSignature(null);
+
+    try {
+      // Validate real token mint format before attempting to create PublicKey
+      if (typeof realTokenMint !== 'string' || !isValidPublicKeyFormat(realTokenMint)) {
+        throw new Error('Invalid real token mint format');
+      }
+      
+      // Use safePublicKey instead of direct PublicKey instantiation
+      const realMint = safePublicKey(realTokenMint);
+      if (!realMint) {
+        throw new Error('Invalid real token mint address');
+      }
+
+      // Find PDAs with proper error handling
+      try {
+        // Find synthetic mint PDA
+        const [syntheticMintPDA] = PublicKey.findProgramAddressSync(
+          [Buffer.from('synthetic-mint'), realMint.toBuffer()],
+          program.programId
+        );
+
+        // Find pool account PDA
+        const [poolAccount] = PublicKey.findProgramAddressSync(
+          [Buffer.from('bonding-pool'), realMint.toBuffer()],
+          program.programId
+        );
+        
+        // Find real token vault PDA
+        const [realTokenVault] = PublicKey.findProgramAddressSync(
+          [Buffer.from('token-vault'), realMint.toBuffer()],
+          program.programId
+        );
+
+        console.log('Creating pool with accounts:', {
+          authority: wallet.publicKey.toString(),
+          realTokenMint: realMint.toString(),
+          syntheticTokenMint: syntheticMintPDA.toString(),
+          realTokenVault: realTokenVault.toString(),
+          pool: poolAccount.toString(),
+          systemProgram: SystemProgram.programId.toString(),
+          tokenProgram: TOKEN_PROGRAM_ID.toString(),
+          rent: SYSVAR_RENT_PUBKEY.toString()
+        });
+
+        // Create the transaction object first instead of directly calling rpc
+        const transaction = await program.methods
+          .createPool(
+            new anchor.BN(initialPrice),
+            new anchor.BN(slope)
+          )
+          .accounts({
+            authority: wallet.publicKey,
+            realTokenMint: realMint,
+            syntheticTokenMint: syntheticMintPDA,
+            realTokenVault: realTokenVault,
+            pool: poolAccount,
+            systemProgram: SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .transaction();
+        
+        // Get a fresh blockhash
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet.publicKey;
+        
+        // Sign with the wallet
+        if (wallet.signTransaction) {
+          const signedTx = await wallet.signTransaction(transaction);
+          
+          // Send with more detailed options
+          const signature = await provider.connection.sendRawTransaction(signedTx.serialize(), {
+            skipPreflight: true, // Skip preflight to avoid simulation errors
+            maxRetries: 5,
+            preflightCommitment: 'confirmed'
+          });
+          
+          console.log('Pool creation transaction sent:', signature);
+          
+          // Wait for confirmation with more detailed error handling
+          try {
+            const confirmation = await provider.connection.confirmTransaction({
+              signature,
+              blockhash,
+              lastValidBlockHeight
+            }, 'confirmed');
+            
+            if (confirmation.value.err) {
+              throw new Error(`Transaction confirmed but failed: ${JSON.stringify(confirmation.value.err)}`);
+            }
+            
+            console.log('Pool creation transaction confirmed successfully');
+            setTxSignature(signature);
+            return signature;
+          } catch (confirmErr) {
+            console.error('Error confirming pool creation transaction:', confirmErr);
+            throw new Error(`Transaction sent but confirmation failed: ${confirmErr instanceof Error ? confirmErr.message : String(confirmErr)}`);
+          }
+        } else {
+          throw new Error('Wallet does not support signTransaction');
+        }
+      } catch (pdaErr) {
+        console.error('Error finding PDAs:', pdaErr);
+        throw new Error(`Failed to find PDAs: ${pdaErr instanceof Error ? pdaErr.message : String(pdaErr)}`);
+      }
+    } catch (err) {
+      console.error('Error creating pool:', err);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { createPool, loading, error, txSignature };
+};
+
+// Re-export hooks as named exports to ensure compatibility
+export { useCreateNft as default };
