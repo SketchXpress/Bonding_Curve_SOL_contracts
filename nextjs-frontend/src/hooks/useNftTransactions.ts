@@ -24,8 +24,8 @@ export const useCreateNft = () => {
   const [nftMintAddress, setNftMintAddress] = useState<string | null>(null);
 
   const createNft = async (name: string, symbol: string, uri: string, sellerFeeBasisPoints: number) => {
-    if (!program || !wallet.publicKey || !provider || !wallet.signTransaction) {
-      setError('Program not initialized, wallet not connected, or signTransaction not available');
+    if (!program || !wallet.publicKey || !provider) {
+      setError('Program not initialized or wallet not connected');
       return null;
     }
 
@@ -106,6 +106,10 @@ export const useCreateNft = () => {
         createMintTx.feePayer = wallet.publicKey;
         
         // Sign with the mint keypair
+        if (!wallet.signTransaction) {
+          throw new Error('Wallet does not support signTransaction');
+        }
+        
         const signedMintTx = await wallet.signTransaction(createMintTx);
         signedMintTx.partialSign(nftMintKeypair);
         
@@ -130,10 +134,10 @@ export const useCreateNft = () => {
         throw new Error(`Failed to create mint account: ${mintErr instanceof Error ? mintErr.message : String(mintErr)}`);
       }
       
-      // APPROACH 2: Now create the NFT data using the program's transaction method instead of rpc
+      // APPROACH 4: Use direct transaction creation and signing instead of custom provider
       try {
-        // Use the program's transaction method instead of rpc to have more control over signing
-        const transaction = await program.methods
+        // Create the transaction for NFT data creation
+        const createNftDataIx = await program.methods
           .createNft(
             name,
             symbol,
@@ -149,19 +153,27 @@ export const useCreateNft = () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .transaction(); // Use transaction() instead of rpc()
+          .instruction();
+        
+        // Create a new transaction and add the instruction
+        const nftDataTx = new Transaction();
+        nftDataTx.add(createNftDataIx);
         
         // Get a fresh blockhash
         const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = wallet.publicKey;
+        nftDataTx.recentBlockhash = blockhash;
+        nftDataTx.feePayer = wallet.publicKey;
         
         // Sign the transaction with both wallet and mint keypair
-        const signedTx = await wallet.signTransaction(transaction);
-        signedTx.partialSign(nftMintKeypair); // Explicitly sign with the mint keypair
+        if (!wallet.signTransaction) {
+          throw new Error('Wallet does not support signTransaction');
+        }
         
-        // Send the raw transaction
-        const nftTxId = await provider.connection.sendRawTransaction(signedTx.serialize(), {
+        const signedNftDataTx = await wallet.signTransaction(nftDataTx);
+        signedNftDataTx.partialSign(nftMintKeypair);
+        
+        // Send the transaction
+        const nftTxId = await provider.connection.sendRawTransaction(signedNftDataTx.serialize(), {
           skipPreflight: false,
           preflightCommitment: 'confirmed'
         });
