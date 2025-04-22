@@ -14,6 +14,9 @@ interface NftData {
   // Add other fields as needed
 }
 
+// Metaplex Token Metadata Program ID
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+
 // Named export for useCreateNft
 export const useCreateNft = () => {
   const { program, provider } = useAnchorContext();
@@ -60,6 +63,27 @@ export const useCreateNft = () => {
         program.programId
       );
       
+      // Find Metaplex metadata account PDA
+      const [metadataAccount] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('metadata'),
+          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+          nftMint.toBuffer()
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+      );
+      
+      // Find Metaplex master edition account PDA
+      const [masterEditionAccount] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('metadata'),
+          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+          nftMint.toBuffer(),
+          Buffer.from('edition')
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+      );
+      
       console.log('Creating NFT with accounts:', {
         creator: wallet.publicKey.toString(),
         nftMint: nftMint.toString(),
@@ -67,7 +91,10 @@ export const useCreateNft = () => {
         userAccount: userAccount.toString(),
         systemProgram: SystemProgram.programId.toString(),
         tokenProgram: TOKEN_PROGRAM_ID.toString(),
-        rent: SYSVAR_RENT_PUBKEY.toString()
+        rent: SYSVAR_RENT_PUBKEY.toString(),
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID.toString(),
+        metadataAccount: metadataAccount.toString(),
+        masterEditionAccount: masterEditionAccount.toString()
       });
       
       // Create a modified IDL that correctly marks nftMint as a signer
@@ -119,6 +146,9 @@ export const useCreateNft = () => {
             systemProgram: SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: SYSVAR_RENT_PUBKEY,
+            tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+            metadataAccount: metadataAccount,
+            masterEditionAccount: masterEditionAccount
           })
           .transaction();
         
