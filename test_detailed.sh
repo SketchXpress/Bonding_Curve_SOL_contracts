@@ -2,7 +2,7 @@
 set -e
 
 echo "=== Comprehensive Solana Contract Testing with Account Derivation ==="
-echo "Program ID: GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU"
+echo "Program ID: 6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS"
 echo "Network: Devnet"
 
 # Set up environment
@@ -17,7 +17,7 @@ solana balance
 # Test 1: Verify Program Deployment
 echo -e "\n=== Test 1: Verify Program Deployment ==="
 echo "Verifying program deployment..."
-PROGRAM_INFO=$(solana program show GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU 2>/dev/null || echo "Error verifying program")
+PROGRAM_INFO=$(solana program show 6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS 2>/dev/null || echo "Error verifying program")
 
 if [[ $PROGRAM_INFO == *"Error"* ]]; then
   echo "FAILED: Program is not properly deployed."
@@ -74,7 +74,7 @@ PYEOF
 WALLET_HEX=$(echo -n $WALLET_ADDRESS | xxd -p -r | xxd -p)
 
 # Derive user account PDA
-USER_ACCOUNT_PDA=$(python3 derive_pda.py "user-account" $WALLET_HEX "GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU")
+USER_ACCOUNT_PDA=$(python3 derive_pda.py "user-account" $WALLET_HEX "6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS")
 echo "User account PDA: $USER_ACCOUNT_PDA"
 
 # Test 3: Check User Account
@@ -88,7 +88,7 @@ if [[ $USER_ACCOUNT_INFO == *"Error"* ]]; then
   # Test 4: Create User
   echo -e "\n=== Test 4: Create User ==="
   echo "Creating user account..."
-  solana program call --program-id GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU \
+  solana program call --program-id 6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS \
     createUser 10 \
     --signer /home/ubuntu/.config/solana/id.json \
     --url https://api.devnet.solana.com || echo "Error creating user"
@@ -118,15 +118,15 @@ echo "Token mint created: $TOKEN_MINT"
 TOKEN_MINT_HEX=$(echo -n $TOKEN_MINT | xxd -p -r | xxd -p)
 
 # Derive pool PDA
-POOL_PDA=$(python3 derive_pda.py "bonding-pool" $TOKEN_MINT_HEX "GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU")
+POOL_PDA=$(python3 derive_pda.py "bonding-pool" $TOKEN_MINT_HEX "6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS")
 echo "Pool PDA: $POOL_PDA"
 
 # Derive synthetic token mint PDA
-SYNTHETIC_TOKEN_MINT_PDA=$(python3 derive_pda.py "synthetic-mint" $TOKEN_MINT_HEX "GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU")
+SYNTHETIC_TOKEN_MINT_PDA=$(python3 derive_pda.py "synthetic-mint" $TOKEN_MINT_HEX "6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS")
 echo "Synthetic token mint PDA: $SYNTHETIC_TOKEN_MINT_PDA"
 
 # Derive real token vault PDA
-REAL_TOKEN_VAULT_PDA=$(python3 derive_pda.py "token-vault" $TOKEN_MINT_HEX "GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU")
+REAL_TOKEN_VAULT_PDA=$(python3 derive_pda.py "token-vault" $TOKEN_MINT_HEX "6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS")
 echo "Real token vault PDA: $REAL_TOKEN_VAULT_PDA"
 
 # Test 6: Create NFT Mint
@@ -141,7 +141,7 @@ echo "NFT mint created: $NFT_MINT"
 NFT_MINT_HEX=$(echo -n $NFT_MINT | xxd -p -r | xxd -p)
 
 # Derive NFT data PDA
-NFT_DATA_PDA=$(python3 derive_pda.py "nft-data" $NFT_MINT_HEX "GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU")
+NFT_DATA_PDA=$(python3 derive_pda.py "nft-data" $NFT_MINT_HEX "6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS")
 echo "NFT data PDA: $NFT_DATA_PDA"
 
 # Test 7: Verify Contract Functionality
@@ -152,7 +152,7 @@ echo "User account verification completed."
 
 echo -e "\n=== Test Summary ==="
 echo "Wallet: $WALLET_ADDRESS"
-echo "Program ID: GgLTQpotYKSqmH55whQEqnCafngwxga1RzckdkpufFMU"
+echo "Program ID: 6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS"
 echo "User Account PDA: $USER_ACCOUNT_PDA"
 echo "Token Mint: $TOKEN_MINT"
 echo "Pool PDA: $POOL_PDA"

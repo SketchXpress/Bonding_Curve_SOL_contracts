@@ -52,6 +52,9 @@ WORKDIR /app
 # Copy project files
 COPY . .
 
+# Make scripts executable
+RUN chmod +x deploy.js anchor_cli_demo.sh test_cli.sh test_detailed.sh verify_contract.sh
+
 # Set up Solana config for devnet
 RUN mkdir -p /root/.config/solana \
     && solana-keygen new --no-bip39-passphrase -o /root/.config/solana/id.json --force \
