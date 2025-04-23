@@ -53,7 +53,7 @@ WORKDIR /app
 COPY . .
 
 # Make scripts executable
-RUN chmod +x deploy.js anchor_cli_demo.sh test_cli.sh test_detailed.sh verify_contract.sh
+RUN chmod +x anchor_cli_demo.sh test_cli.sh test_detailed.sh verify_contract.sh
 
 # Set up Solana config for devnet
 RUN mkdir -p /root/.config/solana \

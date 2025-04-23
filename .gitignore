@@ -8,3 +8,6 @@ test-ledger
 .yarn
 Dockerfile
 docker-compose.yml
+keypair-config.js
+logs/
+/home/ubuntu/.config/solana/id.json

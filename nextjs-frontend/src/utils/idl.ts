@@ -1,6 +1,8 @@
 // This file will contain the IDL for the bonding curve system program
 // We'll extract this from the original repository
 
+export const PROGRAM_ID = '6c3sjni7sr87CsDz3sHWHS1W7mnzSMpozAL9pwnpGsCS';
+
 export const IDL = {
   version: "0.1.0",
   name: "bonding_curve_system",
