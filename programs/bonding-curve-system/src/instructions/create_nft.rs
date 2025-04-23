@@ -111,20 +111,30 @@ pub fn create_nft(
         collection_details: None,
     };
     
+    // Create longer-lived bindings for account infos to fix lifetime issues
+    let metadata_account_info = ctx.accounts.metadata_account.to_account_info();
+    let mint_account_info = ctx.accounts.nft_mint.to_account_info();
+    let creator_account_info = ctx.accounts.creator.to_account_info();
+    let system_program_info = ctx.accounts.system_program.to_account_info();
+    let rent_account_info = ctx.accounts.rent.to_account_info();
+    let token_metadata_program_info = ctx.accounts.token_metadata_program.to_account_info();
+    let token_program_info = ctx.accounts.token_program.to_account_info();
+    let master_edition_account_info = ctx.accounts.master_edition_account.to_account_info();
+    
     // Create metadata account using the Cpi struct
     let cpi_accounts = CreateMetadataAccountV3CpiAccounts {
-        metadata: &ctx.accounts.metadata_account.to_account_info(),
-        mint: &ctx.accounts.nft_mint.to_account_info(),
-        mint_authority: &ctx.accounts.creator.to_account_info(),
-        payer: &ctx.accounts.creator.to_account_info(),
-        update_authority: (&ctx.accounts.creator.to_account_info(), true),
-        system_program: &ctx.accounts.system_program.to_account_info(),
-        rent: Some(&ctx.accounts.rent.to_account_info()),
+        metadata: &metadata_account_info,
+        mint: &mint_account_info,
+        mint_authority: &creator_account_info,
+        payer: &creator_account_info,
+        update_authority: (&creator_account_info, true),
+        system_program: &system_program_info,
+        rent: Some(&rent_account_info),
     };
     
     // Create and invoke the CPI
     let metadata_cpi = CreateMetadataAccountV3Cpi::new(
-        &ctx.accounts.token_metadata_program.to_account_info(),
+        &token_metadata_program_info,
         cpi_accounts,
         args,
     );
@@ -136,20 +146,20 @@ pub fn create_nft(
     };
     
     let master_edition_accounts = CreateMasterEditionV3CpiAccounts {
-        edition: &ctx.accounts.master_edition_account.to_account_info(),
-        mint: &ctx.accounts.nft_mint.to_account_info(),
-        update_authority: &ctx.accounts.creator.to_account_info(),
-        mint_authority: &ctx.accounts.creator.to_account_info(),
-        payer: &ctx.accounts.creator.to_account_info(),
-        metadata: &ctx.accounts.metadata_account.to_account_info(),
-        token_program: &ctx.accounts.token_program.to_account_info(),
-        system_program: &ctx.accounts.system_program.to_account_info(),
-        rent: Some(&ctx.accounts.rent.to_account_info()),
+        edition: &master_edition_account_info,
+        mint: &mint_account_info,
+        update_authority: &creator_account_info,
+        mint_authority: &creator_account_info,
+        payer: &creator_account_info,
+        metadata: &metadata_account_info,
+        token_program: &token_program_info,
+        system_program: &system_program_info,
+        rent: Some(&rent_account_info),
     };
     
     // Create and invoke the CPI
     let master_edition_cpi = CreateMasterEditionV3Cpi::new(
-        &ctx.accounts.token_metadata_program.to_account_info(),
+        &token_metadata_program_info,
         master_edition_accounts,
         master_edition_args,
     );
