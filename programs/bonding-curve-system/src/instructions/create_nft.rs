@@ -1,7 +1,13 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, Mint};
 use crate::state::{NFTData, UserAccount};
-use mpl_token_metadata::instruction::{create_metadata_accounts_v3, create_master_edition_v3};
+use mpl_token_metadata::types::Creator;
+use mpl_token_metadata::instructions::{
+    CreateMetadataAccountV3, 
+    CreateMetadataAccountV3InstructionArgs,
+    CreateMasterEditionV3, 
+    CreateMasterEditionV3InstructionArgs
+};
 
 #[derive(Accounts)]
 pub struct CreateNFT<'info> {
@@ -79,7 +85,7 @@ pub fn create_nft(
     
     // Create Metaplex metadata
     let creator = vec![
-        mpl_token_metadata::state::Creator {
+        Creator {
             address: ctx.accounts.creator.key(),
             verified: true,
             share: 100,
@@ -87,14 +93,29 @@ pub fn create_nft(
     ];
     
     // Create metadata account
-    let cpi_accounts = mpl_token_metadata::cpi::accounts::CreateMetadataAccountsV3 {
+    let cpi_accounts = CreateMetadataAccountV3 {
         metadata: ctx.accounts.metadata_account.to_account_info(),
         mint: ctx.accounts.nft_mint.to_account_info(),
         mint_authority: ctx.accounts.creator.to_account_info(),
         payer: ctx.accounts.creator.to_account_info(),
-        update_authority: ctx.accounts.creator.to_account_info(),
+        update_authority: (ctx.accounts.creator.to_account_info(), true),
         system_program: ctx.accounts.system_program.to_account_info(),
         rent: ctx.accounts.rent.to_account_info(),
+    };
+    
+    let args = CreateMetadataAccountV3InstructionArgs {
+        name,
+        symbol,
+        uri,
+        seller_fee_basis_points,
+        creators: Some(creator),
+        primary_sale_happened: false,
+        is_mutable: true,
+        token_standard: None,
+        collection: None,
+        uses: None,
+        collection_details: None,
+        rule_set: None,
     };
     
     let cpi_ctx = CpiContext::new(
@@ -102,22 +123,13 @@ pub fn create_nft(
         cpi_accounts,
     );
     
-    mpl_token_metadata::cpi::create_metadata_accounts_v3(
+    mpl_token_metadata::instructions::CreateMetadataAccountV3::create_metadata_account_v3(
         cpi_ctx,
-        name,
-        symbol,
-        uri,
-        Some(creator),
-        seller_fee_basis_points,
-        true, // is_mutable
-        false, // freeze_authority
-        None, // collection
-        None, // uses
-        None, // collection_details
+        args,
     )?;
     
     // Create master edition account
-    let cpi_accounts = mpl_token_metadata::cpi::accounts::CreateMasterEditionV3 {
+    let cpi_accounts = CreateMasterEditionV3 {
         edition: ctx.accounts.master_edition_account.to_account_info(),
         mint: ctx.accounts.nft_mint.to_account_info(),
         update_authority: ctx.accounts.creator.to_account_info(),
@@ -129,14 +141,18 @@ pub fn create_nft(
         rent: ctx.accounts.rent.to_account_info(),
     };
     
+    let args = CreateMasterEditionV3InstructionArgs {
+        max_supply: Some(0), // 0 means no printing allowed
+    };
+    
     let cpi_ctx = CpiContext::new(
         ctx.accounts.token_metadata_program.to_account_info(),
         cpi_accounts,
     );
     
-    mpl_token_metadata::cpi::create_master_edition_v3(
+    mpl_token_metadata::instructions::CreateMasterEditionV3::create_master_edition_v3(
         cpi_ctx,
-        Some(0), // max_supply: 0 means no printing allowed
+        args,
     )?;
     
     Ok(())
