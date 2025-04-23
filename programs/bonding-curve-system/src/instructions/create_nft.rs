@@ -1,11 +1,13 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, Mint};
 use crate::state::{NFTData, UserAccount};
-use mpl_token_metadata::types::{Creator, DataV2, Collection, Uses};
+use mpl_token_metadata::types::{Creator, DataV2};
 use mpl_token_metadata::instructions::{
-    CreateMetadataAccountV3CpiAccounts, 
+    CreateMetadataAccountV3Cpi, 
+    CreateMetadataAccountV3CpiAccounts,
     CreateMetadataAccountV3InstructionArgs,
-    CreateMasterEditionV3CpiAccounts, 
+    CreateMasterEditionV3Cpi,
+    CreateMasterEditionV3CpiAccounts,
     CreateMasterEditionV3InstructionArgs
 };
 
@@ -92,17 +94,6 @@ pub fn create_nft(
         }
     ];
     
-    // Create metadata account
-    let cpi_accounts = CreateMetadataAccountV3CpiAccounts {
-        metadata: ctx.accounts.metadata_account.to_account_info(),
-        mint: ctx.accounts.nft_mint.to_account_info(),
-        mint_authority: ctx.accounts.creator.to_account_info(),
-        payer: ctx.accounts.creator.to_account_info(),
-        update_authority: (ctx.accounts.creator.to_account_info(), true),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        rent: Some(ctx.accounts.rent.to_account_info()),
-    };
-    
     // Create the DataV2 struct for metadata
     let data = DataV2 {
         name,
@@ -120,40 +111,49 @@ pub fn create_nft(
         collection_details: None,
     };
     
-    // Execute the CPI call
-    mpl_token_metadata::instructions::create_metadata_accounts_v3(
-        CpiContext::new(
-            ctx.accounts.token_metadata_program.to_account_info(),
-            cpi_accounts,
-        ),
-        args,
-    )?;
-    
-    // Create master edition account
-    let cpi_accounts = CreateMasterEditionV3CpiAccounts {
-        edition: ctx.accounts.master_edition_account.to_account_info(),
-        mint: ctx.accounts.nft_mint.to_account_info(),
-        update_authority: ctx.accounts.creator.to_account_info(),
-        mint_authority: ctx.accounts.creator.to_account_info(),
-        payer: ctx.accounts.creator.to_account_info(),
-        metadata: ctx.accounts.metadata_account.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        rent: Some(ctx.accounts.rent.to_account_info()),
+    // Create metadata account using the Cpi struct
+    let cpi_accounts = CreateMetadataAccountV3CpiAccounts {
+        metadata: &ctx.accounts.metadata_account.to_account_info(),
+        mint: &ctx.accounts.nft_mint.to_account_info(),
+        mint_authority: &ctx.accounts.creator.to_account_info(),
+        payer: &ctx.accounts.creator.to_account_info(),
+        update_authority: (&ctx.accounts.creator.to_account_info(), true),
+        system_program: &ctx.accounts.system_program.to_account_info(),
+        rent: Some(&ctx.accounts.rent.to_account_info()),
     };
     
-    let args = CreateMasterEditionV3InstructionArgs {
+    // Create and invoke the CPI
+    let metadata_cpi = CreateMetadataAccountV3Cpi::new(
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        cpi_accounts,
+        args,
+    );
+    metadata_cpi.invoke()?;
+    
+    // Create master edition account
+    let master_edition_args = CreateMasterEditionV3InstructionArgs {
         max_supply: Some(0), // 0 means no printing allowed
     };
     
-    // Execute the CPI call
-    mpl_token_metadata::instructions::create_master_edition_v3(
-        CpiContext::new(
-            ctx.accounts.token_metadata_program.to_account_info(),
-            cpi_accounts,
-        ),
-        args,
-    )?;
+    let master_edition_accounts = CreateMasterEditionV3CpiAccounts {
+        edition: &ctx.accounts.master_edition_account.to_account_info(),
+        mint: &ctx.accounts.nft_mint.to_account_info(),
+        update_authority: &ctx.accounts.creator.to_account_info(),
+        mint_authority: &ctx.accounts.creator.to_account_info(),
+        payer: &ctx.accounts.creator.to_account_info(),
+        metadata: &ctx.accounts.metadata_account.to_account_info(),
+        token_program: &ctx.accounts.token_program.to_account_info(),
+        system_program: &ctx.accounts.system_program.to_account_info(),
+        rent: Some(&ctx.accounts.rent.to_account_info()),
+    };
+    
+    // Create and invoke the CPI
+    let master_edition_cpi = CreateMasterEditionV3Cpi::new(
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        master_edition_accounts,
+        master_edition_args,
+    );
+    master_edition_cpi.invoke()?;
     
     Ok(())
 }
