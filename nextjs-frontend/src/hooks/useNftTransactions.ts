@@ -96,6 +96,12 @@ export const useCreateNft = () => {
         TOKEN_METADATA_PROGRAM_ID
       );
       
+      // Create token account for the NFT mint
+      const tokenAccount = await getAssociatedTokenAddress(
+        nftMint,
+        wallet.publicKey
+      );
+      
       console.log('Creating NFT with accounts:', {
         creator: wallet.publicKey.toString(),
         nftMint: nftMint.toString(),
@@ -106,7 +112,8 @@ export const useCreateNft = () => {
         rent: SYSVAR_RENT_PUBKEY.toString(),
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID.toString(),
         metadataAccount: metadataAccount.toString(),
-        masterEditionAccount: masterEditionAccount.toString()
+        masterEditionAccount: masterEditionAccount.toString(),
+        tokenAccount: tokenAccount.toString()
       });
       
       // Create a modified IDL that correctly marks nftMint as a signer
@@ -142,8 +149,31 @@ export const useCreateNft = () => {
       
       // Use the modified program to create the NFT in a single transaction
       try {
-        // Get the instruction with the modified IDL
-        const createNftTx = await modifiedProgram.methods
+        // First, create a transaction to initialize the token account
+        const transaction = new Transaction();
+        
+        // Add instruction to create the associated token account
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            wallet.publicKey,
+            tokenAccount,
+            wallet.publicKey,
+            nftMint
+          )
+        );
+        
+        // Add instruction to mint one token to the token account
+        transaction.add(
+          createMintToInstruction(
+            nftMint,
+            tokenAccount,
+            wallet.publicKey,
+            1 // Mint exactly 1 token for NFT
+          )
+        );
+        
+        // Get the instruction with the modified IDL for creating the NFT
+        const createNftIx = await modifiedProgram.methods
           .createNft(
             name,
             symbol,
@@ -162,12 +192,15 @@ export const useCreateNft = () => {
             metadataAccount: metadataAccount,
             masterEditionAccount: masterEditionAccount
           })
-          .transaction();
+          .instruction();
+        
+        // Add the create NFT instruction to the transaction
+        transaction.add(createNftIx);
         
         // Get a fresh blockhash
         const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
-        createNftTx.recentBlockhash = blockhash;
-        createNftTx.feePayer = wallet.publicKey;
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet.publicKey;
         
         // Check if wallet adapter supports signing
         if (!wallet.signTransaction) {
@@ -175,7 +208,7 @@ export const useCreateNft = () => {
         }
         
         // Sign with wallet first
-        const partiallySignedTx = await wallet.signTransaction(createNftTx);
+        const partiallySignedTx = await wallet.signTransaction(transaction);
         
         // Then sign with the mint keypair
         partiallySignedTx.partialSign(nftMintKeypair);
@@ -426,5 +459,29 @@ function createAssociatedTokenAccountInstruction(
     keys,
     programId: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
     data: Buffer.from([]),
+  });
+}
+
+function createMintToInstruction(
+  mint: PublicKey,
+  destination: PublicKey,
+  authority: PublicKey,
+  amount: number
+): any {
+  // This is a simplified version - in a real app, use the proper SPL token library function
+  const keys = [
+    { pubkey: mint, isSigner: false, isWritable: true },
+    { pubkey: destination, isSigner: false, isWritable: true },
+    { pubkey: authority, isSigner: true, isWritable: false },
+  ];
+  
+  const data = Buffer.alloc(9);
+  data.writeUInt8(7, 0); // Mint instruction
+  data.writeBigUInt64LE(BigInt(amount), 1); // Amount as u64
+  
+  return new anchor.web3.TransactionInstruction({
+    keys,
+    programId: TOKEN_PROGRAM_ID,
+    data,
   });
 }
