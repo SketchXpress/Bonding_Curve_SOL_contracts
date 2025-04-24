@@ -1,0 +1,138 @@
+use anchor_lang::prelude::*;
+use anchor_spl::token::{Token, Mint};
+use crate::state::{NFTData, UserAccount};
+use mpl_token_metadata::types::{Creator, DataV2};
+use mpl_token_metadata::instructions::{
+    CreateMetadataAccountV3Cpi, 
+    CreateMetadataAccountV3CpiAccounts,
+    CreateMetadataAccountV3InstructionArgs,
+};
+
+#[derive(Accounts)]
+pub struct CreateNFTData<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    
+    #[account(
+        init,
+        payer = creator,
+        mint::decimals = 0,
+        mint::authority = creator,
+    )]
+    pub nft_mint: Account<'info, Mint>,
+    
+    #[account(
+        init,
+        payer = creator,
+        seeds = [b"nft-data", nft_mint.key().as_ref()],
+        bump,
+        space = NFTData::BASE_SIZE,
+    )]
+    pub nft_data: Account<'info, NFTData>,
+    
+    #[account(
+        mut,
+        seeds = [b"user-account", creator.key().as_ref()],
+        bump,
+        constraint = user_account.owner == creator.key(),
+    )]
+    pub user_account: Account<'info, UserAccount>,
+    
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub rent: Sysvar<'info, Rent>,
+    
+    /// CHECK: This is the token metadata program
+    pub token_metadata_program: UncheckedAccount<'info>,
+    
+    /// CHECK: Metadata account PDA
+    #[account(mut)]
+    pub metadata_account: UncheckedAccount<'info>,
+}
+
+pub fn create_nft_data(
+    ctx: Context<CreateNFTData>,
+    name: String,
+    symbol: String,
+    uri: String,
+    seller_fee_basis_points: u16,
+) -> Result<()> {
+    let nft_data = &mut ctx.accounts.nft_data;
+    let bump = ctx.bumps.nft_data;
+    
+    // Initialize NFT data
+    nft_data.creator = ctx.accounts.creator.key();
+    nft_data.owner = ctx.accounts.creator.key();
+    nft_data.name = name.clone();
+    nft_data.symbol = symbol.clone();
+    nft_data.uri = uri.clone();
+    nft_data.collection_id = Pubkey::default(); // No collection for now
+    nft_data.is_mutable = true;
+    nft_data.primary_sale_happened = false;
+    nft_data.seller_fee_basis_points = seller_fee_basis_points;
+    nft_data.mint = ctx.accounts.nft_mint.key();
+    nft_data.last_price = 0;
+    nft_data.bump = bump;
+    
+    // Add NFT to user's owned NFTs
+    let user = &mut ctx.accounts.user_account;
+    user.owned_nfts.push(ctx.accounts.nft_mint.key());
+    
+    // Create Metaplex metadata
+    let creator = vec![
+        Creator {
+            address: ctx.accounts.creator.key(),
+            verified: true,
+            share: 100,
+        }
+    ];
+    
+    // Create the DataV2 struct for metadata
+    let data = DataV2 {
+        name,
+        symbol,
+        uri,
+        seller_fee_basis_points,
+        creators: Some(creator),
+        collection: None,
+        uses: None,
+    };
+    
+    let args = CreateMetadataAccountV3InstructionArgs {
+        data,
+        is_mutable: true,
+        collection_details: None,
+    };
+    
+    // Create longer-lived bindings for account infos to fix lifetime issues
+    let metadata_account_info = ctx.accounts.metadata_account.to_account_info();
+    let mint_account_info = ctx.accounts.nft_mint.to_account_info();
+    let creator_account_info = ctx.accounts.creator.to_account_info();
+    let system_program_info = ctx.accounts.system_program.to_account_info();
+    let rent_account_info = ctx.accounts.rent.to_account_info();
+    let token_metadata_program_info = ctx.accounts.token_metadata_program.to_account_info();
+    
+    // Create metadata account using the Cpi struct
+    let cpi_accounts = CreateMetadataAccountV3CpiAccounts {
+        metadata: &metadata_account_info,
+        mint: &mint_account_info,
+        mint_authority: &creator_account_info,
+        payer: &creator_account_info,
+        update_authority: (&creator_account_info, true),
+        system_program: &system_program_info,
+        rent: Some(&rent_account_info),
+    };
+    
+    // Create and invoke the CPI
+    let metadata_cpi = CreateMetadataAccountV3Cpi::new(
+        &token_metadata_program_info,
+        cpi_accounts,
+        args,
+    );
+    metadata_cpi.invoke()?;
+    
+    // Note: We don't create the master edition here, that will be done in a separate instruction
+    // after minting exactly one token
+    
+    Ok(())
+}

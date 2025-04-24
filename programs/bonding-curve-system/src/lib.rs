@@ -50,6 +50,26 @@ pub mod bonding_curve_system {
         )
     }
 
+    pub fn create_nft_data(
+        ctx: Context<CreateNFTData>, 
+        name: String,
+        symbol: String,
+        uri: String,
+        seller_fee_basis_points: u16,
+    ) -> Result<()> {
+        instructions::create_nft_data::create_nft_data(
+            ctx, 
+            name,
+            symbol,
+            uri,
+            seller_fee_basis_points,
+        )
+    }
+
+    pub fn create_master_edition(ctx: Context<CreateMasterEdition>) -> Result<()> {
+        instructions::create_master_edition::create_master_edition(ctx)
+    }
+
     pub fn buy_nft(ctx: Context<BuyNFT>) -> Result<()> {
         instructions::buy_nft::buy_nft(ctx)
     }

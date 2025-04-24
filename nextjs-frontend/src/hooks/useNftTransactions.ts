@@ -2,8 +2,21 @@
 
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { 
+  Keypair, 
+  PublicKey, 
+  SystemProgram, 
+  SYSVAR_RENT_PUBKEY, 
+  Transaction,
+  TransactionInstruction,
+  AccountInfo
+} from '@solana/web3.js';
+import { 
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+  createMintToInstruction
+} from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
 import * as anchor from '@project-serum/anchor';
@@ -27,6 +40,21 @@ export const useCreateNft = () => {
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [nftMintAddress, setNftMintAddress] = useState<string | null>(null);
   const { ensureUserAccount, loading: userAccountLoading } = useUserAccount();
+
+  // Helper function to check if an account exists
+  const accountExists = async (pubkey: PublicKey): Promise<boolean> => {
+    try {
+      if (!provider) {
+        console.error('Provider is null');
+        return false;
+      }
+      const accountInfo = await provider.connection.getAccountInfo(pubkey);
+      return accountInfo !== null;
+    } catch (err) {
+      console.error('Error checking if account exists:', err);
+      return false;
+    }
+  };
 
   const createNft = async (name: string, symbol: string, uri: string, sellerFeeBasisPoints: number) => {
     if (!program || !wallet.publicKey || !provider) {
@@ -96,147 +124,184 @@ export const useCreateNft = () => {
         TOKEN_METADATA_PROGRAM_ID
       );
       
-      // Create token account for the NFT mint
-      const tokenAccount = await getAssociatedTokenAddress(
+      // Get the associated token address for the NFT
+      const associatedTokenAddress = await getAssociatedTokenAddress(
         nftMint,
-        wallet.publicKey
+        wallet.publicKey,
+        false,
+        TOKEN_PROGRAM_ID
       );
       
-      console.log('Creating NFT with accounts:', {
-        creator: wallet.publicKey.toString(),
-        nftMint: nftMint.toString(),
-        nftData: nftData.toString(),
-        userAccount: userAccount.toString(),
-        systemProgram: SystemProgram.programId.toString(),
-        tokenProgram: TOKEN_PROGRAM_ID.toString(),
-        rent: SYSVAR_RENT_PUBKEY.toString(),
-        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID.toString(),
-        metadataAccount: metadataAccount.toString(),
-        masterEditionAccount: masterEditionAccount.toString(),
-        tokenAccount: tokenAccount.toString()
-      });
+      console.log('Associated token address:', associatedTokenAddress.toString());
       
-      // Create a modified IDL that correctly marks nftMint as a signer
-      const modifiedIdl = JSON.parse(JSON.stringify(program.idl));
+      // Step 1: Create NFT data and metadata (without master edition)
+      console.log('Step 1: Creating NFT data and metadata...');
       
-      // Find the createNft instruction in the IDL
-      const createNftInstruction = modifiedIdl.instructions.find(
-        (ix: any) => ix.name === 'createNft'
-      );
+      // Create a transaction instruction manually with all required accounts
+      const createNftDataTx = new Transaction({ feePayer: wallet.publicKey });
       
-      if (!createNftInstruction) {
-        throw new Error('Could not find createNft instruction in IDL');
-      }
-      
-      // Find the nftMint account in the instruction accounts
-      const nftMintAccount = createNftInstruction.accounts.find(
-        (acc: any) => acc.name === 'nftMint'
-      );
-      
-      if (!nftMintAccount) {
-        throw new Error('Could not find nftMint account in createNft instruction');
-      }
-      
-      // Mark nftMint as a signer in the IDL
-      nftMintAccount.isSigner = true;
-      
-      // Create a new program instance with the modified IDL
-      const modifiedProgram = new anchor.Program(
-        modifiedIdl,
-        program.programId,
-        provider
-      );
-      
-      // Use the modified program to create the NFT in a single transaction
-      try {
-        // First, create a transaction to initialize the token account
-        const transaction = new Transaction();
-        
-        // Add instruction to create the associated token account
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            wallet.publicKey,
-            tokenAccount,
-            wallet.publicKey,
-            nftMint
-          )
-        );
-        
-        // Add instruction to mint one token to the token account
-        transaction.add(
-          createMintToInstruction(
-            nftMint,
-            tokenAccount,
-            wallet.publicKey,
-            1 // Mint exactly 1 token for NFT
-          )
-        );
-        
-        // Get the instruction with the modified IDL for creating the NFT
-        const createNftIx = await modifiedProgram.methods
-          .createNft(
+      // Add the instruction to create the NFT data and metadata
+      createNftDataTx.add(
+        new TransactionInstruction({
+          programId: program.programId,
+          keys: [
+            // Accounts from the CreateNFTData struct in create_nft_data.rs
+            { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // creator
+            { pubkey: nftMint, isSigner: true, isWritable: true }, // nft_mint - IMPORTANT: isSigner must be true
+            { pubkey: nftData, isSigner: false, isWritable: true }, // nft_data
+            { pubkey: userAccount, isSigner: false, isWritable: true }, // user_account
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // rent
+            { pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false }, // token_metadata_program
+            { pubkey: metadataAccount, isSigner: false, isWritable: true }, // metadata_account
+          ],
+          data: program.coder.instruction.encode('create_nft_data', {
             name,
             symbol,
             uri,
-            sellerFeeBasisPoints
-          )
-          .accounts({
-            creator: wallet.publicKey,
-            nftMint: nftMint,
-            nftData: nftData,
-            userAccount: userAccount,
-            systemProgram: SystemProgram.programId,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            rent: SYSVAR_RENT_PUBKEY,
-            tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
-            metadataAccount: metadataAccount,
-            masterEditionAccount: masterEditionAccount
+            seller_fee_basis_points: sellerFeeBasisPoints
           })
-          .instruction();
-        
-        // Add the create NFT instruction to the transaction
-        transaction.add(createNftIx);
-        
-        // Get a fresh blockhash
-        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = wallet.publicKey;
-        
-        // Check if wallet adapter supports signing
-        if (!wallet.signTransaction) {
-          throw new Error('Wallet does not support transaction signing');
-        }
-        
-        // Sign with wallet first
-        const partiallySignedTx = await wallet.signTransaction(transaction);
-        
-        // Then sign with the mint keypair
-        partiallySignedTx.partialSign(nftMintKeypair);
-        
-        // Send and confirm transaction
-        const signature = await provider.connection.sendRawTransaction(
-          partiallySignedTx.serialize(),
-          { skipPreflight: false, preflightCommitment: 'confirmed' }
-        );
-        
-        console.log('Transaction sent:', signature);
-        
-        // Wait for confirmation
-        await provider.connection.confirmTransaction({
-          signature,
-          blockhash,
-          lastValidBlockHeight
-        }, 'confirmed');
-        
-        console.log('NFT creation confirmed with signature:', signature);
-        
-        setTxSignature(signature);
-        setNftMintAddress(nftMint.toString());
-        return { tx: signature, nftMint: nftMint.toString() };
-      } catch (nftErr) {
-        console.error('Error creating NFT:', nftErr);
-        throw new Error(`Failed to create NFT: ${nftErr instanceof Error ? nftErr.message : String(nftErr)}`);
+        })
+      );
+      
+      // Get a fresh blockhash
+      const createNftDataBh = await provider.connection.getLatestBlockhash('confirmed');
+      createNftDataTx.recentBlockhash = createNftDataBh.blockhash;
+      
+      // Check if wallet adapter supports signing
+      if (!wallet.signTransaction) {
+        throw new Error('Wallet does not support transaction signing');
       }
+      
+      // First sign with the mint keypair
+      createNftDataTx.sign(nftMintKeypair);
+      
+      // Then sign with the wallet
+      const signedCreateNftDataTx = await wallet.signTransaction(createNftDataTx);
+      
+      // Send and confirm transaction
+      const createNftDataSignature = await provider.connection.sendRawTransaction(
+        signedCreateNftDataTx.serialize(),
+        { skipPreflight: false, preflightCommitment: 'confirmed' }
+      );
+      
+      // Wait for confirmation
+      await provider.connection.confirmTransaction({
+        signature: createNftDataSignature,
+        blockhash: createNftDataBh.blockhash,
+        lastValidBlockHeight: createNftDataBh.lastValidBlockHeight
+      }, 'confirmed');
+      
+      console.log('NFT data and metadata created successfully with signature:', createNftDataSignature);
+      
+      // Step 2: Create associated token account and mint exactly one token
+      console.log('Step 2: Creating associated token account and minting one token...');
+      const mintTokenTx = new Transaction({ feePayer: wallet.publicKey });
+      
+      // Check if the associated token account exists
+      const tokenAccountExists = await accountExists(associatedTokenAddress);
+      
+      // If the associated token account doesn't exist, create it
+      if (!tokenAccountExists) {
+        console.log('Associated token account does not exist, creating it...');
+        mintTokenTx.add(
+          createAssociatedTokenAccountInstruction(
+            wallet.publicKey, // payer
+            associatedTokenAddress, // associated token account
+            wallet.publicKey, // owner
+            nftMint, // mint
+            TOKEN_PROGRAM_ID
+          )
+        );
+      } else {
+        console.log('Associated token account already exists');
+      }
+      
+      // Add instruction to mint one token to the associated token account
+      mintTokenTx.add(
+        createMintToInstruction(
+          nftMint, // mint
+          associatedTokenAddress, // destination
+          wallet.publicKey, // authority
+          1, // amount (1 for NFT)
+          [], // multisig signers
+          TOKEN_PROGRAM_ID
+        )
+      );
+      
+      // Get a fresh blockhash
+      const mintTokenBh = await provider.connection.getLatestBlockhash('confirmed');
+      mintTokenTx.recentBlockhash = mintTokenBh.blockhash;
+      
+      // Sign with wallet
+      const signedMintTokenTx = await wallet.signTransaction(mintTokenTx);
+      
+      // Send and confirm transaction
+      const mintTokenSignature = await provider.connection.sendRawTransaction(
+        signedMintTokenTx.serialize(),
+        { skipPreflight: false, preflightCommitment: 'confirmed' }
+      );
+      
+      // Wait for confirmation
+      await provider.connection.confirmTransaction({
+        signature: mintTokenSignature,
+        blockhash: mintTokenBh.blockhash,
+        lastValidBlockHeight: mintTokenBh.lastValidBlockHeight
+      }, 'confirmed');
+      
+      console.log('Token minted successfully with signature:', mintTokenSignature);
+      
+      // Step 3: Create master edition
+      console.log('Step 3: Creating master edition...');
+      const createMasterEditionTx = new Transaction({ feePayer: wallet.publicKey });
+      
+      // Add the instruction to create the master edition
+      createMasterEditionTx.add(
+        new TransactionInstruction({
+          programId: program.programId,
+          keys: [
+            // Accounts required for master edition creation
+            { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // creator
+            { pubkey: nftMint, isSigner: false, isWritable: true }, // nft_mint
+            { pubkey: nftData, isSigner: false, isWritable: true }, // nft_data
+            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+            { pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false }, // token_metadata_program
+            { pubkey: metadataAccount, isSigner: false, isWritable: true }, // metadata_account
+            { pubkey: masterEditionAccount, isSigner: false, isWritable: true }, // master_edition_account
+            { pubkey: associatedTokenAddress, isSigner: false, isWritable: false }, // token_account
+            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // rent
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+          ],
+          data: program.coder.instruction.encode('create_master_edition', {})
+        })
+      );
+      
+      // Get a fresh blockhash
+      const createMasterEditionBh = await provider.connection.getLatestBlockhash('confirmed');
+      createMasterEditionTx.recentBlockhash = createMasterEditionBh.blockhash;
+      
+      // Sign with wallet
+      const signedCreateMasterEditionTx = await wallet.signTransaction(createMasterEditionTx);
+      
+      // Send and confirm transaction
+      const createMasterEditionSignature = await provider.connection.sendRawTransaction(
+        signedCreateMasterEditionTx.serialize(),
+        { skipPreflight: false, preflightCommitment: 'confirmed' }
+      );
+      
+      // Wait for confirmation
+      await provider.connection.confirmTransaction({
+        signature: createMasterEditionSignature,
+        blockhash: createMasterEditionBh.blockhash,
+        lastValidBlockHeight: createMasterEditionBh.lastValidBlockHeight
+      }, 'confirmed');
+      
+      console.log('Master edition created successfully with signature:', createMasterEditionSignature);
+      
+      setTxSignature(createMasterEditionSignature);
+      setNftMintAddress(nftMint.toString());
+      return { tx: createMasterEditionSignature, nftMint: nftMint.toString() };
     } catch (err) {
       console.error('Create NFT error:', err);
       setError(err instanceof Error ? err.message : String(err));
@@ -257,6 +322,21 @@ export const useBuyNft = () => {
   const [error, setError] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const { ensureUserAccount, loading: userAccountLoading } = useUserAccount();
+
+  // Helper function to check if an account exists
+  const accountExists = async (pubkey: PublicKey): Promise<boolean> => {
+    try {
+      if (!provider) {
+        console.error('Provider is null');
+        return false;
+      }
+      const accountInfo = await provider.connection.getAccountInfo(pubkey);
+      return accountInfo !== null;
+    } catch (err) {
+      console.error('Error checking if account exists:', err);
+      return false;
+    }
+  };
 
   const buyNft = async (nftMintAddress: string) => {
     if (!program || !wallet.publicKey || !provider) {
@@ -314,101 +394,90 @@ export const useBuyNft = () => {
           program.programId
         );
         
-        // Get or create token accounts for buyer and seller
-        const buyerNftTokenAccount = await getAssociatedTokenAddress(
+        // Get the associated token addresses for buyer and seller
+        const buyerTokenAccount = await getAssociatedTokenAddress(
           nftMint,
-          wallet.publicKey
+          wallet.publicKey,
+          false,
+          TOKEN_PROGRAM_ID
         );
         
-        const sellerNftTokenAccount = await getAssociatedTokenAddress(
+        const sellerTokenAccount = await getAssociatedTokenAddress(
           nftMint,
-          ownerPublicKey
+          ownerPublicKey,
+          false,
+          TOKEN_PROGRAM_ID
         );
         
-        console.log('Buying NFT with accounts:', {
-          buyer: wallet.publicKey.toString(),
-          buyerAccount: buyerAccount.toString(),
-          sellerAccount: sellerAccount.toString(),
-          nftData: nftData.toString(),
-          nftMint: nftMint.toString(),
-          sellerNftTokenAccount: sellerNftTokenAccount.toString(),
-          buyerNftTokenAccount: buyerNftTokenAccount.toString(),
-          tokenProgram: TOKEN_PROGRAM_ID.toString(),
-          systemProgram: SystemProgram.programId.toString()
-        });
+        // Check if the buyer token account exists
+        const buyerTokenAccountExists = await accountExists(buyerTokenAccount);
         
-        // Check if buyer token account exists, if not create it first
-        let buyerTokenAccountExists = true;
-        try {
-          await provider.connection.getTokenAccountBalance(buyerNftTokenAccount);
-        } catch (e) {
-          buyerTokenAccountExists = false;
-        }
+        // Create a transaction
+        const transaction = new Transaction({ feePayer: wallet.publicKey });
         
+        // If the buyer token account doesn't exist, create it
         if (!buyerTokenAccountExists) {
-          // Create the token account in a separate transaction first
-          const createTokenAccountTx = new Transaction();
-          createTokenAccountTx.add(
+          console.log('Buyer token account does not exist, creating it...');
+          transaction.add(
             createAssociatedTokenAccountInstruction(
-              wallet.publicKey,
-              buyerNftTokenAccount,
-              wallet.publicKey,
-              nftMint
+              wallet.publicKey, // payer
+              buyerTokenAccount, // associated token account
+              wallet.publicKey, // owner
+              nftMint, // mint
+              TOKEN_PROGRAM_ID
             )
           );
-          
-          // Get a fresh blockhash
-          const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
-          createTokenAccountTx.recentBlockhash = blockhash;
-          createTokenAccountTx.feePayer = wallet.publicKey;
-          
-          // Sign and send the token account creation transaction
-          if (wallet.signTransaction) {
-            const signedTx = await wallet.signTransaction(createTokenAccountTx);
-            const tokenAccountTxId = await provider.connection.sendRawTransaction(signedTx.serialize(), {
-              skipPreflight: false,
-              preflightCommitment: 'confirmed'
-            });
-            
-            // Wait for confirmation
-            await provider.connection.confirmTransaction({
-              signature: tokenAccountTxId,
-              blockhash,
-              lastValidBlockHeight
-            }, 'confirmed');
-            
-            console.log('Token account created successfully:', tokenAccountTxId);
-          } else {
-            throw new Error('Wallet does not support signTransaction');
-          }
         }
         
-        // Now execute the buy NFT transaction
-        const tx = await program.methods
-          .buyNft()
-          .accounts({
-            buyer: wallet.publicKey,
-            buyerAccount: buyerAccount,
-            sellerAccount: sellerAccount,
-            nftData: nftData,
-            nftMint: nftMint,
-            sellerNftTokenAccount: sellerNftTokenAccount,
-            buyerNftTokenAccount: buyerNftTokenAccount,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            systemProgram: SystemProgram.programId,
+        // Add the buy NFT instruction
+        transaction.add(
+          program.instruction.buyNft({
+            accounts: {
+              buyer: wallet.publicKey,
+              buyerAccount,
+              sellerAccount,
+              nftData,
+              nftMint,
+              sellerNftTokenAccount: sellerTokenAccount,
+              buyerNftTokenAccount: buyerTokenAccount,
+              tokenProgram: TOKEN_PROGRAM_ID,
+              systemProgram: SystemProgram.programId,
+            },
           })
-          .rpc({
-            skipPreflight: false,
-            preflightCommitment: 'confirmed',
-            commitment: 'confirmed'
-          });
+        );
         
-        console.log('NFT purchase transaction sent and confirmed:', tx);
-        setTxSignature(tx);
-        return tx;
-      } catch (fetchErr) {
-        console.error('Error fetching NFT data:', fetchErr);
-        throw new Error(`Failed to fetch NFT data: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+        // Get a fresh blockhash
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = blockhash;
+        
+        // Check if wallet adapter supports signing
+        if (!wallet.signTransaction) {
+          throw new Error('Wallet does not support transaction signing');
+        }
+        
+        // Sign with wallet
+        const signedTransaction = await wallet.signTransaction(transaction);
+        
+        // Send and confirm transaction
+        const signature = await provider.connection.sendRawTransaction(
+          signedTransaction.serialize(),
+          { skipPreflight: false, preflightCommitment: 'confirmed' }
+        );
+        
+        // Wait for confirmation
+        await provider.connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
+        
+        console.log('NFT purchased successfully with signature:', signature);
+        
+        setTxSignature(signature);
+        return { tx: signature };
+      } catch (err) {
+        console.error('Error fetching NFT data:', err);
+        throw new Error('Failed to fetch NFT data. The NFT may not exist or is not available for purchase.');
       }
     } catch (err) {
       console.error('Buy NFT error:', err);
@@ -422,66 +491,13 @@ export const useBuyNft = () => {
   return { buyNft, loading: loading || userAccountLoading, error, txSignature };
 };
 
-// Helper functions for token accounts
-async function getAssociatedTokenAddress(
-  mint: PublicKey,
-  owner: PublicKey
-): Promise<PublicKey> {
-  // This is a simplified version - in a real app, use the proper SPL token library function
-  return PublicKey.findProgramAddressSync(
-    [
-      owner.toBuffer(),
-      TOKEN_PROGRAM_ID.toBuffer(),
-      mint.toBuffer(),
-    ],
-    new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL')
-  )[0];
-}
-
-function createAssociatedTokenAccountInstruction(
-  payer: PublicKey,
-  associatedToken: PublicKey,
-  owner: PublicKey,
-  mint: PublicKey
-): any {
-  // This is a simplified version - in a real app, use the proper SPL token library function
-  const keys = [
-    { pubkey: payer, isSigner: true, isWritable: true },
-    { pubkey: associatedToken, isSigner: false, isWritable: true },
-    { pubkey: owner, isSigner: false, isWritable: false },
-    { pubkey: mint, isSigner: false, isWritable: false },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-  ];
+// Default export for the entire hook
+export default function useNftTransactions() {
+  const createNftHook = useCreateNft();
+  const buyNftHook = useBuyNft();
   
-  return new anchor.web3.TransactionInstruction({
-    keys,
-    programId: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
-    data: Buffer.from([]),
-  });
-}
-
-function createMintToInstruction(
-  mint: PublicKey,
-  destination: PublicKey,
-  authority: PublicKey,
-  amount: number
-): any {
-  // This is a simplified version - in a real app, use the proper SPL token library function
-  const keys = [
-    { pubkey: mint, isSigner: false, isWritable: true },
-    { pubkey: destination, isSigner: false, isWritable: true },
-    { pubkey: authority, isSigner: true, isWritable: false },
-  ];
-  
-  const data = Buffer.alloc(9);
-  data.writeUInt8(7, 0); // Mint instruction
-  data.writeBigUInt64LE(BigInt(amount), 1); // Amount as u64
-  
-  return new anchor.web3.TransactionInstruction({
-    keys,
-    programId: TOKEN_PROGRAM_ID,
-    data,
-  });
+  return {
+    ...createNftHook,
+    ...buyNftHook,
+  };
 }

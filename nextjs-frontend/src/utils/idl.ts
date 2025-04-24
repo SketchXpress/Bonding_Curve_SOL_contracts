@@ -249,6 +249,130 @@ export const IDL = {
       ]
     },
     {
+      name: "createNftData",
+      accounts: [
+        {
+          name: "creator",
+          isMut: true,
+          isSigner: true
+        },
+        {
+          name: "nftMint",
+          isMut: true,
+          isSigner: true
+        },
+        {
+          name: "nftData",
+          isMut: true,
+          isSigner: false
+        },
+        {
+          name: "userAccount",
+          isMut: true,
+          isSigner: false
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "tokenProgram",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "rent",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "tokenMetadataProgram",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "metadataAccount",
+          isMut: true,
+          isSigner: false
+        }
+      ],
+      args: [
+        {
+          name: "name",
+          type: "string"
+        },
+        {
+          name: "symbol",
+          type: "string"
+        },
+        {
+          name: "uri",
+          type: "string"
+        },
+        {
+          name: "sellerFeeBasisPoints",
+          type: "u16"
+        }
+      ]
+    },
+    {
+      name: "createMasterEdition",
+      accounts: [
+        {
+          name: "creator",
+          isMut: true,
+          isSigner: true
+        },
+        {
+          name: "nftMint",
+          isMut: true,
+          isSigner: false
+        },
+        {
+          name: "nftData",
+          isMut: true,
+          isSigner: false
+        },
+        {
+          name: "tokenProgram",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "tokenMetadataProgram",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "metadataAccount",
+          isMut: true,
+          isSigner: false
+        },
+        {
+          name: "masterEditionAccount",
+          isMut: true,
+          isSigner: false
+        },
+        {
+          name: "tokenAccount",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "rent",
+          isMut: false,
+          isSigner: false
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false
+        }
+      ],
+      args: []
+    },
+    {
       name: "buyNft",
       accounts: [
         {
