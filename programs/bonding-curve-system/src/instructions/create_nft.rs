@@ -16,16 +16,14 @@ pub struct CreateNFT<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
     
-    #[account(
-        init,
-        payer = creator,
-        mint::decimals = 0,
-        mint::authority = creator,
-    )]
+    // Changed from init to mut to allow using an existing mint account
+    // This is critical for the token-minting-first approach
+    #[account(mut)]
     pub nft_mint: Account<'info, Mint>,
     
+    // Changed from init to init_if_needed to handle existing NFT data accounts
     #[account(
-        init,
+        init_if_needed,
         payer = creator,
         seeds = [b"nft-data", nft_mint.key().as_ref()],
         bump,
@@ -64,6 +62,9 @@ pub fn create_nft(
     uri: String,
     seller_fee_basis_points: u16,
 ) -> Result<()> {
+    // Add logging for verification
+    msg!("NFT creation with init_if_needed constraint being executed");
+    
     let nft_data = &mut ctx.accounts.nft_data;
     let bump = ctx.bumps.nft_data;
     
@@ -121,6 +122,12 @@ pub fn create_nft(
     let token_program_info = ctx.accounts.token_program.to_account_info();
     let master_edition_account_info = ctx.accounts.master_edition_account.to_account_info();
     
+    // Log account addresses for debugging
+    msg!("Metadata account: {}", metadata_account_info.key());
+    msg!("NFT mint: {}", mint_account_info.key());
+    msg!("Creator: {}", creator_account_info.key());
+    msg!("Token metadata program: {}", token_metadata_program_info.key());
+    
     // Create metadata account using the Cpi struct
     let cpi_accounts = CreateMetadataAccountV3CpiAccounts {
         metadata: &metadata_account_info,
@@ -138,7 +145,15 @@ pub fn create_nft(
         cpi_accounts,
         args,
     );
-    metadata_cpi.invoke()?;
+    
+    // Add try-catch equivalent for better error handling
+    match metadata_cpi.invoke() {
+        Ok(_) => msg!("Metadata account created successfully"),
+        Err(err) => {
+            msg!("Error creating metadata account: {:?}", err);
+            return Err(err);
+        }
+    }
     
     // Create master edition account
     let master_edition_args = CreateMasterEditionV3InstructionArgs {
@@ -163,7 +178,16 @@ pub fn create_nft(
         master_edition_accounts,
         master_edition_args,
     );
-    master_edition_cpi.invoke()?;
     
+    // Add try-catch equivalent for better error handling
+    match master_edition_cpi.invoke() {
+        Ok(_) => msg!("Master edition account created successfully"),
+        Err(err) => {
+            msg!("Error creating master edition account: {:?}", err);
+            return Err(err);
+        }
+    }
+    
+    msg!("NFT creation completed successfully");
     Ok(())
 }

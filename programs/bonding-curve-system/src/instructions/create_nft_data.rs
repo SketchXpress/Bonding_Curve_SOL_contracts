@@ -13,16 +13,14 @@ pub struct CreateNFTData<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
     
-    #[account(
-        init,
-        payer = creator,
-        mint::decimals = 0,
-        mint::authority = creator,
-    )]
+    // Changed from init to mut to allow using an existing mint account
+    // This is critical for the token-minting-first approach
+    #[account(mut)]
     pub nft_mint: Account<'info, Mint>,
     
+    // Changed from init to init_if_needed to handle existing NFT data accounts
     #[account(
-        init,
+        init_if_needed,
         payer = creator,
         seeds = [b"nft-data", nft_mint.key().as_ref()],
         bump,
@@ -57,6 +55,9 @@ pub fn create_nft_data(
     uri: String,
     seller_fee_basis_points: u16,
 ) -> Result<()> {
+    // Add logging for verification
+    msg!("NFT data creation with init_if_needed constraint being executed");
+    
     let nft_data = &mut ctx.accounts.nft_data;
     let bump = ctx.bumps.nft_data;
     
@@ -77,6 +78,11 @@ pub fn create_nft_data(
     // Add NFT to user's owned NFTs
     let user = &mut ctx.accounts.user_account;
     user.owned_nfts.push(ctx.accounts.nft_mint.key());
+    
+    // Log account addresses for debugging
+    msg!("NFT data account: {}", nft_data.key());
+    msg!("NFT mint: {}", ctx.accounts.nft_mint.key());
+    msg!("Creator: {}", ctx.accounts.creator.key());
     
     // Create Metaplex metadata
     let creator = vec![
@@ -123,16 +129,22 @@ pub fn create_nft_data(
         rent: Some(&rent_account_info),
     };
     
-    // Create and invoke the CPI
+    // Create and invoke the CPI with improved error handling
     let metadata_cpi = CreateMetadataAccountV3Cpi::new(
         &token_metadata_program_info,
         cpi_accounts,
         args,
     );
-    metadata_cpi.invoke()?;
     
-    // Note: We don't create the master edition here, that will be done in a separate instruction
-    // after minting exactly one token
+    // Add try-catch equivalent for better error handling
+    match metadata_cpi.invoke() {
+        Ok(_) => msg!("Metadata account created successfully"),
+        Err(err) => {
+            msg!("Error creating metadata account: {:?}", err);
+            return Err(err);
+        }
+    }
     
+    msg!("NFT data creation completed successfully");
     Ok(())
 }
