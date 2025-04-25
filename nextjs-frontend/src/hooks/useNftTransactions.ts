@@ -9,24 +9,62 @@ import {
   SYSVAR_RENT_PUBKEY, 
   Transaction,
   TransactionInstruction,
-  AccountInfo
+  AccountInfo,
+  AccountMeta
 } from '@solana/web3.js';
 import { 
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddress,
-  createMintToInstruction
+  createMintToInstruction,
+  createInitializeMintInstruction,
+  MINT_SIZE,
+  getMinimumBalanceForRentExemptMint
 } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
-import * as anchor from '@project-serum/anchor';
-import { useUserAccount } from '@/hooks/useUserAccount';
+import * as anchor from '@coral-xyz/anchor'; // Using @coral-xyz/anchor instead of @project-serum/anchor
+import { useUserAccount } from './useUserAccount'; // Import useUserAccount hook
 
 // Define interfaces for the account data structures
 interface NftData {
   owner: PublicKey;
   // Add other fields as needed
 }
+
+// Helper function to safely stringify any error object
+const safeStringifyError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  if (typeof error === 'string') {
+    return error;
+  }
+  
+  if (error && typeof error === 'object') {
+    try {
+      // Try to extract common error properties
+      const errorObj = error as any;
+      if (errorObj.message) {
+        return String(errorObj.message);
+      }
+      if (errorObj.error && errorObj.error.message) {
+        return String(errorObj.error.message);
+      }
+      if (errorObj.logs && Array.isArray(errorObj.logs)) {
+        return errorObj.logs.join('\n');
+      }
+      
+      // If no common properties, stringify the whole object
+      return JSON.stringify(error, null, 2);
+    } catch (stringifyError) {
+      return `[Complex Error Object: ${typeof error}]`;
+    }
+  }
+  
+  return `[Unknown Error: ${typeof error}]`;
+};
 
 // Metaplex Token Metadata Program ID
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -50,8 +88,8 @@ export const useCreateNft = () => {
       }
       const accountInfo = await provider.connection.getAccountInfo(pubkey);
       return accountInfo !== null;
-    } catch (err) {
-      console.error('Error checking if account exists:', err);
+    } catch (error) {
+      console.error('Error checking if account exists:', safeStringifyError(error));
       return false;
     }
   };
@@ -59,6 +97,12 @@ export const useCreateNft = () => {
   const createNft = async (name: string, symbol: string, uri: string, sellerFeeBasisPoints: number) => {
     if (!program || !wallet.publicKey || !provider) {
       setError('Program not initialized or wallet not connected');
+      return null;
+    }
+
+    // Check if wallet supports transaction signing
+    if (!wallet.signTransaction) {
+      setError('Wallet does not support transaction signing');
       return null;
     }
 
@@ -134,66 +178,61 @@ export const useCreateNft = () => {
       
       console.log('Associated token address:', associatedTokenAddress.toString());
       
-      // Step 1: Create NFT data and metadata (without master edition)
-      console.log('Step 1: Creating NFT data and metadata...');
+      // ALTERNATIVE APPROACH: Token-minting first using existing instructions
       
-      // Create a transaction instruction manually with all required accounts
-      const createNftDataTx = new Transaction({ feePayer: wallet.publicKey });
+      // Step 1: Create mint account and initialize it
+      console.log('Step 1: Creating and initializing mint account...');
+      const createMintTx = new Transaction({ feePayer: wallet.publicKey });
       
-      // Add the instruction to create the NFT data and metadata
-      createNftDataTx.add(
-        new TransactionInstruction({
-          programId: program.programId,
-          keys: [
-            // Accounts from the CreateNFTData struct in create_nft_data.rs
-            { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // creator
-            { pubkey: nftMint, isSigner: true, isWritable: true }, // nft_mint - IMPORTANT: isSigner must be true
-            { pubkey: nftData, isSigner: false, isWritable: true }, // nft_data
-            { pubkey: userAccount, isSigner: false, isWritable: true }, // user_account
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
-            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
-            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // rent
-            { pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false }, // token_metadata_program
-            { pubkey: metadataAccount, isSigner: false, isWritable: true }, // metadata_account
-          ],
-          data: program.coder.instruction.encode('create_nft_data', {
-            name,
-            symbol,
-            uri,
-            seller_fee_basis_points: sellerFeeBasisPoints
-          })
+      // Get minimum balance for rent exemption
+      const lamports = await getMinimumBalanceForRentExemptMint(provider.connection);
+      
+      // Add instruction to create account for mint
+      createMintTx.add(
+        SystemProgram.createAccount({
+          fromPubkey: wallet.publicKey,
+          newAccountPubkey: nftMint,
+          space: MINT_SIZE,
+          lamports,
+          programId: TOKEN_PROGRAM_ID,
         })
       );
       
-      // Get a fresh blockhash
-      const createNftDataBh = await provider.connection.getLatestBlockhash('confirmed');
-      createNftDataTx.recentBlockhash = createNftDataBh.blockhash;
+      // Add instruction to initialize mint
+      createMintTx.add(
+        createInitializeMintInstruction(
+          nftMint, // mint pubkey
+          0, // decimals
+          wallet.publicKey, // mint authority
+          wallet.publicKey, // freeze authority (optional)
+          TOKEN_PROGRAM_ID
+        )
+      );
       
-      // Check if wallet adapter supports signing
-      if (!wallet.signTransaction) {
-        throw new Error('Wallet does not support transaction signing');
-      }
+      // Get a fresh blockhash
+      const createMintBh = await provider.connection.getLatestBlockhash('confirmed');
+      createMintTx.recentBlockhash = createMintBh.blockhash;
       
       // First sign with the mint keypair
-      createNftDataTx.sign(nftMintKeypair);
+      createMintTx.sign(nftMintKeypair);
       
       // Then sign with the wallet
-      const signedCreateNftDataTx = await wallet.signTransaction(createNftDataTx);
+      const signedCreateMintTx = await wallet.signTransaction(createMintTx);
       
       // Send and confirm transaction
-      const createNftDataSignature = await provider.connection.sendRawTransaction(
-        signedCreateNftDataTx.serialize(),
+      const createMintSignature = await provider.connection.sendRawTransaction(
+        signedCreateMintTx.serialize(),
         { skipPreflight: false, preflightCommitment: 'confirmed' }
       );
       
       // Wait for confirmation
       await provider.connection.confirmTransaction({
-        signature: createNftDataSignature,
-        blockhash: createNftDataBh.blockhash,
-        lastValidBlockHeight: createNftDataBh.lastValidBlockHeight
+        signature: createMintSignature,
+        blockhash: createMintBh.blockhash,
+        lastValidBlockHeight: createMintBh.lastValidBlockHeight
       }, 'confirmed');
       
-      console.log('NFT data and metadata created successfully with signature:', createNftDataSignature);
+      console.log('Mint account created and initialized with signature:', createMintSignature);
       
       // Step 2: Create associated token account and mint exactly one token
       console.log('Step 2: Creating associated token account and minting one token...');
@@ -252,59 +291,160 @@ export const useCreateNft = () => {
       
       console.log('Token minted successfully with signature:', mintTokenSignature);
       
-      // Step 3: Create master edition
-      console.log('Step 3: Creating master edition...');
-      const createMasterEditionTx = new Transaction({ feePayer: wallet.publicKey });
+      // Step 3: Create NFT data and metadata using the existing create_nft instruction
+      console.log('Step 3: Creating NFT data and metadata...');
       
-      // Add the instruction to create the master edition
-      createMasterEditionTx.add(
-        new TransactionInstruction({
-          programId: program.programId,
-          keys: [
-            // Accounts required for master edition creation
-            { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // creator
-            { pubkey: nftMint, isSigner: false, isWritable: true }, // nft_mint
-            { pubkey: nftData, isSigner: false, isWritable: true }, // nft_data
-            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
-            { pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false }, // token_metadata_program
-            { pubkey: metadataAccount, isSigner: false, isWritable: true }, // metadata_account
-            { pubkey: masterEditionAccount, isSigner: false, isWritable: true }, // master_edition_account
-            { pubkey: associatedTokenAddress, isSigner: false, isWritable: false }, // token_account
-            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // rent
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
-          ],
-          data: program.coder.instruction.encode('create_master_edition', {})
+      // Create a transaction
+      const createNftTx = new Transaction({ feePayer: wallet.publicKey });
+      
+      try {
+        // Log all accounts we're going to pass to help with debugging
+        console.log('Preparing accounts for createNft instruction:');
+        console.log(`Creator: ${wallet.publicKey.toString()}`);
+        console.log(`NFT Mint: ${nftMint.toString()}`);
+        console.log(`NFT Data: ${nftData.toString()}`);
+        console.log(`User Account: ${userAccount.toString()}`);
+        console.log(`System Program: ${SystemProgram.programId.toString()}`);
+        console.log(`Token Program: ${TOKEN_PROGRAM_ID.toString()}`);
+        console.log(`Rent: ${SYSVAR_RENT_PUBKEY.toString()}`);
+        console.log(`Token Metadata Program: ${TOKEN_METADATA_PROGRAM_ID.toString()}`);
+        console.log(`Metadata Account: ${metadataAccount.toString()}`);
+        console.log(`Master Edition Account: ${masterEditionAccount.toString()}`);
+        
+        // Create the instruction manually to ensure all accounts are included
+        const accounts: AccountMeta[] = [
+          { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+          { pubkey: nftMint, isSigner: false, isWritable: true },
+          { pubkey: nftData, isSigner: false, isWritable: true },
+          { pubkey: userAccount, isSigner: false, isWritable: true },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+          { pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: metadataAccount, isSigner: false, isWritable: true },
+          { pubkey: masterEditionAccount, isSigner: false, isWritable: true },
+        ];
+        
+        // Get the instruction using program.methods
+        const ix = await program.methods.createNft(
+          name,
+          symbol,
+          uri,
+          sellerFeeBasisPoints
+        )
+        .accounts({
+          creator: wallet.publicKey,
+          nftMint: nftMint,
+          nftData: nftData,
+          userAccount: userAccount,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: SYSVAR_RENT_PUBKEY,
+          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+          metadataAccount: metadataAccount,
+          masterEditionAccount: masterEditionAccount,
         })
-      );
+        .instruction();
+        
+        // Log all accounts we're passing to help with debugging
+        console.log('Passing the following accounts to createNft instruction:');
+        ix.keys.forEach((meta, index) => {
+          console.log(`${index}: ${meta.pubkey.toString()} (writable: ${meta.isWritable}, signer: ${meta.isSigner})`);
+        });
+        
+        // Verify that all required accounts are included
+        if (ix.keys.length < 10) {
+          console.warn(`Warning: Expected at least 10 accounts, but only ${ix.keys.length} are included in the instruction`);
+          
+          // Check which accounts might be missing
+          const accountsInIx = new Set(ix.keys.map(meta => meta.pubkey.toString()));
+          const requiredAccounts = [
+            { name: 'Creator', pubkey: wallet.publicKey.toString() },
+            { name: 'NFT Mint', pubkey: nftMint.toString() },
+            { name: 'NFT Data', pubkey: nftData.toString() },
+            { name: 'User Account', pubkey: userAccount.toString() },
+            { name: 'System Program', pubkey: SystemProgram.programId.toString() },
+            { name: 'Token Program', pubkey: TOKEN_PROGRAM_ID.toString() },
+            { name: 'Rent', pubkey: SYSVAR_RENT_PUBKEY.toString() },
+            { name: 'Token Metadata Program', pubkey: TOKEN_METADATA_PROGRAM_ID.toString() },
+            { name: 'Metadata Account', pubkey: metadataAccount.toString() },
+            { name: 'Master Edition Account', pubkey: masterEditionAccount.toString() },
+          ];
+          
+          const missingAccounts = requiredAccounts.filter(acc => !accountsInIx.has(acc.pubkey));
+          if (missingAccounts.length > 0) {
+            console.warn('Missing accounts:', missingAccounts.map(acc => acc.name).join(', '));
+            
+            // Use our manually created account list instead
+            console.log('Using manually created account list to ensure all accounts are included');
+            
+            // Create instruction data manually
+            const data = program.coder.instruction.encode('create_nft', {
+              name,
+              symbol,
+              uri,
+              sellerFeeBasisPoints,
+            });
+            
+            // Create instruction manually
+            const manualIx = new TransactionInstruction({
+              keys: accounts,
+              programId: program.programId,
+              data,
+            });
+            
+            createNftTx.add(manualIx);
+          } else {
+            createNftTx.add(ix);
+          }
+        } else {
+          createNftTx.add(ix);
+        }
+      } catch (error) {
+        const errorMessage = safeStringifyError(error);
+        console.error('Error creating instruction:', errorMessage);
+        throw new Error(`Failed to create instruction: ${errorMessage}`);
+      }
       
       // Get a fresh blockhash
-      const createMasterEditionBh = await provider.connection.getLatestBlockhash('confirmed');
-      createMasterEditionTx.recentBlockhash = createMasterEditionBh.blockhash;
+      const createNftBh = await provider.connection.getLatestBlockhash('confirmed');
+      createNftTx.recentBlockhash = createNftBh.blockhash;
       
       // Sign with wallet
-      const signedCreateMasterEditionTx = await wallet.signTransaction(createMasterEditionTx);
+      const signedCreateNftTx = await wallet.signTransaction(createNftTx);
       
-      // Send and confirm transaction
-      const createMasterEditionSignature = await provider.connection.sendRawTransaction(
-        signedCreateMasterEditionTx.serialize(),
-        { skipPreflight: false, preflightCommitment: 'confirmed' }
+      // Send and confirm transaction with preflight disabled to get more detailed error messages
+      const createNftSignature = await provider.connection.sendRawTransaction(
+        signedCreateNftTx.serialize(),
+        { 
+          skipPreflight: true, // Disable preflight to get more detailed error messages
+          preflightCommitment: 'confirmed' 
+        }
       );
       
       // Wait for confirmation
-      await provider.connection.confirmTransaction({
-        signature: createMasterEditionSignature,
-        blockhash: createMasterEditionBh.blockhash,
-        lastValidBlockHeight: createMasterEditionBh.lastValidBlockHeight
+      const confirmationResult = await provider.connection.confirmTransaction({
+        signature: createNftSignature,
+        blockhash: createNftBh.blockhash,
+        lastValidBlockHeight: createNftBh.lastValidBlockHeight
       }, 'confirmed');
       
-      console.log('Master edition created successfully with signature:', createMasterEditionSignature);
+      // Check for transaction errors
+      if (confirmationResult.value.err) {
+        const txError = safeStringifyError(confirmationResult.value.err);
+        console.error('Transaction error:', txError);
+        throw new Error(`Transaction failed: ${txError}`);
+      }
       
-      setTxSignature(createMasterEditionSignature);
+      console.log('NFT created successfully with signature:', createNftSignature);
+      
+      setTxSignature(createNftSignature);
       setNftMintAddress(nftMint.toString());
-      return { tx: createMasterEditionSignature, nftMint: nftMint.toString() };
-    } catch (err) {
-      console.error('Create NFT error:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      return { tx: createNftSignature, nftMint: nftMint.toString() };
+    } catch (error) {
+      const errorMessage = safeStringifyError(error);
+      console.error('Create NFT error:', errorMessage);
+      setError(errorMessage);
       return null;
     } finally {
       setLoading(false);
@@ -332,8 +472,8 @@ export const useBuyNft = () => {
       }
       const accountInfo = await provider.connection.getAccountInfo(pubkey);
       return accountInfo !== null;
-    } catch (err) {
-      console.error('Error checking if account exists:', err);
+    } catch (error) {
+      console.error('Error checking if account exists:', safeStringifyError(error));
       return false;
     }
   };
@@ -341,6 +481,12 @@ export const useBuyNft = () => {
   const buyNft = async (nftMintAddress: string) => {
     if (!program || !wallet.publicKey || !provider) {
       setError('Program not initialized or wallet not connected');
+      return null;
+    }
+
+    // Check if wallet supports transaction signing
+    if (!wallet.signTransaction) {
+      setError('Wallet does not support transaction signing');
       return null;
     }
 
@@ -409,79 +555,74 @@ export const useBuyNft = () => {
           TOKEN_PROGRAM_ID
         );
         
-        // Check if the buyer token account exists
+        // Check if buyer token account exists, if not create it
         const buyerTokenAccountExists = await accountExists(buyerTokenAccount);
         
-        // Create a transaction
-        const transaction = new Transaction({ feePayer: wallet.publicKey });
+        // Create transaction
+        const tx = new Transaction();
         
-        // If the buyer token account doesn't exist, create it
+        // If buyer token account doesn't exist, add instruction to create it
         if (!buyerTokenAccountExists) {
-          console.log('Buyer token account does not exist, creating it...');
-          transaction.add(
+          tx.add(
             createAssociatedTokenAccountInstruction(
-              wallet.publicKey, // payer
-              buyerTokenAccount, // associated token account
-              wallet.publicKey, // owner
-              nftMint, // mint
+              wallet.publicKey,
+              buyerTokenAccount,
+              wallet.publicKey,
+              nftMint,
               TOKEN_PROGRAM_ID
             )
           );
         }
         
-        // Add the buy NFT instruction
-        transaction.add(
-          program.instruction.buyNft({
-            accounts: {
+        // Add buy NFT instruction
+        tx.add(
+          await program.methods.buyNft()
+            .accounts({
               buyer: wallet.publicKey,
-              buyerAccount,
-              sellerAccount,
-              nftData,
-              nftMint,
-              sellerNftTokenAccount: sellerTokenAccount,
-              buyerNftTokenAccount: buyerTokenAccount,
+              seller: ownerPublicKey,
+              nftMint: nftMint,
+              nftData: nftData,
+              buyerAccount: buyerAccount,
+              sellerAccount: sellerAccount,
+              buyerTokenAccount: buyerTokenAccount,
+              sellerTokenAccount: sellerTokenAccount,
               tokenProgram: TOKEN_PROGRAM_ID,
               systemProgram: SystemProgram.programId,
-            },
-          })
+            })
+            .instruction()
         );
         
-        // Get a fresh blockhash
-        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash('confirmed');
-        transaction.recentBlockhash = blockhash;
+        // Get recent blockhash
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = wallet.publicKey;
         
-        // Check if wallet adapter supports signing
-        if (!wallet.signTransaction) {
-          throw new Error('Wallet does not support transaction signing');
-        }
+        // Sign transaction
+        const signedTx = await wallet.signTransaction(tx);
         
-        // Sign with wallet
-        const signedTransaction = await wallet.signTransaction(transaction);
+        // Send transaction
+        const signature = await provider.connection.sendRawTransaction(signedTx.serialize());
         
-        // Send and confirm transaction
-        const signature = await provider.connection.sendRawTransaction(
-          signedTransaction.serialize(),
-          { skipPreflight: false, preflightCommitment: 'confirmed' }
-        );
-        
-        // Wait for confirmation
+        // Confirm transaction
         await provider.connection.confirmTransaction({
           signature,
           blockhash,
           lastValidBlockHeight
-        }, 'confirmed');
+        });
         
         console.log('NFT purchased successfully with signature:', signature);
         
         setTxSignature(signature);
         return { tx: signature };
-      } catch (err) {
-        console.error('Error fetching NFT data:', err);
-        throw new Error('Failed to fetch NFT data. The NFT may not exist or is not available for purchase.');
+      } catch (error) {
+        const errorMessage = safeStringifyError(error);
+        console.error('Error fetching NFT data:', errorMessage);
+        throw new Error(`Failed to fetch NFT data: ${errorMessage}`);
       }
-    } catch (err) {
-      console.error('Buy NFT error:', err);
-      setError(err instanceof Error ? err.message : String(err));
+    } catch (error) {
+      const errorMessage = safeStringifyError(error);
+      console.error('Buy NFT error:', errorMessage);
+      setError(errorMessage);
       return null;
     } finally {
       setLoading(false);
@@ -491,13 +632,20 @@ export const useBuyNft = () => {
   return { buyNft, loading: loading || userAccountLoading, error, txSignature };
 };
 
-// Default export for the entire hook
-export default function useNftTransactions() {
-  const createNftHook = useCreateNft();
-  const buyNftHook = useBuyNft();
+// Default export for the combined hook
+export const useNftTransactions = () => {
+  const { createNft, loading: createLoading, error: createError, txSignature: createTxSignature, nftMintAddress } = useCreateNft();
+  const { buyNft, loading: buyLoading, error: buyError, txSignature: buyTxSignature } = useBuyNft();
   
   return {
-    ...createNftHook,
-    ...buyNftHook,
+    createNft,
+    buyNft,
+    loading: createLoading || buyLoading,
+    error: createError || buyError,
+    createTxSignature,
+    buyTxSignature,
+    nftMintAddress
   };
-}
+};
+
+export default useNftTransactions;
