@@ -1,181 +1,148 @@
-# SketchXpress SOL Contracts
+---
 
-A Solana blockchain project implementing a bonding curve token system with NFT functionality.
+# SketchXpress SOL Contracts  
+A Solana blockchain project implementing a **bonding curve system for NFTs** with dynamic pricing, burn mechanics, and Tensor marketplace integration.  
 
-## Overview
+---
 
-This project implements an exponential bonding curve system on Solana, allowing users to:
+## Overview  
+This project combines an exponential bonding curve model with NFT creation/trading, enabling:  
+- **Dynamic NFT Pricing**: Prices increase exponentially with supply (`price = base_price * e^(growth_factor * supply)`).  
+- **Burn-Distribute Mechanism**: A percentage of secondary sales and buybacks is burned (reducing supply) and redistributed to holders.  
+- **Tensor Migration**: Collections automatically graduate to Tensor marketplace when reaching $69k market cap.  
+- **Self-Regulating Economy**: Fees fund platform sustainability while incentivizing early adopters and long-term holders.  
 
-- Create bonding curve pools with customizable parameters
-- Buy and sell tokens following the bonding curve pricing model
-- Create and trade NFTs within the ecosystem
-- Manage user accounts and track owned assets
+---
 
-The system uses mathematical principles to determine token prices based on market capitalization, creating a self-regulating token economy.
+## Key Features  
+- **Bonding Curve Pools**: Create NFT collections with customizable `base_price` and `growth_factor`.  
+- **NFT Minting**: Mint NFTs at algorithmically determined prices.  
+- **Secondary Trading**: Buy/sell NFTs peer-to-peer or via buyback to the pool.  
+- **Burn & Redistribution**:  
+  - 3% of secondary sales burned (reduces supply) + 1.5% distributed to holders.  
+  - 5% buyback penalty (2.5% burned + 2.5% distributed).  
+- **Tensor Integration**: Seamless migration to Tensor for enhanced liquidity.  
 
-## Project Structure
+---
 
-The project consists of three main components:
+## Project Structure  
+### 1. Smart Contracts (`programs/bonding-curve-system`)  
+- **Pool Management**: Create/update bonding curve pools.  
+- **NFT Operations**: Mint, buy, sell, and burn NFTs with integrated fee logic.  
+- **User Accounts**: Track owned NFTs and earned rewards.  
 
-1. **Solana Smart Contracts**: Rust-based programs using the Anchor framework
-2. **NextJS Frontend**: Modern React-based frontend with TypeScript
-3. **Simple HTML/JS Frontend**: Alternative lightweight implementation
+### 2. Frontend Implementations  
+- **NextJS Frontend** (`nextjs-frontend`):  
+  - Real-time bonding curve visualization.  
+  - Burn/distribution tracking dashboard.  
+  - Migration status to Tensor.  
+- **Simple Frontend** (`simple-frontend`): Lightweight UI for core functions.  
 
-### Smart Contracts
+### 3. Testing & Migration  
+- **Tests**: Validate bonding curve math, burn/distribution, and threshold detection.  
+- **Tensor Sync**: Automated metadata and liquidity migration.  
 
-The contracts are located in the `programs/bonding-curve-system` directory and implement the following functionality:
+---
 
-- **Pool Management**: Create and manage bonding curve pools
-- **Token Operations**: Buy and sell tokens with dynamic pricing
-- **NFT Functionality**: Create and trade NFTs
-- **User Management**: Create user accounts and track owned assets
+## Technical Details  
+### Bonding Curve Implementation  
+- **Price Formula**: `price = base_price * e^(growth_factor * supply)`  
+- **Supply Adjustments**:  
+  - **Minting**: Increases supply → price rises.  
+  - **Buybacks**: Decreases supply → price drops.  
+- **Burn Mechanics**:  
+  - 50% of burn fees permanently remove SOL from circulation.  
+  - 50% distributed to NFT holders proportionally.  
 
-### Frontend Implementations
+### NFT Functionality  
+- **Metadata Standards**: Metaplex-compatible with enforced royalties.  
+- **Provenance Tracking**: All NFTs tagged "Minted via SketchXpress".  
 
-#### NextJS Frontend
+### Threshold Detection  
+- **Migration Trigger**: `sol_reserves >= 69,000 SOL` (~$69k).  
+- **Post-Migration**:  
+  - NFTs listed on Tensor with retained metadata.  
+  - Royalties enforced via Tensor’s AMM.  
 
-The NextJS frontend (`nextjs-frontend` directory) provides a modern, responsive interface for interacting with the contracts. It uses:
+---
 
-- React hooks for state management
-- Solana wallet adapter for wallet connections
-- Anchor framework for contract interactions
-- TypeScript for type safety
+## Setup & Installation  
+### Prerequisites  
+- Solana CLI  
+- Node.js, npm/yarn  
+- Rust, Anchor  
 
-#### Simple Frontend
-
-The simple frontend (`simple-frontend` directory) offers a lightweight alternative using vanilla JavaScript and HTML.
-
-## Technical Details
-
-### Bonding Curve Implementation
-
-The project implements an exponential bonding curve with the following characteristics:
-
-- **Price Calculation**: `price = base_price * e^(growth_factor * current_market_cap)`
-- **Buy Cost**: Calculated using the average price during the purchase
-- **Sell Amount**: Calculated using the average price during the sale
-- **Platform Fee**: 5% of total transaction cost
-- **Threshold Detection**: Special handling when market cap crosses $69k
-
-The implementation uses Taylor series approximation for efficient on-chain calculation of the exponential function.
-
-### NFT Functionality
-
-The NFT system allows:
-
-- Creating NFTs with customizable metadata
-- Trading NFTs between users
-- Tracking ownership through user accounts
-
-## Setup and Installation
-
-### Prerequisites
-
-- Solana CLI tools
-- Node.js and npm/yarn
-- Rust and Cargo
-
-### Installation
-
-1. Clone the repository:
-
-   ```
+### Quick Start  
+1. Clone the repository:  
+   ```bash
    git clone https://github.com/SketchXpress/Bonding_Curve_SOL_contracts.git
    cd Bonding_Curve_SOL_contracts
    ```
-
-2. Install dependencies:
-
-   ```
+2. Install dependencies:  
+   ```bash
    npm install
    ```
-
-3. Build the program:
-   ```
+3. Build the program:  
+   ```bash
    anchor build
    ```
 
-### Running the NextJS Frontend
+---
 
-1. Navigate to the NextJS frontend directory:
+## Usage Guide  
+### Creating a Pool  
+1. Connect wallet.  
+2. Navigate to **Create Pool**.  
+3. Set parameters:  
+   - `base_price`: Initial NFT price (e.g., 0.1 SOL).  
+   - `growth_factor`: Exponential growth rate (e.g., 0.0001).  
+4. Submit transaction (~0.003 SOL fee).  
 
-   ```
-   cd nextjs-frontend
-   ```
+### Minting NFTs  
+1. Select a pool.  
+2. Pay current price + 1% platform fee.  
+3. NFT added to your wallet and collection supply.  
 
-2. Install dependencies:
+### Secondary Trading  
+- **Peer-to-Peer**: List NFTs ≥ current curve price (5% creator + 2% platform fees).  
+- **Buyback to Pool**: Sell at 95% of current price (5% penalty: 2.5% burned + 2.5% distributed).  
 
-   ```
-   npm install
-   ```
+### Migrating to Tensor  
+1. When `sol_reserves` hits 69k SOL, click **Migrate to Tensor**.  
+2. Confirm transaction (6 SOL fee).  
+3. Trade on Tensor with aggregated liquidity.  
 
-3. Start the development server:
+---
 
-   ```
-   npm run dev
-   ```
+## Economic Model  
+| Action          | Fees/Penalties              | Recipient          |
+|-----------------|-----------------------------|--------------------|
+| **Mint**        | 1% of price                 | Platform           |
+| **Secondary Sale** | 5% royalty              | Creator            |
+| **Secondary Sale** | 3% burn/distribute      | Burn (1.5%) + Holders (1.5%) |
+| **Buyback**     | 5% penalty                  | Burn (2.5%) + Holders (2.5%) |  
 
-4. Open your browser and navigate to `http://localhost:3000`
+---
 
-### Running the Simple Frontend
-
-1. Navigate to the simple frontend directory:
-
-   ```
-   cd simple-frontend
-   ```
-
-2. Open `index.html` in your browser
-
-## Usage Guide
-
-### Creating a Pool
-
-1. Connect your wallet
-2. Navigate to the "Create Pool" section
-3. Enter the base price and growth factor parameters
-4. Submit the transaction
-
-### Buying Tokens
-
-1. Connect your wallet
-2. Navigate to the "Buy Tokens" section
-3. Enter the amount of tokens to buy
-4. Submit the transaction
-
-### Creating an NFT
-
-1. Connect your wallet
-2. Navigate to the "Create NFT" section
-3. Enter the NFT metadata (name, symbol, URI, seller fee)
-4. Submit the transaction
-
-### Buying an NFT
-
-1. Connect your wallet
-2. Navigate to the "Buy NFT" section
-3. Enter the NFT mint address
-4. Submit the transaction
-
-## Development Notes
-
-### Known Issues
-
-- When creating NFTs, both the mint account and NFT data account must be created in a single transaction
-- The IDL must be modified at runtime to correctly mark the NFT mint account as a signer
-
-### Testing
-
-Run the tests with:
-
-```
+## Testing  
+```bash
 anchor test
 ```
+**Key Tests**:  
+- Bonding curve price accuracy.  
+- Fee distribution and burn mechanics.  
+- Threshold detection and Tensor migration.  
 
-## License
+---
 
-[APACHE2 License](LICENSE)
+## License  
+Apache-2.0  
 
-## Contributing
+---
 
-Contributions are paused currently !
+## Contributing  
+Contributions paused pending post-migration analytics.  
+
+---
+
+This README reflects the updated bonding curve mechanics, burn-distribute model, and Tensor integration. 
