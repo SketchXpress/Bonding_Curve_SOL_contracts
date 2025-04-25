@@ -147,11 +147,12 @@ pub fn create_nft(
     );
     
     // Add try-catch equivalent for better error handling
+    // Fixed: Added .into() to convert ProgramError to Error
     match metadata_cpi.invoke() {
         Ok(_) => msg!("Metadata account created successfully"),
         Err(err) => {
             msg!("Error creating metadata account: {:?}", err);
-            return Err(err);
+            return Err(err.into());
         }
     }
     
@@ -180,11 +181,12 @@ pub fn create_nft(
     );
     
     // Add try-catch equivalent for better error handling
+    // Fixed: Added .into() to convert ProgramError to Error
     match master_edition_cpi.invoke() {
         Ok(_) => msg!("Master edition account created successfully"),
         Err(err) => {
             msg!("Error creating master edition account: {:?}", err);
-            return Err(err);
+            return Err(err.into());
         }
     }
     

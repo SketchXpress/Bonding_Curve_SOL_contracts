@@ -1,546 +1,658 @@
 // This file will contain the IDL for the bonding curve system program
 // We'll extract this from the original repository
 
-export const PROGRAM_ID = '2sXRjvboPwnNEpNYejYQZrjpe37fMmQhVpfRqg6RvnjU';
+export const PROGRAM_ID = 'CoUUn4AacKW8n8Cc1zZVMPP185CaRjqYEAvu4vcGC58G';
 
 export const IDL = {
-  version: "0.1.0",
-  name: "bonding_curve_system",
-  instructions: [
+  "version": "0.1.0",
+  "name": "bonding_curve_system",
+  "instructions": [
     {
-      name: "createUser",
-      accounts: [
+      "name": "createPool",
+      "accounts": [
         {
-          name: "owner",
-          isMut: true,
-          isSigner: true
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "userAccount",
-          isMut: true,
-          isSigner: false
+          "name": "realTokenMint",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false
+          "name": "syntheticTokenMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "realTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
         }
       ],
-      args: [
+      "args": [
         {
-          name: "maxNfts",
-          type: "u8"
+          "name": "basePrice",
+          "type": "u64"
+        },
+        {
+          "name": "growthFactor",
+          "type": "u64"
         }
       ]
     },
     {
-      name: "createPool",
-      accounts: [
+      "name": "createUser",
+      "accounts": [
         {
-          name: "authority",
-          isMut: true,
-          isSigner: true
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "realTokenMint",
-          isMut: false,
-          isSigner: false
+          "name": "userAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "syntheticTokenMint",
-          isMut: true,
-          isSigner: false
-        },
-        {
-          name: "realTokenVault",
-          isMut: true,
-          isSigner: false
-        },
-        {
-          name: "pool",
-          isMut: true,
-          isSigner: false
-        },
-        {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false
-        },
-        {
-          name: "tokenProgram",
-          isMut: false,
-          isSigner: false
-        },
-        {
-          name: "rent",
-          isMut: false,
-          isSigner: false
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
-      args: [
+      "args": [
         {
-          name: "basePrice",
-          type: "u64"
-        },
-        {
-          name: "growthFactor",
-          type: "u64"
+          "name": "maxNfts",
+          "type": "u8"
         }
       ]
     },
     {
-      name: "buyToken",
-      accounts: [
+      "name": "buyToken",
+      "accounts": [
         {
-          name: "buyer",
-          isMut: true,
-          isSigner: true
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "pool",
-          isMut: true,
-          isSigner: false
+          "name": "userAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "realTokenVault",
-          isMut: true,
-          isSigner: false
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "syntheticTokenMint",
-          isMut: true,
-          isSigner: false
+          "name": "realTokenMint",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "buyerSyntheticTokenAccount",
-          isMut: true,
-          isSigner: false
+          "name": "syntheticTokenMint",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "buyerRealTokenAccount",
-          isMut: true,
-          isSigner: false
+          "name": "realTokenVault",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "userAccount",
-          isMut: true,
-          isSigner: false
+          "name": "buyerTokenAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "tokenProgram",
-          isMut: false,
-          isSigner: false
+          "name": "buyerSyntheticTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
-      args: [
+      "args": [
         {
-          name: "amount",
-          type: "u64"
+          "name": "amount",
+          "type": "u64"
         }
       ]
     },
     {
-      name: "sellToken",
-      accounts: [
+      "name": "sellToken",
+      "accounts": [
         {
-          name: "seller",
-          isMut: true,
-          isSigner: true
+          "name": "seller",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "pool",
-          isMut: true,
-          isSigner: false
+          "name": "userAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "realTokenVault",
-          isMut: true,
-          isSigner: false
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "syntheticTokenMint",
-          isMut: true,
-          isSigner: false
+          "name": "realTokenMint",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "sellerSyntheticTokenAccount",
-          isMut: true,
-          isSigner: false
+          "name": "syntheticTokenMint",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "sellerRealTokenAccount",
-          isMut: true,
-          isSigner: false
+          "name": "realTokenVault",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "userAccount",
-          isMut: true,
-          isSigner: false
+          "name": "sellerTokenAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "tokenProgram",
-          isMut: false,
-          isSigner: false
+          "name": "sellerSyntheticTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
-      args: [
+      "args": [
         {
-          name: "amount",
-          type: "u64"
+          "name": "amount",
+          "type": "u64"
         }
       ]
     },
     {
-      name: "createNft",
-      accounts: [
+      "name": "createNft",
+      "accounts": [
         {
-          name: "creator",
-          isMut: true,
-          isSigner: true
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "nftMint",
-          isMut: true,
-          isSigner: false
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "nftData",
-          isMut: true,
-          isSigner: false
+          "name": "nftData",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "userAccount",
-          isMut: true,
-          isSigner: false
+          "name": "userAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "tokenProgram",
-          isMut: false,
-          isSigner: false
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "rent",
-          isMut: false,
-          isSigner: false
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "metadataAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterEditionAccount",
+          "isMut": true,
+          "isSigner": false
         }
       ],
-      args: [
+      "args": [
         {
-          name: "name",
-          type: "string"
+          "name": "name",
+          "type": "string"
         },
         {
-          name: "symbol",
-          type: "string"
+          "name": "symbol",
+          "type": "string"
         },
         {
-          name: "uri",
-          type: "string"
+          "name": "uri",
+          "type": "string"
         },
         {
-          name: "sellerFeeBasisPoints",
-          type: "u16"
+          "name": "sellerFeeBasisPoints",
+          "type": "u16"
         }
       ]
     },
     {
-      name: "createNftData",
-      accounts: [
+      "name": "createNftData",
+      "accounts": [
         {
-          name: "creator",
-          isMut: true,
-          isSigner: true
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "nftMint",
-          isMut: true,
-          isSigner: true
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "nftData",
-          isMut: true,
-          isSigner: false
+          "name": "nftData",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "userAccount",
-          isMut: true,
-          isSigner: false
+          "name": "userAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "tokenProgram",
-          isMut: false,
-          isSigner: false
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "rent",
-          isMut: false,
-          isSigner: false
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "tokenMetadataProgram",
-          isMut: false,
-          isSigner: false
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "metadataAccount",
-          isMut: true,
-          isSigner: false
+          "name": "metadataAccount",
+          "isMut": true,
+          "isSigner": false
         }
       ],
-      args: [
+      "args": [
         {
-          name: "name",
-          type: "string"
+          "name": "name",
+          "type": "string"
         },
         {
-          name: "symbol",
-          type: "string"
+          "name": "symbol",
+          "type": "string"
         },
         {
-          name: "uri",
-          type: "string"
+          "name": "uri",
+          "type": "string"
         },
         {
-          name: "sellerFeeBasisPoints",
-          type: "u16"
+          "name": "sellerFeeBasisPoints",
+          "type": "u16"
         }
       ]
     },
     {
-      name: "createMasterEdition",
-      accounts: [
+      "name": "createMasterEdition",
+      "accounts": [
         {
-          name: "creator",
-          isMut: true,
-          isSigner: true
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "nftMint",
-          isMut: true,
-          isSigner: false
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "nftData",
-          isMut: true,
-          isSigner: false
+          "name": "nftData",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "tokenProgram",
-          isMut: false,
-          isSigner: false
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "tokenMetadataProgram",
-          isMut: false,
-          isSigner: false
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "metadataAccount",
-          isMut: true,
-          isSigner: false
+          "name": "metadataAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "masterEditionAccount",
-          isMut: true,
-          isSigner: false
+          "name": "masterEditionAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "tokenAccount",
-          isMut: false,
-          isSigner: false
+          "name": "tokenAccount",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "rent",
-          isMut: false,
-          isSigner: false
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
-      args: []
+      "args": []
     },
     {
-      name: "buyNft",
-      accounts: [
+      "name": "buyNft",
+      "accounts": [
         {
-          name: "buyer",
-          isMut: true,
-          isSigner: true
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "buyerAccount",
-          isMut: true,
-          isSigner: false
+          "name": "buyerAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "sellerAccount",
-          isMut: true,
-          isSigner: false
+          "name": "sellerAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "nftData",
-          isMut: true,
-          isSigner: false
+          "name": "nftData",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "nftMint",
-          isMut: false,
-          isSigner: false
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "sellerNftTokenAccount",
-          isMut: true,
-          isSigner: false
+          "name": "sellerNftTokenAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "buyerNftTokenAccount",
-          isMut: true,
-          isSigner: false
+          "name": "buyerNftTokenAccount",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "tokenProgram",
-          isMut: false,
-          isSigner: false
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
-      args: []
+      "args": []
     }
   ],
-  accounts: [
+  "accounts": [
     {
-      name: "UserAccount",
-      type: {
-        kind: "struct",
-        fields: [
+      "name": "NFTData",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "owner",
-            type: "publicKey"
+            "name": "creator",
+            "type": "publicKey"
           },
           {
-            name: "maxNfts",
-            type: "u8"
+            "name": "owner",
+            "type": "publicKey"
           },
           {
-            name: "nftsCreated",
-            type: "u8"
+            "name": "name",
+            "type": "string"
           },
           {
-            name: "nftsOwned",
-            type: "u8"
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
+          },
+          {
+            "name": "collectionId",
+            "type": "publicKey"
+          },
+          {
+            "name": "isMutable",
+            "type": "bool"
+          },
+          {
+            "name": "primarySaleHappened",
+            "type": "bool"
+          },
+          {
+            "name": "sellerFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "lastPrice",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
     },
     {
-      name: "BondingCurvePool",
-      type: {
-        kind: "struct",
-        fields: [
+      "name": "BondingCurvePool",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "authority",
-            type: "publicKey"
+            "name": "authority",
+            "type": "publicKey"
           },
           {
-            name: "realTokenMint",
-            type: "publicKey"
+            "name": "realTokenMint",
+            "type": "publicKey"
           },
           {
-            name: "syntheticTokenMint",
-            type: "publicKey"
+            "name": "syntheticTokenMint",
+            "type": "publicKey"
           },
           {
-            name: "realTokenVault",
-            type: "publicKey"
+            "name": "realTokenVault",
+            "type": "publicKey"
           },
           {
-            name: "basePrice",
-            type: "u64"
+            "name": "currentMarketCap",
+            "type": "u64"
           },
           {
-            name: "growthFactor",
-            type: "u64"
+            "name": "basePrice",
+            "type": "u64"
           },
           {
-            name: "supply",
-            type: "u64"
+            "name": "growthFactor",
+            "type": "u64"
+          },
+          {
+            "name": "totalSupply",
+            "type": "u64"
+          },
+          {
+            "name": "pastThreshold",
+            "type": "bool"
+          },
+          {
+            "name": "priceHistory",
+            "type": {
+              "array": [
+                "u64",
+                10
+              ]
+            }
+          },
+          {
+            "name": "priceHistoryIdx",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
     },
     {
-      name: "NftData",
-      type: {
-        kind: "struct",
-        fields: [
+      "name": "UserAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "owner",
-            type: "publicKey"
+            "name": "owner",
+            "type": "publicKey"
           },
           {
-            name: "mint",
-            type: "publicKey"
+            "name": "realSolBalance",
+            "type": "u64"
           },
           {
-            name: "name",
-            type: "string"
+            "name": "syntheticSolBalance",
+            "type": "u64"
           },
           {
-            name: "symbol",
-            type: "string"
+            "name": "ownedNfts",
+            "type": {
+              "vec": "publicKey"
+            }
           },
           {
-            name: "uri",
-            type: "string"
-          },
-          {
-            name: "sellerFeeBasisPoints",
-            type: "u16"
-          },
-          {
-            name: "price",
-            type: "u64"
-          },
-          {
-            name: "forSale",
-            type: "bool"
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
     }
   ],
-  errors: [
+  "errors": [
     {
-      code: 6000,
-      name: "MaxNftsExceeded",
-      msg: "Maximum number of NFTs exceeded"
+      "code": 6000,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
     },
     {
-      code: 6001,
-      name: "NftNotForSale",
-      msg: "NFT is not for sale"
+      "code": 6001,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
     },
     {
-      code: 6002,
-      name: "InsufficientFunds",
-      msg: "Insufficient funds to complete purchase"
+      "code": 6002,
+      "name": "InvalidPrice",
+      "msg": "Invalid price"
+    },
+    {
+      "code": 6003,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidTokenAccount",
+      "msg": "Invalid token account"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidPool",
+      "msg": "Invalid pool"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidAuthority",
+      "msg": "Invalid authority"
+    },
+    {
+      "code": 6007,
+      "name": "NFTAlreadySold",
+      "msg": "NFT already sold"
+    },
+    {
+      "code": 6008,
+      "name": "InsufficientPoolBalance",
+      "msg": "Insufficient pool balance"
     }
   ]
 };
