@@ -73,4 +73,8 @@ pub mod bonding_curve_system {
     pub fn buy_nft(ctx: Context<BuyNFT>) -> Result<()> {
         instructions::buy_nft::buy_nft(ctx)
     }
+    
+    pub fn migrate_to_tensor(ctx: Context<MigrateToTensor>) -> Result<()> {
+        instructions::migrate_to_tensor::migrate_to_tensor(ctx)
+    }
 }

@@ -75,10 +75,8 @@ pub fn buy_token(ctx: Context<BuyToken>, amount: u64) -> Result<()> {
     // Calculate cost to buy tokens
     let total_cost = bonding_curve.calculate_buy_cost(current_market_cap, amount)?;
     
-    // Calculate platform fee
-    let platform_fee = bonding_curve.calculate_platform_fee(total_cost)?;
-    
-    // Calculate net cost (total - fee) - removed unused variable
+    // Calculate mint fee (1% of total cost)
+    let mint_fee = bonding_curve.calculate_mint_fee(total_cost)?;
     
     // Transfer tokens from buyer to pool
     token::transfer(
@@ -131,7 +129,7 @@ pub fn buy_token(ctx: Context<BuyToken>, amount: u64) -> Result<()> {
     // Update threshold state if needed
     if past_threshold && !was_past_threshold {
         pool.past_threshold = true;
-        // Special event could be triggered here
+        msg!("Market cap threshold reached! Collection can now be migrated to Tensor.");
     }
     
     // Update price history
@@ -141,7 +139,7 @@ pub fn buy_token(ctx: Context<BuyToken>, amount: u64) -> Result<()> {
     
     // Update user state
     user.synthetic_sol_balance = user.synthetic_sol_balance.checked_add(amount).unwrap();
-    user.real_sol_balance = user.real_sol_balance.checked_add(platform_fee).unwrap();
+    user.real_sol_balance = user.real_sol_balance.checked_add(mint_fee).unwrap();
     
     Ok(())
 }

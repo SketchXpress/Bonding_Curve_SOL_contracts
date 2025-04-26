@@ -14,6 +14,12 @@ pub struct BondingCurvePool {
     // Price history - we'll store last 10 prices for visualization
     pub price_history: [u64; 10],
     pub price_history_idx: u8,
+    // Burn and distribution tracking
+    pub total_burned: u64,
+    pub total_distributed: u64,
+    // Tensor migration status
+    pub migrated_to_tensor: bool,
+    pub tensor_migration_timestamp: i64,
     pub bump: u8,
 }
 
@@ -30,5 +36,9 @@ impl BondingCurvePool {
         1 + // past_threshold
         (8 * 10) + // price_history
         1 + // price_history_idx
+        8 + // total_burned
+        8 + // total_distributed
+        1 + // migrated_to_tensor
+        8 + // tensor_migration_timestamp
         1; // bump
 }

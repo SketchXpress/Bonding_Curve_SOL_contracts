@@ -6,6 +6,7 @@ pub mod create_nft;
 pub mod buy_nft;
 pub mod create_nft_data;
 pub mod create_master_edition;
+pub mod migrate_to_tensor;
 
 pub use create_pool::*;
 pub use buy_token::*;
@@ -15,3 +16,4 @@ pub use create_nft::*;
 pub use buy_nft::*;
 pub use create_nft_data::*;
 pub use create_master_edition::*;
+pub use migrate_to_tensor::*;

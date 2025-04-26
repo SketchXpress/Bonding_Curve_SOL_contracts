@@ -80,11 +80,16 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
     // Calculate amount to receive
     let total_receive = bonding_curve.calculate_sell_amount(current_market_cap, amount)?;
     
-    // Calculate platform fee
-    let platform_fee = bonding_curve.calculate_platform_fee(total_receive)?;
+    // Calculate buyback penalties (5% total: 2.5% burn + 2.5% distribute)
+    let burn_amount = bonding_curve.calculate_buyback_burn(total_receive)?;
+    let distribute_amount = bonding_curve.calculate_buyback_distribute(total_receive)?;
     
-    // Calculate net amount (total - fee)
-    let net_receive = bonding_curve.calculate_net_cost(total_receive)?;
+    // Calculate net amount after penalties
+    let net_receive = total_receive
+        .checked_sub(burn_amount)
+        .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
+        .checked_sub(distribute_amount)
+        .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
     
     // Burn synthetic tokens from seller
     token::burn(
@@ -131,6 +136,10 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
     pool.current_market_cap = new_market_cap;
     pool.total_supply = pool.total_supply.checked_sub(amount).unwrap();
     
+    // Update burn and distribute tracking
+    pool.total_burned = pool.total_burned.checked_add(burn_amount).unwrap();
+    pool.total_distributed = pool.total_distributed.checked_add(distribute_amount).unwrap();
+    
     // Update price history
     let idx = price_history_idx as usize;
     pool.price_history[idx] = current_price;
@@ -138,7 +147,10 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
     
     // Update user state
     user.synthetic_sol_balance = user.synthetic_sol_balance.checked_sub(amount).unwrap();
-    user.real_sol_balance = user.real_sol_balance.checked_add(platform_fee).unwrap();
+    
+    // Log the burn and distribute amounts
+    msg!("Burned: {} SOL, Distributed to holders: {} SOL", 
+         burn_amount, distribute_amount);
     
     Ok(())
 }

@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::constants::*;
 
 // Exponential bonding curve implementation
 pub struct BondingCurve {
@@ -106,37 +107,102 @@ impl BondingCurve {
             .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
     }
     
-    // Calculate platform fee (5% of total cost)
-    pub fn calculate_platform_fee(&self, total_cost: u64) -> Result<u64> {
-        let fee_percentage = 5; // 5%
-        
+    // Calculate mint fee (1% of total cost)
+    pub fn calculate_mint_fee(&self, total_cost: u64) -> Result<u64> {
         // Check for potential overflow before multiplying
-        if total_cost > u64::MAX / fee_percentage {
+        if total_cost > u64::MAX / MINT_FEE_PERCENTAGE {
             return Err(error!(crate::errors::ErrorCode::MathOverflow));
         }
         
         total_cost
-            .checked_mul(fee_percentage)
+            .checked_mul(MINT_FEE_PERCENTAGE)
             .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
             .checked_div(100)
             .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
     }
     
-    // Calculate net cost after platform fee
-    pub fn calculate_net_cost(&self, total_cost: u64) -> Result<u64> {
-        let platform_fee = self.calculate_platform_fee(total_cost)?;
+    // Calculate creator royalty (5% of total cost)
+    pub fn calculate_creator_royalty(&self, total_cost: u64) -> Result<u64> {
+        // Check for potential overflow before multiplying
+        if total_cost > u64::MAX / CREATOR_ROYALTY_PERCENTAGE {
+            return Err(error!(crate::errors::ErrorCode::MathOverflow));
+        }
         
         total_cost
-            .checked_sub(platform_fee)
+            .checked_mul(CREATOR_ROYALTY_PERCENTAGE)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
+            .checked_div(100)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
+    }
+    
+    // Calculate secondary sale burn amount (1.5% of total cost)
+    pub fn calculate_secondary_burn(&self, total_cost: u64) -> Result<u64> {
+        // Check for potential overflow before multiplying
+        if total_cost > u64::MAX / SECONDARY_BURN_PERCENTAGE {
+            return Err(error!(crate::errors::ErrorCode::MathOverflow));
+        }
+        
+        total_cost
+            .checked_mul(SECONDARY_BURN_PERCENTAGE)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
+            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
+    }
+    
+    // Calculate secondary sale distribution amount (1.5% of total cost)
+    pub fn calculate_secondary_distribute(&self, total_cost: u64) -> Result<u64> {
+        // Check for potential overflow before multiplying
+        if total_cost > u64::MAX / SECONDARY_DISTRIBUTE_PERCENTAGE {
+            return Err(error!(crate::errors::ErrorCode::MathOverflow));
+        }
+        
+        total_cost
+            .checked_mul(SECONDARY_DISTRIBUTE_PERCENTAGE)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
+            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
+    }
+    
+    // Calculate buyback burn amount (2.5% of total cost)
+    pub fn calculate_buyback_burn(&self, total_cost: u64) -> Result<u64> {
+        // Check for potential overflow before multiplying
+        if total_cost > u64::MAX / BUYBACK_BURN_PERCENTAGE {
+            return Err(error!(crate::errors::ErrorCode::MathOverflow));
+        }
+        
+        total_cost
+            .checked_mul(BUYBACK_BURN_PERCENTAGE)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
+            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
+    }
+    
+    // Calculate buyback distribution amount (2.5% of total cost)
+    pub fn calculate_buyback_distribute(&self, total_cost: u64) -> Result<u64> {
+        // Check for potential overflow before multiplying
+        if total_cost > u64::MAX / BUYBACK_DISTRIBUTE_PERCENTAGE {
+            return Err(error!(crate::errors::ErrorCode::MathOverflow));
+        }
+        
+        total_cost
+            .checked_mul(BUYBACK_DISTRIBUTE_PERCENTAGE)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
+            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
+    }
+    
+    // Calculate net cost after fees (for backward compatibility)
+    pub fn calculate_net_cost(&self, total_cost: u64) -> Result<u64> {
+        let mint_fee = self.calculate_mint_fee(total_cost)?;
+        
+        total_cost
+            .checked_sub(mint_fee)
             .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
     }
     
     // Check if market cap has crossed the $69k threshold
     pub fn is_past_threshold(&self, current_market_cap: u64) -> bool {
-        // $69k in lamports
-        const THRESHOLD: u64 = 69_000_000_000;
-        
-        current_market_cap >= THRESHOLD
+        current_market_cap >= THRESHOLD_MARKET_CAP
     }
     
     // Calculate exponent using Taylor series approximation
