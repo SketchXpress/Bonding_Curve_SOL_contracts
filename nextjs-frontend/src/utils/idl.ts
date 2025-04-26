@@ -1,6 +1,6 @@
-export const PROGRAM_ID = 'BW2b1MZTDYoX2BQBUqgCjZmq6brmLb4GUUcgoL4YaKro';
+export const PROGRAM_ID = 'ACyrSsRBM98M6hb9DT8Sg5faDGJsKgNoPzcyqWqCcXg8';
 
-export const IDL ={
+export const IDL = {
   "version": "0.1.0",
   "name": "bonding_curve_system",
   "instructions": [
@@ -582,6 +582,41 @@ export const IDL ={
             "type": "u64"
           },
           {
+            "name": "pastThreshold",
+            "type": "bool"
+          },
+          {
+            "name": "padding1",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          },
+          {
+            "name": "priceHistory",
+            "type": {
+              "array": [
+                "u64",
+                10
+              ]
+            }
+          },
+          {
+            "name": "priceHistoryIdx",
+            "type": "u8"
+          },
+          {
+            "name": "padding2",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          },
+          {
             "name": "totalBurned",
             "type": "u64"
           },
@@ -590,30 +625,34 @@ export const IDL ={
             "type": "u64"
           },
           {
+            "name": "migratedToTensor",
+            "type": "bool"
+          },
+          {
+            "name": "padding3",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          },
+          {
             "name": "tensorMigrationTimestamp",
             "type": "i64"
           },
           {
-            "name": "priceHistory",
-            "type": {
-              "array": ["u64", 10]
-            }
-          },
-          {
-            "name": "pastThreshold",
-            "type": "u8"
-          },
-          {
-            "name": "priceHistoryIdx",
-            "type": "u8"
-          },
-          {
-            "name": "migratedToTensor",
-            "type": "u8"
-          },
-          {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "padding4",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
           }
         ]
       }
@@ -702,11 +741,8 @@ export const IDL ={
     }
   ],
   "metadata": {
-    "address": "BW2b1MZTDYoX2BQBUqgCjZmq6brmLb4GUUcgoL4YaKro"
+    "address": "ACyrSsRBM98M6hb9DT8Sg5faDGJsKgNoPzcyqWqCcXg8"
   }
-}
-;
+};
 
 export default IDL;
-
-
