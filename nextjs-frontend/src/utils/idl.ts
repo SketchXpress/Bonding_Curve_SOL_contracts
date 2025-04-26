@@ -1,6 +1,6 @@
-export const PROGRAM_ID = 'Dpavz4Qs78mvS7ziqAHsRX35hi4uk8VzryiSUeNYDL5T';
+export const PROGRAM_ID = 'GUBwUCU8JELiCq8Hv7MhQcdLRbt3QygpJ9ueSBhqG7oe';
 
-export const IDL = {
+export const IDL ={
   "version": "0.1.0",
   "name": "bonding_curve_system",
   "instructions": [
@@ -582,32 +582,6 @@ export const IDL = {
             "type": "u64"
           },
           {
-            "name": "pastThreshold",
-            "type": "bool"
-          },
-          {
-            "name": "_padding1",
-            "type": {
-              "array": ["u8", 7]
-            }
-          },
-          {
-            "name": "priceHistory",
-            "type": {
-              "array": ["u64", 10]
-            }
-          },
-          {
-            "name": "priceHistoryIdx",
-            "type": "u8"
-          },
-          {
-            "name": "_padding2",
-            "type": {
-              "array": ["u8", 7]
-            }
-          },
-          {
             "name": "totalBurned",
             "type": "u64"
           },
@@ -616,28 +590,30 @@ export const IDL = {
             "type": "u64"
           },
           {
-            "name": "migratedToTensor",
-            "type": "bool"
-          },
-          {
-            "name": "_padding3",
-            "type": {
-              "array": ["u8", 7]
-            }
-          },
-          {
             "name": "tensorMigrationTimestamp",
             "type": "i64"
           },
           {
-            "name": "bump",
+            "name": "priceHistory",
+            "type": {
+              "array": ["u64", 10]
+            }
+          },
+          {
+            "name": "pastThreshold",
             "type": "u8"
           },
           {
-            "name": "_padding4",
-            "type": {
-              "array": ["u8", 7]
-            }
+            "name": "priceHistoryIdx",
+            "type": "u8"
+          },
+          {
+            "name": "migratedToTensor",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -726,8 +702,11 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "Dpavz4Qs78mvS7ziqAHsRX35hi4uk8VzryiSUeNYDL5T"
+    "address": "GUBwUCU8JELiCq8Hv7MhQcdLRbt3QygpJ9ueSBhqG7oe"
   }
-};
+}
+;
 
 export default IDL;
+
+
