@@ -1,7 +1,7 @@
 // This file will contain the IDL for the bonding curve system program
 // We'll extract this from the original repository
 
-export const PROGRAM_ID = 'CWpH1VjyMfHLMXeSjMxemHFGzgK2UFcZsBpfBPPCJiny';
+export const PROGRAM_ID = '376JDBi2BDsM3DcBpBE23bXKBSGXKHtPwUC1tzGj5DTx';
 
 export const IDL = {
   "version": "0.1.0",
@@ -446,6 +446,11 @@ export const IDL = {
           "isSigner": false
         },
         {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
@@ -703,7 +708,7 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "CWpH1VjyMfHLMXeSjMxemHFGzgK2UFcZsBpfBPPCJiny"
+    "address": "376JDBi2BDsM3DcBpBE23bXKBSGXKHtPwUC1tzGj5DTx"
   }
 };
 

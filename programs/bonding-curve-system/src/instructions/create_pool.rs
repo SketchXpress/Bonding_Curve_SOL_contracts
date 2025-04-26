@@ -83,6 +83,15 @@ pub fn create_pool(
     }
     
     pool.price_history_idx = 0;
+    
+    // Initialize the new fields we added for burn-distribute mechanism
+    pool.total_burned = 0;
+    pool.total_distributed = 0;
+    
+    // Initialize the new fields for Tensor migration
+    pool.migrated_to_tensor = false;
+    pool.tensor_migration_timestamp = 0;
+    
     pool.bump = bump;
     
     // Log successful pool creation for debugging
