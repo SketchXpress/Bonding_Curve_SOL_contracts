@@ -586,6 +586,12 @@ export const IDL = {
             "type": "bool"
           },
           {
+            "name": "_padding1",
+            "type": {
+              "array": ["u8", 7]
+            }
+          },
+          {
             "name": "priceHistory",
             "type": {
               "array": ["u64", 10]
@@ -594,6 +600,12 @@ export const IDL = {
           {
             "name": "priceHistoryIdx",
             "type": "u8"
+          },
+          {
+            "name": "_padding2",
+            "type": {
+              "array": ["u8", 7]
+            }
           },
           {
             "name": "totalBurned",
@@ -608,12 +620,24 @@ export const IDL = {
             "type": "bool"
           },
           {
+            "name": "_padding3",
+            "type": {
+              "array": ["u8", 7]
+            }
+          },
+          {
             "name": "tensorMigrationTimestamp",
             "type": "i64"
           },
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "_padding4",
+            "type": {
+              "array": ["u8", 7]
+            }
           }
         ]
       }
