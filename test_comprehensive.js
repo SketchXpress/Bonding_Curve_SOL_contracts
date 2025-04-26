@@ -29,7 +29,7 @@ async function main() {
   anchor.setProvider(provider);
   
   // Program ID from our deployment
-  const programId = new PublicKey('5a9RAcFUkirJmDBJ9R2tzEgbAPutSftpyt7he8B7FUMe');
+  const programId = new PublicKey('BW2b1MZTDYoX2BQBUqgCjZmq6brmLb4GUUcgoL4YaKro');
   console.log("Using program ID:", programId.toString());
   
   // Load the IDL
