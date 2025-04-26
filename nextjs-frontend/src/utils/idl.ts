@@ -1,7 +1,7 @@
 // This file will contain the IDL for the bonding curve system program
 // We'll extract this from the original repository
 
-export const PROGRAM_ID = 'CoUUn4AacKW8n8Cc1zZVMPP185CaRjqYEAvu4vcGC58G';
+export const PROGRAM_ID = 'CWpH1VjyMfHLMXeSjMxemHFGzgK2UFcZsBpfBPPCJiny';
 
 export const IDL = {
   "version": "0.1.0",
@@ -457,6 +457,32 @@ export const IDL = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "migrateToTensor",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "realTokenMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -571,6 +597,22 @@ export const IDL = {
             "type": "u8"
           },
           {
+            "name": "totalBurned",
+            "type": "u64"
+          },
+          {
+            "name": "totalDistributed",
+            "type": "u64"
+          },
+          {
+            "name": "migratedToTensor",
+            "type": "bool"
+          },
+          {
+            "name": "tensorMigrationTimestamp",
+            "type": "i64"
+          },
+          {
             "name": "bump",
             "type": "u8"
           }
@@ -653,8 +695,16 @@ export const IDL = {
       "code": 6008,
       "name": "InsufficientPoolBalance",
       "msg": "Insufficient pool balance"
+    },
+    {
+      "code": 6009,
+      "name": "BelowThreshold",
+      "msg": "Market cap below threshold"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "CWpH1VjyMfHLMXeSjMxemHFGzgK2UFcZsBpfBPPCJiny"
+  }
 };
 
 export default IDL;

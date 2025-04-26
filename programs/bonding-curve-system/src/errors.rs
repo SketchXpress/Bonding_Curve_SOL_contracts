@@ -20,4 +20,6 @@ pub enum ErrorCode {
     NFTAlreadySold,
     #[msg("Insufficient pool balance")]
     InsufficientPoolBalance,
+    #[msg("Market cap below threshold")]
+    BelowThreshold,
 }

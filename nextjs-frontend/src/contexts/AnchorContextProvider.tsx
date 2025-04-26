@@ -8,7 +8,7 @@ import { createContext, useContext } from 'react';
 import { IDL } from '@/utils/idl';
 
 // Program ID for the bonding curve system
-const PROGRAM_ID = 'CoUUn4AacKW8n8Cc1zZVMPP185CaRjqYEAvu4vcGC58G';
+const PROGRAM_ID = 'CWpH1VjyMfHLMXeSjMxemHFGzgK2UFcZsBpfBPPCJiny';
 
 interface AnchorContextProviderProps {
   children: ReactNode;
