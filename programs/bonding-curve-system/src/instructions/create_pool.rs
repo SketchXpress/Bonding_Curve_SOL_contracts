@@ -76,9 +76,6 @@ pub fn create_pool(
     pool.total_supply = 0;
     pool.past_threshold = false;
     
-    // Initialize padding fields explicitly
-    pool._padding1 = [0; 7];
-    
     // Initialize price history array with zeros
     // Use a loop instead of direct assignment to avoid potential memory issues
     for i in 0..10 {
@@ -87,24 +84,14 @@ pub fn create_pool(
     
     pool.price_history_idx = 0;
     
-    // Initialize padding after price_history_idx
-    pool._padding2 = [0; 7];
-    
     // Initialize the new fields we added for burn-distribute mechanism
     pool.total_burned = 0;
     pool.total_distributed = 0;
     
     // Initialize the new fields for Tensor migration
     pool.migrated_to_tensor = false;
-    
-    // Initialize padding after migrated_to_tensor
-    pool._padding3 = [0; 7];
-    
     pool.tensor_migration_timestamp = 0;
     pool.bump = bump;
-    
-    // Initialize final padding
-    pool._padding4 = [0; 7];
     
     // Log successful pool creation for debugging
     msg!("Pool created successfully with base_price: {} and growth_factor: {}", 
