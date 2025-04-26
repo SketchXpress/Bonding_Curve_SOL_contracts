@@ -582,37 +582,23 @@ export const IDL = {
             "type": "u64"
           },
           {
-            "name": "pastThreshold",
-            "type": "bool"
-          },
-          {
-            "name": "padding1",
-            "type": {
-              "array": [
-                "u8",
-                7
-              ]
-            }
-          },
-          {
-            "name": "priceHistory",
-            "type": {
-              "array": [
-                "u64",
-                10
-              ]
-            }
+            "name": "flags",
+            "type": "u8"
           },
           {
             "name": "priceHistoryIdx",
             "type": "u8"
           },
           {
-            "name": "padding2",
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
             "type": {
               "array": [
                 "u8",
-                7
+                5
               ]
             }
           },
@@ -625,34 +611,8 @@ export const IDL = {
             "type": "u64"
           },
           {
-            "name": "migratedToTensor",
-            "type": "bool"
-          },
-          {
-            "name": "padding3",
-            "type": {
-              "array": [
-                "u8",
-                7
-              ]
-            }
-          },
-          {
             "name": "tensorMigrationTimestamp",
             "type": "i64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "padding4",
-            "type": {
-              "array": [
-                "u8",
-                7
-              ]
-            }
           }
         ]
       }

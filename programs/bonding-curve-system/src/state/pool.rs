@@ -1,7 +1,9 @@
 use anchor_lang::prelude::*;
 
+// Simplified BondingCurvePool struct with minimal fields
+// Removed price_history array and consolidated padding
 #[account]
-#[repr(C)]  // Use C representation for predictable memory layout
+#[repr(C)]
 pub struct BondingCurvePool {
     pub authority: Pubkey,
     pub real_token_mint: Pubkey,
@@ -11,21 +13,48 @@ pub struct BondingCurvePool {
     pub base_price: u64,
     pub growth_factor: u64,
     pub total_supply: u64,
-    pub past_threshold: bool,
-    pub _padding1: [u8; 7],  // Explicit padding after bool
-    pub price_history: [u64; 10],
+    // Combine boolean fields to reduce padding needs
+    pub flags: u8, // bit 0: past_threshold, bit 1: migrated_to_tensor
     pub price_history_idx: u8,
-    pub _padding2: [u8; 7],  // Explicit padding after u8
+    pub bump: u8,
+    pub _reserved: [u8; 5], // Single padding field
+    // Removed price_history array - will be initialized separately if needed
     pub total_burned: u64,
     pub total_distributed: u64,
-    pub migrated_to_tensor: bool,
-    pub _padding3: [u8; 7],  // Explicit padding after bool
     pub tensor_migration_timestamp: i64,
-    pub bump: u8,
-    pub _padding4: [u8; 7],  // Explicit padding at end
 }
 
 impl BondingCurvePool {
+    // Flag bit positions
+    pub const PAST_THRESHOLD_FLAG: u8 = 0x01;
+    pub const MIGRATED_TO_TENSOR_FLAG: u8 = 0x02;
+    
+    // Getter and setter methods for flags
+    pub fn is_past_threshold(&self) -> bool {
+        (self.flags & Self::PAST_THRESHOLD_FLAG) != 0
+    }
+    
+    pub fn set_past_threshold(&mut self, value: bool) {
+        if value {
+            self.flags |= Self::PAST_THRESHOLD_FLAG;
+        } else {
+            self.flags &= !Self::PAST_THRESHOLD_FLAG;
+        }
+    }
+    
+    pub fn is_migrated_to_tensor(&self) -> bool {
+        (self.flags & Self::MIGRATED_TO_TENSOR_FLAG) != 0
+    }
+    
+    pub fn set_migrated_to_tensor(&mut self, value: bool) {
+        if value {
+            self.flags |= Self::MIGRATED_TO_TENSOR_FLAG;
+        } else {
+            self.flags &= !Self::MIGRATED_TO_TENSOR_FLAG;
+        }
+    }
+    
+    // Reduced size without the large price_history array
     pub const SIZE: usize = 8 +  // discriminator
         32 + // authority
         32 + // real_token_mint
@@ -35,16 +64,11 @@ impl BondingCurvePool {
         8 + // base_price
         8 + // growth_factor
         8 + // total_supply
-        1 + // past_threshold
-        7 + // _padding1
-        80 + // price_history
+        1 + // flags (combined boolean fields)
         1 + // price_history_idx
-        7 + // _padding2
+        1 + // bump
+        5 + // _reserved padding
         8 + // total_burned
         8 + // total_distributed
-        1 + // migrated_to_tensor
-        7 + // _padding3
-        8 + // tensor_migration_timestamp
-        1 + // bump
-        7; // _padding4
+        8; // tensor_migration_timestamp
 }

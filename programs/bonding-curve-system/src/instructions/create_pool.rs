@@ -36,7 +36,6 @@ pub struct CreatePool<'info> {
         bump,
         space = BondingCurvePool::SIZE,
     )]
-    // Remove the Box to avoid IDL mismatch issues
     pub pool: Account<'info, BondingCurvePool>,
     
     pub system_program: Program<'info, System>,
@@ -44,8 +43,7 @@ pub struct CreatePool<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
-// Split the function into smaller parts to reduce stack usage
-#[inline(never)]
+// Extremely simplified initialization to minimize stack usage
 pub fn create_pool(
     ctx: Context<CreatePool>,
     base_price: u64,
@@ -55,78 +53,34 @@ pub fn create_pool(
     require!(base_price > 0, crate::errors::ErrorCode::InvalidPrice);
     require!(growth_factor > 0, crate::errors::ErrorCode::InvalidPrice);
     
-    // Initialize account references
-    initialize_pool_references(
-        &mut ctx.accounts.pool,
-        ctx.accounts.authority.key(),
-        ctx.accounts.real_token_mint.key(),
-        ctx.accounts.synthetic_token_mint.key(),
-        ctx.accounts.real_token_vault.key(),
-    );
+    let pool = &mut ctx.accounts.pool;
     
-    // Initialize numeric values
-    initialize_pool_values(
-        &mut ctx.accounts.pool,
-        base_price,
-        growth_factor,
-        ctx.bumps.pool,
-    );
+    // Initialize account references - minimal stack usage
+    pool.authority = ctx.accounts.authority.key();
+    pool.real_token_mint = ctx.accounts.real_token_mint.key();
+    pool.synthetic_token_mint = ctx.accounts.synthetic_token_mint.key();
+    pool.real_token_vault = ctx.accounts.real_token_vault.key();
+    
+    // Initialize numeric fields - minimal stack usage
+    pool.current_market_cap = 0;
+    pool.base_price = base_price;
+    pool.growth_factor = growth_factor;
+    pool.total_supply = 0;
+    
+    // Initialize flags and other fields - minimal stack usage
+    pool.flags = 0; // All flags off initially
+    pool.price_history_idx = 0;
+    pool.bump = ctx.bumps.pool;
+    pool._reserved = [0; 5];
+    
+    // Initialize remaining fields
+    pool.total_burned = 0;
+    pool.total_distributed = 0;
+    pool.tensor_migration_timestamp = 0;
     
     // Log successful pool creation
     msg!("Pool created successfully with base_price: {} and growth_factor: {}", 
          base_price, growth_factor);
     
     Ok(())
-}
-
-// Helper function to initialize account references
-#[inline(never)]
-fn initialize_pool_references(
-    pool: &mut BondingCurvePool,
-    authority: Pubkey,
-    real_token_mint: Pubkey,
-    synthetic_token_mint: Pubkey,
-    real_token_vault: Pubkey,
-) {
-    pool.authority = authority;
-    pool.real_token_mint = real_token_mint;
-    pool.synthetic_token_mint = synthetic_token_mint;
-    pool.real_token_vault = real_token_vault;
-}
-
-// Helper function to initialize numeric values
-#[inline(never)]
-fn initialize_pool_values(
-    pool: &mut BondingCurvePool,
-    base_price: u64,
-    growth_factor: u64,
-    bump: u8,
-) {
-    // Initialize numeric fields
-    pool.current_market_cap = 0;
-    pool.base_price = base_price;
-    pool.growth_factor = growth_factor;
-    pool.total_supply = 0;
-    
-    // Initialize boolean fields
-    pool.past_threshold = false;
-    
-    // Initialize arrays directly
-    pool._padding1 = [0; 7];
-    pool.price_history = [0; 10];
-    pool.price_history_idx = 0;
-    pool._padding2 = [0; 7];
-    
-    // Initialize burn-distribute fields
-    pool.total_burned = 0;
-    pool.total_distributed = 0;
-    
-    // Initialize Tensor migration fields
-    pool.migrated_to_tensor = false;
-    pool._padding3 = [0; 7];
-    pool.tensor_migration_timestamp = 0;
-    
-    // Store the bump
-    pool.bump = bump;
-    pool._padding4 = [0; 7];
 }
