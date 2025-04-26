@@ -10,6 +10,10 @@ import * as anchor from '@project-serum/anchor';
 interface BondingCurvePool {
   realTokenVault: PublicKey;
   syntheticTokenMint: PublicKey;
+  totalBurned: anchor.BN;
+  totalDistributed: anchor.BN;
+  migratedToTensor: boolean;
+  tensorMigrationTimestamp: anchor.BN;
   // Add other fields as needed
 }
 
@@ -71,11 +75,13 @@ export const useBuyToken = () => {
           pool,
           userAccount,
           buyer: wallet.publicKey,
-          buyerRealTokenAccount,
+          buyerTokenAccount: buyerRealTokenAccount,
           buyerSyntheticTokenAccount,
           realTokenVault,
+          realTokenMint: new PublicKey('So11111111111111111111111111111111111111112'), // SOL
           syntheticTokenMint,
           tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
         })
         .rpc({
           skipPreflight: false,
@@ -153,11 +159,13 @@ export const useSellToken = () => {
           pool,
           userAccount,
           seller: wallet.publicKey,
-          sellerRealTokenAccount,
+          sellerTokenAccount: sellerRealTokenAccount,
           sellerSyntheticTokenAccount,
           realTokenVault,
+          realTokenMint: new PublicKey('So11111111111111111111111111111111111111112'), // SOL
           syntheticTokenMint,
           tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
         })
         .rpc({
           skipPreflight: false,
@@ -336,4 +344,68 @@ export const useCreatePool = () => {
   };
 
   return { createPool, loading, error, txSignature };
+};
+
+export const useMigrateToTensor = () => {
+  const { program } = useAnchorContext();
+  const wallet = useWallet();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [txSignature, setTxSignature] = useState<string | null>(null);
+
+  const migrateToTensor = async (poolAddress: string) => {
+    if (!program || !wallet.publicKey) {
+      setError('Wallet not connected or program not initialized');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setTxSignature(null);
+
+    try {
+      // Validate pool address format
+      if (typeof poolAddress !== 'string' || !isValidPublicKeyFormat(poolAddress)) {
+        throw new Error('Invalid pool address format');
+      }
+      
+      // Use safePublicKey instead of direct PublicKey instantiation
+      const pool = safePublicKey(poolAddress);
+      if (!pool) {
+        throw new Error('Invalid pool address');
+      }
+      
+      // Get pool account data
+      const poolData = await program.account.bondingCurvePool.fetch(pool) as unknown as BondingCurvePool;
+      
+      // Check if already migrated
+      if (poolData.migratedToTensor) {
+        throw new Error('Pool already migrated to Tensor');
+      }
+
+      // Execute the transaction
+      const tx = await program.methods
+        .migrateToTensor()
+        .accounts({
+          authority: wallet.publicKey,
+          pool,
+          realTokenMint: new PublicKey('So11111111111111111111111111111111111111112'), // SOL
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc({
+          skipPreflight: false,
+          commitment: 'confirmed'
+        });
+
+      setTxSignature(tx);
+      return tx;
+    } catch (err) {
+      console.error('Error migrating to Tensor:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { migrateToTensor, loading, error, txSignature };
 };
