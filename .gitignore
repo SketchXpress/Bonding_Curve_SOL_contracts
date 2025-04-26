@@ -12,3 +12,4 @@ keypair-config.js
 logs/
 /home/ubuntu/.config/solana/id.json
 script.sh
+deploy.js

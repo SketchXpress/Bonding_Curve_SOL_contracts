@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { Keypair } = require('@solana/web3.js');
@@ -9,6 +9,9 @@ const bip39 = require('bip39');
 let PROJECT_ROOT = process.cwd();
 let ANCHOR_TOML_PATH = path.join(PROJECT_ROOT, 'Anchor.toml');
 let LIB_RS_PATH = path.join(PROJECT_ROOT, 'programs/bonding-curve-system/src/lib.rs');
+
+// Seed phrase for keypair recovery
+const SEED_PHRASE = "focus chuckle bullet elbow proud image kid isolate pen fly tray false";
 
 // Check if we're in the nextjs folder by looking for package.json with nextjs dependencies
 let isInNextJsFolder = false;
@@ -27,13 +30,17 @@ try {
   // Ignore errors, assume we're not in nextjs folder
 }
 
-// Seed phrase for keypair recovery
-const SEED_PHRASE = "focus chuckle bullet elbow proud image kid isolate pen fly tray false";
+// Expected public key for verification
 const EXPECTED_PUBLIC_KEY = "HVupsJz2rFZB4BEN7FY1jcfvck4UZPTT8S4znnbGtjh9";
+const WALLET_KEYPAIR_PATH = "/home/ubuntu/.config/solana/id.json";
 
 // Configuration
 const COMMAND_TIMEOUT = 300000; // 5 minutes timeout for commands
 const PROGRAM_NAME = "bonding_curve_system"; // Program name for anchor deploy command
+
+// Program keypair configuration
+const KEYPAIRS_DIR = path.join(PROJECT_ROOT, 'keypairs');
+const PROGRAM_KEYPAIR_PATH = path.join(KEYPAIRS_DIR, `${PROGRAM_NAME}-keypair.json`);
 
 // Frontend files to update with program ID
 const FRONTEND_FILES = [
@@ -45,6 +52,11 @@ const FRONTEND_FILES = [
   {
     path: path.join(PROJECT_ROOT, 'nextjs-frontend/src/utils/idl.ts'),
     pattern: /(export const PROGRAM_ID = ['"])([^'"]+)(['"];)/,
+    replacement: '$1$2$3'
+  },
+  {
+    path: path.join(PROJECT_ROOT, 'nextjs-frontend/src/contexts/AnchorContextProvider.tsx'),
+    pattern: /(const PROGRAM_ID = ['"])([^'"]+)(['"];)/,
     replacement: '$1$2$3'
   }
 ];
@@ -103,9 +115,10 @@ log(`Current directory: ${process.cwd()}`);
 log(`Project root: ${PROJECT_ROOT}`);
 log(`Anchor.toml path: ${ANCHOR_TOML_PATH}`);
 log(`lib.rs path: ${LIB_RS_PATH}`);
+log(`Program keypair path: ${PROGRAM_KEYPAIR_PATH}`);
+log(`Wallet keypair path: ${WALLET_KEYPAIR_PATH}`);
 
 // Helper function to safely execute shell commands with timeout
-// FIX: Properly handle execSync return value and error cases
 function execCommand(command, options = {}) {
   try {
     log(`Executing command: ${command}`);
@@ -128,52 +141,104 @@ function execCommand(command, options = {}) {
   }
 }
 
-// Function to derive keypair from seed phrase
-function deriveKeypairFromSeedPhrase(seedPhrase) {
-  try {
-    log('Deriving keypair from seed phrase...');
+// Function to execute a command with interactive input
+function execInteractiveCommand(command, inputs = []) {
+  return new Promise((resolve, reject) => {
+    log(`Executing interactive command: ${command}`);
     
-    // Convert seed phrase to seed buffer
-    const seed = bip39.mnemonicToSeedSync(seedPhrase).slice(0, 32);
+    // Spawn the command as a child process
+    const parts = command.split(' ');
+    const cmd = parts[0];
+    const args = parts.slice(1);
     
-    // Create keypair from seed
-    const keypair = Keypair.fromSeed(seed);
+    const child = spawn(cmd, args, {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
     
-    log(`Derived public key: ${keypair.publicKey.toString()}`, 'success');
+    let output = '';
+    let errorOutput = '';
     
-    // Verify the derived public key matches the expected one
-    if (EXPECTED_PUBLIC_KEY && keypair.publicKey.toString() !== EXPECTED_PUBLIC_KEY) {
-      log(`Warning: Derived public key ${keypair.publicKey.toString()} does not match expected public key ${EXPECTED_PUBLIC_KEY}`, 'warn');
-    }
+    // Collect stdout
+    child.stdout.on('data', (data) => {
+      const text = data.toString();
+      output += text;
+      process.stdout.write(text); // Show output to user
+      
+      // Check if we need to provide input
+      for (const input of inputs) {
+        if (text.includes(input.prompt)) {
+          child.stdin.write(input.response + '\n');
+          log(`Provided input: ${input.response}`, 'info');
+        }
+      }
+    });
     
-    return keypair;
-  } catch (error) {
-    log(`Failed to derive keypair: ${error.message}`, 'error');
-    throw error;
-  }
+    // Collect stderr
+    child.stderr.on('data', (data) => {
+      const text = data.toString();
+      errorOutput += text;
+      process.stderr.write(text); // Show errors to user
+    });
+    
+    // Handle process completion
+    child.on('close', (code) => {
+      if (code === 0) {
+        log(`Command succeeded with exit code ${code}`, 'success');
+        resolve({ success: true, output, code });
+      } else {
+        log(`Command failed with exit code ${code}`, 'error');
+        resolve({ success: false, output, errorOutput, code });
+      }
+    });
+    
+    // Handle process errors
+    child.on('error', (error) => {
+      log(`Command error: ${error.message}`, 'error');
+      reject(error);
+    });
+  });
 }
 
-// Function to save keypair to file
-function saveKeypairToFile(keypair, filePath) {
+// Function to recover wallet keypair from seed phrase
+async function recoverWalletKeypair() {
   try {
-    log(`Saving keypair to ${filePath}...`);
+    log('Recovering wallet keypair using hardcoded seed phrase...');
     
     // Create directory if it doesn't exist
-    const dir = path.dirname(filePath);
+    const dir = path.dirname(WALLET_KEYPAIR_PATH);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    // Convert keypair to JSON format expected by Solana CLI
-    const keypairJson = JSON.stringify(Array.from(keypair.secretKey));
+    // Backup existing keypair if it exists
+    if (fs.existsSync(WALLET_KEYPAIR_PATH)) {
+      const backupPath = `${WALLET_KEYPAIR_PATH}.backup-${new Date().getTime()}`;
+      fs.copyFileSync(WALLET_KEYPAIR_PATH, backupPath);
+      log(`Backed up existing keypair to ${backupPath}`, 'success');
+    }
     
-    // Write to file
-    fs.writeFileSync(filePath, keypairJson, { mode: 0o600 }); // Set restrictive permissions
+    // Convert mnemonic to seed
+    const seed = bip39.mnemonicToSeedSync(SEED_PHRASE, "");
     
-    log(`Keypair saved to ${filePath}`, 'success');
+    // Create keypair from seed
+    const keypair = Keypair.fromSeed(seed.slice(0, 32));
+    
+    // Save keypair to file
+    const secretKey = Array.from(keypair.secretKey);
+    fs.writeFileSync(WALLET_KEYPAIR_PATH, JSON.stringify(secretKey), { mode: 0o600 });
+    
+    log(`Successfully recovered wallet keypair to ${WALLET_KEYPAIR_PATH}`, 'success');
+    log(`Recovered wallet public key: ${keypair.publicKey.toString()}`, 'success');
+    
+    if (keypair.publicKey.toString() === EXPECTED_PUBLIC_KEY) {
+      log('Public key matches expected value', 'success');
+    } else {
+      log(`Warning: Recovered public key ${keypair.publicKey.toString()} does not match expected public key ${EXPECTED_PUBLIC_KEY}`, 'warn');
+    }
+    
     return true;
   } catch (error) {
-    log(`Failed to save keypair: ${error.message}`, 'error');
+    log(`Failed to recover wallet keypair: ${error.message}`, 'error');
     return false;
   }
 }
@@ -232,6 +297,240 @@ function getProgramIdFromLibRs() {
   }
 }
 
+// Function to extract keypair from base58 string
+function extractKeypairFromBase58(base58ProgramId) {
+  try {
+    log(`Attempting to extract keypair for program ID: ${base58ProgramId}...`);
+    
+    // First, check if we can get the keypair from solana
+    const result = execCommand(`solana address -k ${PROGRAM_KEYPAIR_PATH} 2>/dev/null || echo "not_found"`);
+    
+    if (result.success && result.output !== "not_found" && result.output === base58ProgramId) {
+      log(`Found matching program keypair at ${PROGRAM_KEYPAIR_PATH}`, 'success');
+      return true;
+    }
+    
+    log(`No matching keypair found at ${PROGRAM_KEYPAIR_PATH} or it doesn't match the program ID`, 'warn');
+    log(`You need to provide the original keypair file for program ID: ${base58ProgramId}`, 'warn');
+    log(`Please ensure the keypair file is at: ${PROGRAM_KEYPAIR_PATH}`, 'warn');
+    
+    return false;
+  } catch (error) {
+    log(`Failed to extract keypair: ${error.message}`, 'error');
+    return false;
+  }
+}
+
+// Function to create or get program keypair
+function getOrCreateProgramKeypair() {
+  try {
+    log('Getting or creating program keypair...');
+    
+    // Create keypairs directory if it doesn't exist
+    if (!fs.existsSync(KEYPAIRS_DIR)) {
+      fs.mkdirSync(KEYPAIRS_DIR, { recursive: true });
+      log(`Created keypairs directory at ${KEYPAIRS_DIR}`, 'success');
+    }
+    
+    // First, try to get the program ID from Anchor.toml and lib.rs
+    const anchorProgramId = getProgramIdFromAnchorToml();
+    const libRsProgramId = getProgramIdFromLibRs();
+    
+    // If both exist and match, use that program ID
+    if (anchorProgramId && libRsProgramId && anchorProgramId === libRsProgramId) {
+      log(`Found matching program ID in both Anchor.toml and lib.rs: ${anchorProgramId}`, 'success');
+      
+      // Check if we have a keypair file for this program ID
+      if (fs.existsSync(PROGRAM_KEYPAIR_PATH)) {
+        // Verify the keypair matches the program ID
+        const keypairResult = execCommand(`solana-keygen verify ${anchorProgramId} ${PROGRAM_KEYPAIR_PATH}`);
+        if (keypairResult.success) {
+          log(`Verified program keypair at ${PROGRAM_KEYPAIR_PATH} matches program ID ${anchorProgramId}`, 'success');
+          
+          // Read the keypair file
+          const keypairData = fs.readFileSync(PROGRAM_KEYPAIR_PATH, 'utf8');
+          const secretKey = Uint8Array.from(JSON.parse(keypairData));
+          const keypair = Keypair.fromSecretKey(secretKey);
+          
+          log(`Using existing program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          return { keypair, programId: anchorProgramId, isNew: false };
+        } else {
+          log(`Program keypair at ${PROGRAM_KEYPAIR_PATH} does not match program ID ${anchorProgramId}`, 'warn');
+          log('This may cause deployment issues due to authority mismatch', 'warn');
+          log('Attempting to extract keypair from program ID...', 'info');
+          
+          // Try to extract the keypair from the program ID
+          if (extractKeypairFromBase58(anchorProgramId)) {
+            // Read the keypair file after extraction
+            const keypairData = fs.readFileSync(PROGRAM_KEYPAIR_PATH, 'utf8');
+            const secretKey = Uint8Array.from(JSON.parse(keypairData));
+            const keypair = Keypair.fromSecretKey(secretKey);
+            
+            log(`Using extracted program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+            return { keypair, programId: anchorProgramId, isNew: false };
+          } else {
+            log('Failed to extract keypair from program ID', 'error');
+            log('Will generate a new keypair, but this will change the program ID', 'warn');
+            log('This may cause issues with existing deployed programs', 'warn');
+            
+            // Generate a new keypair
+            const keypair = Keypair.generate();
+            const keypairJson = JSON.stringify(Array.from(keypair.secretKey));
+            fs.writeFileSync(PROGRAM_KEYPAIR_PATH, keypairJson, { mode: 0o600 });
+            
+            log(`Generated new program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+            log('WARNING: This will change your program ID and may break existing deployments', 'warn');
+            
+            return { keypair, programId: keypair.publicKey.toString(), isNew: true };
+          }
+        }
+      } else {
+        log(`Program keypair not found at ${PROGRAM_KEYPAIR_PATH}`, 'warn');
+        log('Attempting to extract keypair from program ID...', 'info');
+        
+        // Try to extract the keypair from the program ID
+        if (extractKeypairFromBase58(anchorProgramId)) {
+          // Read the keypair file after extraction
+          const keypairData = fs.readFileSync(PROGRAM_KEYPAIR_PATH, 'utf8');
+          const secretKey = Uint8Array.from(JSON.parse(keypairData));
+          const keypair = Keypair.fromSecretKey(secretKey);
+          
+          log(`Using extracted program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          return { keypair, programId: anchorProgramId, isNew: false };
+        } else {
+          log('Failed to extract keypair from program ID', 'error');
+          log('Will generate a new keypair, but this will change the program ID', 'warn');
+          log('This may cause issues with existing deployed programs', 'warn');
+          
+          // Generate a new keypair
+          const keypair = Keypair.generate();
+          const keypairJson = JSON.stringify(Array.from(keypair.secretKey));
+          fs.writeFileSync(PROGRAM_KEYPAIR_PATH, keypairJson, { mode: 0o600 });
+          
+          log(`Generated new program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          log('WARNING: This will change your program ID and may break existing deployments', 'warn');
+          
+          return { keypair, programId: keypair.publicKey.toString(), isNew: true };
+        }
+      }
+    } else {
+      // Program IDs don't match or one is missing
+      if (anchorProgramId && libRsProgramId) {
+        log(`Program ID mismatch: Anchor.toml has ${anchorProgramId}, lib.rs has ${libRsProgramId}`, 'warn');
+        log('Using program ID from Anchor.toml', 'info');
+        
+        // Try to extract the keypair from the program ID
+        if (extractKeypairFromBase58(anchorProgramId)) {
+          // Read the keypair file after extraction
+          const keypairData = fs.readFileSync(PROGRAM_KEYPAIR_PATH, 'utf8');
+          const secretKey = Uint8Array.from(JSON.parse(keypairData));
+          const keypair = Keypair.fromSecretKey(secretKey);
+          
+          log(`Using extracted program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          return { keypair, programId: anchorProgramId, isNew: false };
+        } else {
+          log('Failed to extract keypair from program ID', 'error');
+          log('Will generate a new keypair, but this will change the program ID', 'warn');
+          log('This may cause issues with existing deployed programs', 'warn');
+          
+          // Generate a new keypair
+          const keypair = Keypair.generate();
+          const keypairJson = JSON.stringify(Array.from(keypair.secretKey));
+          fs.writeFileSync(PROGRAM_KEYPAIR_PATH, keypairJson, { mode: 0o600 });
+          
+          log(`Generated new program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          log('WARNING: This will change your program ID and may break existing deployments', 'warn');
+          
+          return { keypair, programId: keypair.publicKey.toString(), isNew: true };
+        }
+      } else if (anchorProgramId) {
+        log(`Program ID found only in Anchor.toml: ${anchorProgramId}`, 'warn');
+        
+        // Try to extract the keypair from the program ID
+        if (extractKeypairFromBase58(anchorProgramId)) {
+          // Read the keypair file after extraction
+          const keypairData = fs.readFileSync(PROGRAM_KEYPAIR_PATH, 'utf8');
+          const secretKey = Uint8Array.from(JSON.parse(keypairData));
+          const keypair = Keypair.fromSecretKey(secretKey);
+          
+          log(`Using extracted program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          return { keypair, programId: anchorProgramId, isNew: false };
+        } else {
+          log('Failed to extract keypair from program ID', 'error');
+          log('Will generate a new keypair, but this will change the program ID', 'warn');
+          log('This may cause issues with existing deployed programs', 'warn');
+          
+          // Generate a new keypair
+          const keypair = Keypair.generate();
+          const keypairJson = JSON.stringify(Array.from(keypair.secretKey));
+          fs.writeFileSync(PROGRAM_KEYPAIR_PATH, keypairJson, { mode: 0o600 });
+          
+          log(`Generated new program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          log('WARNING: This will change your program ID and may break existing deployments', 'warn');
+          
+          return { keypair, programId: keypair.publicKey.toString(), isNew: true };
+        }
+      } else if (libRsProgramId) {
+        log(`Program ID found only in lib.rs: ${libRsProgramId}`, 'warn');
+        
+        // Try to extract the keypair from the program ID
+        if (extractKeypairFromBase58(libRsProgramId)) {
+          // Read the keypair file after extraction
+          const keypairData = fs.readFileSync(PROGRAM_KEYPAIR_PATH, 'utf8');
+          const secretKey = Uint8Array.from(JSON.parse(keypairData));
+          const keypair = Keypair.fromSecretKey(secretKey);
+          
+          log(`Using extracted program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          return { keypair, programId: libRsProgramId, isNew: false };
+        } else {
+          log('Failed to extract keypair from program ID', 'error');
+          log('Will generate a new keypair, but this will change the program ID', 'warn');
+          log('This may cause issues with existing deployed programs', 'warn');
+          
+          // Generate a new keypair
+          const keypair = Keypair.generate();
+          const keypairJson = JSON.stringify(Array.from(keypair.secretKey));
+          fs.writeFileSync(PROGRAM_KEYPAIR_PATH, keypairJson, { mode: 0o600 });
+          
+          log(`Generated new program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          log('WARNING: This will change your program ID and may break existing deployments', 'warn');
+          
+          return { keypair, programId: keypair.publicKey.toString(), isNew: true };
+        }
+      } else {
+        log('No program ID found in Anchor.toml or lib.rs', 'warn');
+        
+        // Check if we have an existing keypair file
+        if (fs.existsSync(PROGRAM_KEYPAIR_PATH)) {
+          log(`Using existing program keypair at ${PROGRAM_KEYPAIR_PATH}`, 'info');
+          
+          // Read the keypair file
+          const keypairData = fs.readFileSync(PROGRAM_KEYPAIR_PATH, 'utf8');
+          const secretKey = Uint8Array.from(JSON.parse(keypairData));
+          const keypair = Keypair.fromSecretKey(secretKey);
+          
+          log(`Using existing program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          return { keypair, programId: keypair.publicKey.toString(), isNew: false };
+        } else {
+          log(`Program keypair not found at ${PROGRAM_KEYPAIR_PATH}`, 'warn');
+          log('Generating new program keypair...', 'info');
+          
+          // Generate a new keypair
+          const keypair = Keypair.generate();
+          const keypairJson = JSON.stringify(Array.from(keypair.secretKey));
+          fs.writeFileSync(PROGRAM_KEYPAIR_PATH, keypairJson, { mode: 0o600 });
+          
+          log(`Generated new program keypair with public key: ${keypair.publicKey.toString()}`, 'success');
+          return { keypair, programId: keypair.publicKey.toString(), isNew: true };
+        }
+      }
+    }
+  } catch (error) {
+    log(`Failed to get or create program keypair: ${error.message}`, 'error');
+    throw error;
+  }
+}
+
 // Check if Solana is installed and configured
 function checkEnvironment() {
   log('Checking environment...');
@@ -274,7 +573,6 @@ function updateFrontendFiles(programId) {
               programIdRegex,
               `export const PROGRAM_ID = '${programId}';`
             );
-            
             if (content !== newContent) {
               fs.writeFileSync(file.path, newContent);
               log(`Updated program ID in ${file.path}`, 'success');
@@ -302,8 +600,14 @@ function updateFrontendFiles(programId) {
               `export const PROGRAM_ID = '${programId}';`
             );
             
-            if (content !== newContent) {
-              fs.writeFileSync(file.path, newContent);
+            // Also update the metadata address if it exists
+            const updatedContent = newContent.replace(
+              /"address": "([^"]+)"/,
+              `"address": "${programId}"`
+            );
+            
+            if (content !== updatedContent) {
+              fs.writeFileSync(file.path, updatedContent);
               log(`Updated program ID in ${file.path}`, 'success');
               updatedCount++;
             } else {
@@ -315,6 +619,26 @@ function updateFrontendFiles(programId) {
             fs.writeFileSync(file.path, newContent);
             log(`Added program ID to ${file.path}`, 'success');
             updatedCount++;
+          }
+        }
+        // For AnchorContextProvider.tsx
+        else if (file.path.includes('AnchorContextProvider.tsx')) {
+          const programIdRegex = /const PROGRAM_ID = ['"]([^'"]+)['"];/;
+          if (programIdRegex.test(content)) {
+            const newContent = content.replace(
+              programIdRegex,
+              `const PROGRAM_ID = '${programId}';`
+            );
+            
+            if (content !== newContent) {
+              fs.writeFileSync(file.path, newContent);
+              log(`Updated program ID in ${file.path}`, 'success');
+              updatedCount++;
+            } else {
+              log(`Program ID already up to date in ${file.path}`, 'info');
+            }
+          } else {
+            log(`Could not find PROGRAM_ID constant in ${file.path}`, 'warn');
           }
         }
       } else {
@@ -357,82 +681,27 @@ function checkWalletBalance() {
 }
 
 // Function to set the default keypair in Solana config
-function setDefaultKeypair(keypairPath) {
-  log(`Setting default keypair in Solana config to ${keypairPath}...`);
-  const configResult = execCommand(`solana config set --keypair ${keypairPath}`);
-  if (configResult.success) {
-    log(`Set default keypair in Solana config to ${keypairPath}`, 'success');
-    return true;
-  } else {
-    log(`Failed to set default keypair in Solana config: ${configResult.error}`, 'error');
-    return false;
-  }
-}
-
-// Function to clean build artifacts
-function cleanBuildArtifacts() {
-  log('Cleaning build artifacts...');
-  
-  // First, clean Anchor build artifacts
-  const anchorCleanResult = execCommand('anchor clean', { cwd: PROJECT_ROOT });
-  if (anchorCleanResult.success) {
-    log('Anchor artifacts cleaned successfully', 'success');
-  } else {
-    log(`Warning: Failed to clean Anchor artifacts: ${anchorCleanResult.error}`, 'warn');
-  }
-  
-  // Then, clean Cargo build artifacts
-  const cargoCleanResult = execCommand('cargo clean', { cwd: PROJECT_ROOT });
-  if (cargoCleanResult.success) {
-    log('Cargo artifacts cleaned successfully', 'success');
-  } else {
-    log(`Warning: Failed to clean Cargo artifacts: ${cargoCleanResult.error}`, 'warn');
-  }
-  
-  return true;
-}
-
-// Function to update program ID in lib.rs
-function updateProgramIdInLibRs(programId) {
+function setDefaultKeypair() {
   try {
-    log(`Updating program ID in ${LIB_RS_PATH}...`);
-    
-    if (!fs.existsSync(LIB_RS_PATH)) {
-      log(`lib.rs not found at ${LIB_RS_PATH}`, 'error');
-      return false;
-    }
-    
-    let libRs = fs.readFileSync(LIB_RS_PATH, 'utf8');
-    const programIdRegex = /(declare_id!\(")([^"]+)("\);)/;
-    
-    if (programIdRegex.test(libRs)) {
-      const newLibRs = libRs.replace(
-        programIdRegex,
-        `$1${programId}$3`
-      );
-      
-      if (libRs !== newLibRs) {
-        fs.writeFileSync(LIB_RS_PATH, newLibRs);
-        log(`Updated program ID in ${LIB_RS_PATH}`, 'success');
-        return true;
-      } else {
-        log(`Program ID already up to date in ${LIB_RS_PATH}`, 'info');
-        return true;
-      }
+    log(`Setting default keypair to ${WALLET_KEYPAIR_PATH}...`);
+    const result = execCommand(`solana config set --keypair ${WALLET_KEYPAIR_PATH}`);
+    if (result.success) {
+      log('Successfully set default keypair', 'success');
+      return true;
     } else {
-      log(`Could not find program ID declaration in ${LIB_RS_PATH}`, 'error');
+      log(`Failed to set default keypair: ${result.error}`, 'error');
       return false;
     }
   } catch (error) {
-    log(`Failed to update program ID in lib.rs: ${error.message}`, 'error');
+    log(`Failed to set default keypair: ${error.message}`, 'error');
     return false;
   }
 }
 
-// Function to update program ID in Anchor.toml
-function updateProgramIdInAnchorToml(programId) {
+// Update Anchor.toml with program keypair configuration
+function updateAnchorToml(programId) {
   try {
-    log(`Updating program ID in ${ANCHOR_TOML_PATH}...`);
+    log(`Updating Anchor.toml with program ID ${programId}...`);
     
     if (!fs.existsSync(ANCHOR_TOML_PATH)) {
       log(`Anchor.toml not found at ${ANCHOR_TOML_PATH}`, 'error');
@@ -440,199 +709,353 @@ function updateProgramIdInAnchorToml(programId) {
     }
     
     let anchorToml = fs.readFileSync(ANCHOR_TOML_PATH, 'utf8');
-    const programIdRegex = /(bonding_curve_system\s*=\s*")([^"]+)(")/;
     
-    if (programIdRegex.test(anchorToml)) {
-      const newAnchorToml = anchorToml.replace(
-        programIdRegex,
-        `$1${programId}$3`
+    // Ensure program ID section exists with proper format
+    const programsDevnetSection = `[programs.devnet]\nbonding_curve_system = "${programId}"`;
+    
+    // Ensure workspace keypairs section exists
+    const workspaceKeypairsSection = `[workspace.program-keypairs]\nbonding_curve_system = "${PROGRAM_KEYPAIR_PATH}"`;
+    
+    // Check if sections exist and update them
+    if (anchorToml.includes('[programs.devnet]')) {
+      anchorToml = anchorToml.replace(
+        /(\[programs\.devnet\][^\[]*bonding_curve_system\s*=\s*)"([^"]+)"/,
+        `$1"${programId}"`
       );
+    } else {
+      anchorToml += `\n${programsDevnetSection}\n`;
+    }
+    
+    if (anchorToml.includes('[workspace.program-keypairs]')) {
+      anchorToml = anchorToml.replace(
+        /(\[workspace\.program-keypairs\][^\[]*bonding_curve_system\s*=\s*)"([^"]+)"/,
+        `$1"${PROGRAM_KEYPAIR_PATH}"`
+      );
+    } else {
+      anchorToml += `\n${workspaceKeypairsSection}\n`;
+    }
+    
+    fs.writeFileSync(ANCHOR_TOML_PATH, anchorToml);
+    log('Successfully updated Anchor.toml', 'success');
+    return true;
+  } catch (error) {
+    log(`Failed to update Anchor.toml: ${error.message}`, 'error');
+    return false;
+  }
+}
+
+// Update lib.rs with program ID
+function updateLibRs(programId) {
+  try {
+    log(`Updating lib.rs with program ID ${programId}...`);
+    
+    if (!fs.existsSync(LIB_RS_PATH)) {
+      log(`lib.rs not found at ${LIB_RS_PATH}`, 'error');
+      return false;
+    }
+    
+    // Read the file content
+    const libRs = fs.readFileSync(LIB_RS_PATH, 'utf8');
+    
+    // Define the regex pattern for the program ID
+    const programIdRegex = /(declare_id!\(")([^"]+)("\);)/;
+    
+    // Check if the pattern exists in the file
+    if (programIdRegex.test(libRs)) {
+      // Get the current program ID
+      const match = libRs.match(programIdRegex);
+      const currentProgramId = match[2];
       
-      if (anchorToml !== newAnchorToml) {
-        fs.writeFileSync(ANCHOR_TOML_PATH, newAnchorToml);
-        log(`Updated program ID in ${ANCHOR_TOML_PATH}`, 'success');
+      // Log the current program ID for debugging
+      log(`Current program ID in lib.rs: ${currentProgramId}`, 'info');
+      log(`New program ID to set: ${programId}`, 'info');
+      
+      // Only update if the program ID is different
+      if (currentProgramId !== programId) {
+        // Create the new content with the updated program ID
+        const newLibRs = libRs.replace(
+          programIdRegex,
+          `$1${programId}$3`
+        );
+        
+        // Write the updated content back to the file
+        fs.writeFileSync(LIB_RS_PATH, newLibRs);
+        log('Updated program ID in lib.rs', 'success');
+        
+        // Verify the update
+        const verifyContent = fs.readFileSync(LIB_RS_PATH, 'utf8');
+        const verifyMatch = verifyContent.match(programIdRegex);
+        if (verifyMatch && verifyMatch[2] === programId) {
+          log('Verified program ID update in lib.rs', 'success');
+        } else {
+          log('Failed to verify program ID update in lib.rs', 'error');
+        }
+        
         return true;
       } else {
-        log(`Program ID already up to date in ${ANCHOR_TOML_PATH}`, 'info');
+        log('Program ID already up to date in lib.rs', 'info');
         return true;
       }
     } else {
-      log(`Could not find program ID declaration in ${ANCHOR_TOML_PATH}`, 'error');
+      log('Could not find declare_id! macro in lib.rs', 'error');
       return false;
     }
   } catch (error) {
-    log(`Failed to update program ID in Anchor.toml: ${error.message}`, 'error');
+    log(`Failed to update lib.rs: ${error.message}`, 'error');
     return false;
   }
 }
 
-// Function to check for recoverable SOL from previous deployments
-function checkForRecoverableSOL() {
-  log('Checking for any recoverable SOL from previous failed deployments...');
-  
-  // Get list of all accounts owned by the program
-  const programId = getProgramIdFromAnchorToml();
-  if (!programId) {
-    log('Could not get program ID from Anchor.toml', 'warn');
-    return false;
-  }
-  
-  // Check if there are any accounts that can be closed
-  const accountsResult = execCommand(`solana program show ${programId}`);
-  if (!accountsResult.success) {
-    log(`Failed to check for recoverable accounts: ${accountsResult.error}`, 'warn');
-    return false;
-  }
-  
-  log('No recoverable SOL found from previous deployments', 'info');
-  return false;
-}
-
-// Function to create or verify program keypair
-function createOrVerifyProgramKeypair(programId) {
+// Build the program
+function buildProgram() {
   try {
-    log('Creating or verifying program keypair...');
-    
-    // Define the path to the program keypair file
-    const programKeypairPath = path.join(PROJECT_ROOT, 'target/deploy/bonding_curve_system-keypair.json');
-    const programKeypairDir = path.dirname(programKeypairPath);
-    
-    // Create the directory if it doesn't exist
-    if (!fs.existsSync(programKeypairDir)) {
-      fs.mkdirSync(programKeypairDir, { recursive: true });
-      log(`Created directory: ${programKeypairDir}`, 'info');
-    }
-    
-    // Check if the keypair file already exists
-    if (fs.existsSync(programKeypairPath)) {
-      log(`Program keypair file already exists at ${programKeypairPath}`, 'info');
-      return programKeypairPath;
-    }
-    
-    // Create a new keypair file
-    log(`Creating new program keypair file at ${programKeypairPath}`, 'info');
-    const result = execCommand(`solana-keygen new --no-bip39-passphrase --force -o ${programKeypairPath}`);
-    
+    log('Building program...');
+    const result = execCommand('anchor build', { cwd: PROJECT_ROOT });
     if (result.success) {
-      log(`Created program keypair file at ${programKeypairPath}`, 'success');
-      return programKeypairPath;
+      log('Successfully built program', 'success');
+      return true;
     } else {
-      log(`Failed to create program keypair: ${result.error}`, 'error');
+      log(`Failed to build program: ${result.error}`, 'error');
+      return false;
+    }
+  } catch (error) {
+    log(`Failed to build program: ${error.message}`, 'error');
+    return false;
+  }
+}
+
+// Deploy the program
+function deployProgram() {
+  try {
+    log('Deploying program...');
+    const result = execCommand('anchor deploy', { cwd: PROJECT_ROOT });
+    if (result.success) {
+      log('Successfully deployed program', 'success');
+      
+      // Extract program ID from deployment output
+      const programIdMatch = result.output.match(/Program Id: ([A-Za-z0-9]+)/);
+      if (programIdMatch) {
+        const deployedProgramId = programIdMatch[1];
+        log(`Deployed program ID: ${deployedProgramId}`, 'success');
+        return deployedProgramId;
+      } else {
+        log('Could not find program ID in deployment output', 'warn');
+        return null;
+      }
+    } else {
+      log(`Failed to deploy program: ${result.error}`, 'error');
       return null;
     }
   } catch (error) {
-    log(`Error in createOrVerifyProgramKeypair: ${error.message}`, 'error');
+    log(`Failed to deploy program: ${error.message}`, 'error');
     return null;
+  }
+}
+
+// Build the frontend
+function buildFrontend() {
+  try {
+    log('Building frontend...');
+    const frontendDir = path.join(PROJECT_ROOT, 'nextjs-frontend');
+    
+    if (!fs.existsSync(frontendDir)) {
+      log(`Frontend directory not found at ${frontendDir}`, 'error');
+      return false;
+    }
+    
+    // Install dependencies if needed
+    if (!fs.existsSync(path.join(frontendDir, 'node_modules'))) {
+      log('Installing frontend dependencies...', 'info');
+      const installResult = execCommand('npm install', { cwd: frontendDir });
+      if (!installResult.success) {
+        log(`Failed to install frontend dependencies: ${installResult.error}`, 'error');
+        return false;
+      }
+    }
+    
+    // Build the frontend
+    const buildResult = execCommand('npm run build', { cwd: frontendDir });
+    if (buildResult.success) {
+      log('Successfully built frontend', 'success');
+      return true;
+    } else {
+      log(`Failed to build frontend: ${buildResult.error}`, 'error');
+      return false;
+    }
+  } catch (error) {
+    log(`Failed to build frontend: ${error.message}`, 'error');
+    return false;
+  }
+}
+
+// Restart the frontend server
+function restartFrontendServer() {
+  try {
+    log('Restarting frontend server...');
+    const frontendDir = path.join(PROJECT_ROOT, 'nextjs-frontend');
+    
+    // Check if we're in a Docker container
+    const isInDocker = fs.existsSync('/.dockerenv');
+    log(`Running in Docker: ${isInDocker}`, 'info');
+    
+    // Kill any existing Next.js processes
+    try {
+      log('Killing existing Next.js processes...', 'info');
+      execCommand('pkill -f "node.*next"');
+    } catch (error) {
+      // Ignore errors, as there might not be any processes to kill
+      log('No existing Next.js processes found or failed to kill them', 'info');
+    }
+    
+    // Start the frontend server
+    log('Starting frontend server...', 'info');
+    
+    if (isInDocker) {
+      // In Docker, use nohup to keep the process running after the script exits
+      const startCommand = `cd ${frontendDir} && nohup npm run dev > /app/frontend.log 2>&1 &`;
+      const startResult = execCommand(startCommand);
+      
+      if (startResult.success) {
+        log('Successfully started frontend server in Docker container', 'success');
+        log('Frontend logs will be available at /app/frontend.log', 'info');
+        return true;
+      } else {
+        log(`Failed to start frontend server: ${startResult.error}`, 'error');
+        return false;
+      }
+    } else {
+      // Outside Docker, use spawn to start the process in the background
+      const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+      const child = spawn(npm, ['run', 'dev'], {
+        cwd: frontendDir,
+        detached: true,
+        stdio: 'ignore'
+      });
+      
+      // Unref the child process so it can run independently
+      child.unref();
+      
+      log('Successfully started frontend server', 'success');
+      return true;
+    }
+  } catch (error) {
+    log(`Failed to restart frontend server: ${error.message}`, 'error');
+    return false;
   }
 }
 
 // Main function
 async function main() {
   try {
-    log(`${colors.bright}${colors.cyan}=== Bonding Curve SOL Contracts Deployment Script ===${colors.reset}`);
-    log(`Log file: ${logFile}`);
+    log('Starting deployment process...', 'info');
     
-    // Step 0: Check for recoverable SOL
-    log('Step 0/8: Checking for recoverable SOL from previous deployments...');
-    checkForRecoverableSOL();
-    
-    // Step 1: Derive keypair from seed phrase
-    log('Step 1/8: Deriving keypair from seed phrase...');
-    const keypair = deriveKeypairFromSeedPhrase(SEED_PHRASE);
-    
-    // Step 2: Set up wallet
-    log('Step 2/8: Setting up wallet...');
-    const userKeypairPath = path.join(process.env.HOME || process.env.USERPROFILE, '.config/solana/id.json');
-    saveKeypairToFile(keypair, userKeypairPath);
-    
-    // Also save to root's config directory if running as root
-    const rootKeypairPath = '/root/.config/solana/id.json';
-    saveKeypairToFile(keypair, rootKeypairPath);
-    
-    // Set default keypair in Solana config - FIX: Use the fixed execCommand function
-    setDefaultKeypair(userKeypairPath);
-    
-    // Check environment and balance
-    checkEnvironment();
-    checkWalletBalance();
-    
-    // Step 3: Clean build artifacts
-    log('Step 3/8: Cleaning build artifacts...');
-    cleanBuildArtifacts();
-    
-    // Step 4: Get program ID
-    log('Step 4/8: Getting program ID...');
-    const programId = getProgramIdFromAnchorToml() || getProgramIdFromLibRs();
-    if (!programId) {
-      log('Could not get program ID from either Anchor.toml or lib.rs', 'error');
+    // Check environment
+    if (!checkEnvironment()) {
+      log('Environment check failed', 'error');
       process.exit(1);
     }
     
-    log(`Using program ID: ${programId}`, 'info');
-    
-    // Update program ID in all files
-    log('Updating program ID in all files...');
-    updateProgramIdInLibRs(programId);
-    updateProgramIdInAnchorToml(programId);
-    
-    // Step 5: Create or verify program keypair
-    log('Step 5/8: Creating or verifying program keypair...');
-    const programKeypairPath = createOrVerifyProgramKeypair(programId);
-    if (!programKeypairPath) {
-      log('Failed to create or verify program keypair', 'error');
+    // Recover wallet keypair from seed phrase
+    if (!await recoverWalletKeypair()) {
+      log('Failed to recover wallet keypair', 'error');
       process.exit(1);
     }
     
-    // Step 6: Build the program
-    log('Step 6/8: Building the program...');
-    log('Building the program with Anchor...');
-    
-    try {
-      log('Running: cd ' + PROJECT_ROOT + ' && anchor build');
-      execSync('anchor build', { 
-        cwd: PROJECT_ROOT,
-        stdio: 'inherit', // Critical for CLI tools like Anchor
-        timeout: COMMAND_TIMEOUT
-      });
-      log('Program built successfully', 'success');
-    } catch (error) {
-      log(`Failed to build program: ${error.message}`, 'error');
+    // Set default keypair
+    if (!setDefaultKeypair()) {
+      log('Failed to set default keypair', 'error');
       process.exit(1);
     }
     
-    // Step 7: Deploy the program with specific program keypair and program name
-    log('Step 7/8: Deploying the program...');
-    log(`Deploying the program with Anchor using program name: ${PROGRAM_NAME} and program keypair: ${programKeypairPath}`);
-    
-    try {
-      // FIX: Added --program-name parameter to the anchor deploy command
-      log(`Running: cd ${PROJECT_ROOT} && anchor deploy --program-name ${PROGRAM_NAME} --program-keypair ${programKeypairPath}`);
-      execSync(`anchor deploy --program-name ${PROGRAM_NAME} --program-keypair ${programKeypairPath}`, { 
-        cwd: PROJECT_ROOT,
-        stdio: 'inherit', // Critical for CLI tools like Anchor
-        timeout: COMMAND_TIMEOUT
-      });
-      log('Program deployed successfully', 'success');
-    } catch (error) {
-      log(`Failed to deploy program: ${error.message}`, 'error');
+    // Check wallet balance
+    if (!checkWalletBalance()) {
+      log('Failed to check wallet balance', 'error');
       process.exit(1);
     }
     
-    // Step 8: Update frontend files
-    log('Step 8/8: Updating frontend files...');
-    updateFrontendFiles(programId);
+    // Get or create program keypair
+    const { keypair, programId, isNew } = getOrCreateProgramKeypair();
+    log(`Using program ID: ${programId}`, 'success');
+    
+    // Update Anchor.toml with program ID and keypair configuration
+    if (!updateAnchorToml(programId)) {
+      log('Failed to update Anchor.toml', 'error');
+      process.exit(1);
+    }
+    
+    // Update lib.rs with program ID
+    if (!updateLibRs(programId)) {
+      log('Failed to update lib.rs', 'error');
+      process.exit(1);
+    }
+    
+    // Update frontend files with program ID
+    if (!updateFrontendFiles(programId)) {
+      log('Failed to update frontend files', 'error');
+      process.exit(1);
+    }
+    
+    // Build the program
+    if (!buildProgram()) {
+      log('Failed to build program', 'error');
+      process.exit(1);
+    }
+    
+    // Deploy the program
+    const deployedProgramId = deployProgram();
+    if (!deployedProgramId) {
+      log('Failed to deploy program', 'error');
+      process.exit(1);
+    }
+    
+    // Verify deployed program ID matches expected program ID
+    if (deployedProgramId !== programId) {
+      log(`Warning: Deployed program ID ${deployedProgramId} does not match expected program ID ${programId}`, 'warn');
+      
+      // Update files with the deployed program ID
+      log(`Updating files with deployed program ID ${deployedProgramId}...`, 'info');
+      
+      if (!updateAnchorToml(deployedProgramId)) {
+        log('Failed to update Anchor.toml with deployed program ID', 'error');
+      }
+      
+      if (!updateLibRs(deployedProgramId)) {
+        log('Failed to update lib.rs with deployed program ID', 'error');
+      }
+      
+      if (!updateFrontendFiles(deployedProgramId)) {
+        log('Failed to update frontend files with deployed program ID', 'error');
+      }
+    }
+    
+    // Build the frontend
+    if (!buildFrontend()) {
+      log('Failed to build frontend', 'error');
+      process.exit(1);
+    }
+    
+    // Restart the frontend server
+    if (!restartFrontendServer()) {
+      log('Failed to restart frontend server', 'error');
+      process.exit(1);
+    }
     
     log('Deployment process completed successfully!', 'success');
-    log(`Program ID: ${programId}`, 'success');
+    log(`Program ID: ${deployedProgramId || programId}`, 'success');
+    log('Frontend server has been restarted', 'success');
     
+    // Close the log stream
+    logStream.end();
   } catch (error) {
-    log(`Deployment failed: ${error.message}`, 'error');
+    log(`Deployment process failed: ${error.message}`, 'error');
+    log(`Stack trace: ${error.stack}`, 'error');
+    
+    // Close the log stream
+    logStream.end();
+    
     process.exit(1);
   }
 }
 
 // Run the main function
-main().catch(error => {
-  log(`Unhandled error: ${error.message}`, 'error');
-  process.exit(1);
-});
+main();

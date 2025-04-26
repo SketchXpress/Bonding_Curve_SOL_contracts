@@ -710,4 +710,3 @@ export const IDL ={
 export default IDL;
 
 
-BW2b1MZTDYoX2BQBUqgCjZmq6brmLb4GUUcgoL4YaKro
