@@ -2,7 +2,7 @@
 set -e
 
 echo "=== Solana Contract Verification Test ==="
-echo "Program ID: ACyrSsRBM98M6hb9DT8Sg5faDGJsKgNoPzcyqWqCcXg8"
+echo "Program ID: DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1"
 echo "Network: Devnet"
 
 # Set up environment
@@ -17,7 +17,7 @@ solana balance
 # Verify Program Deployment
 echo -e "\n=== Verifying Program Deployment ==="
 echo "Checking if program is properly deployed..."
-PROGRAM_INFO=$(solana program show ACyrSsRBM98M6hb9DT8Sg5faDGJsKgNoPzcyqWqCcXg8 2>/dev/null || echo "Error verifying program")
+PROGRAM_INFO=$(solana program show DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 2>/dev/null || echo "Error verifying program")
 
 if [[ $PROGRAM_INFO == *"Error"* ]]; then
   echo "FAILED: Program is not properly deployed."
@@ -30,7 +30,7 @@ fi
 # Check Program Data
 echo -e "\n=== Checking Program Data ==="
 echo "Examining program account data..."
-PROGRAM_DATA=$(solana account ACyrSsRBM98M6hb9DT8Sg5faDGJsKgNoPzcyqWqCcXg8 --output json 2>/dev/null || echo "Error checking program account")
+PROGRAM_DATA=$(solana account DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 --output json 2>/dev/null || echo "Error checking program account")
 
 if [[ $PROGRAM_DATA == *"Error"* ]]; then
   echo "FAILED: Could not retrieve program account data."
@@ -55,7 +55,7 @@ fi
 
 # Test Summary
 echo -e "\n=== Test Summary ==="
-echo "Program ID: ACyrSsRBM98M6hb9DT8Sg5faDGJsKgNoPzcyqWqCcXg8"
+echo "Program ID: DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1"
 echo "Program is properly deployed on Solana devnet."
 echo "Program authority: $PROGRAM_AUTHORITY"
 echo "Verification completed successfully."

@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("ACyrSsRBM98M6hb9DT8Sg5faDGJsKgNoPzcyqWqCcXg8");
+declare_id!("5a9RAcFUkirJmDBJ9R2tzEgbAPutSftpyt7he8B7FUMe");
 
 pub mod state;
 pub mod instructions;
@@ -35,7 +35,7 @@ pub mod bonding_curve_system {
     }
 
     pub fn create_nft(
-        ctx: Context<CreateNFT>, 
+        ctx: Context<CreateNft>, 
         name: String,
         symbol: String,
         uri: String,
@@ -51,7 +51,7 @@ pub mod bonding_curve_system {
     }
 
     pub fn create_nft_data(
-        ctx: Context<CreateNFTData>, 
+        ctx: Context<CreateNftData>, 
         name: String,
         symbol: String,
         uri: String,
@@ -70,7 +70,7 @@ pub mod bonding_curve_system {
         instructions::create_master_edition::create_master_edition(ctx)
     }
 
-    pub fn buy_nft(ctx: Context<BuyNFT>) -> Result<()> {
+    pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
         instructions::buy_nft::buy_nft(ctx)
     }
     
