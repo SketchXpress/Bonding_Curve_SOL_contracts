@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
+use bytemuck::{Pod, Zeroable};
 
-// Simplified BondingCurvePool struct with minimal fields
-// Removed price_history array and consolidated padding
-#[account]
-#[repr(C)]
+// Using zero_copy with proper trait implementations
+#[account(zero_copy)]
+#[derive(Default, Pod, Zeroable)]
+#[repr(C, packed)]
 pub struct BondingCurvePool {
     pub authority: Pubkey,
     pub real_token_mint: Pubkey,
@@ -23,6 +24,9 @@ pub struct BondingCurvePool {
     pub total_distributed: u64,
     pub tensor_migration_timestamp: i64,
 }
+
+// AccountLoader is used with zero_copy to load the account data
+pub type BondingCurvePoolAccount<'info> = AccountLoader<'info, BondingCurvePool>;
 
 impl BondingCurvePool {
     // Flag bit positions
@@ -54,7 +58,7 @@ impl BondingCurvePool {
         }
     }
     
-    // Reduced size without the large price_history array
+    // Size calculation for account allocation
     pub const SIZE: usize = 8 +  // discriminator
         32 + // authority
         32 + // real_token_mint

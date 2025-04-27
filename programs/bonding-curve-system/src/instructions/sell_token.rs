@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer, Burn};
-use crate::state::{BondingCurvePool};
+use crate::state::{BondingCurvePool, BondingCurvePoolAccount};
 
 #[derive(Accounts)]
 pub struct SellToken<'info> {
@@ -11,7 +11,7 @@ pub struct SellToken<'info> {
     pub user_account: Account<'info, crate::state::UserAccount>,
     
     #[account(mut)]
-    pub pool: Account<'info, BondingCurvePool>,
+    pub pool: AccountLoader<'info, BondingCurvePool>,
     
     pub real_token_mint: Account<'info, Mint>,
     
@@ -43,10 +43,13 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
     // Validate input
     require!(amount > 0, crate::errors::ErrorCode::InvalidAmount);
     
-    // Check if pool has passed threshold using the new flags API
-    if ctx.accounts.pool.is_past_threshold() {
+    // Load pool data using zero-copy approach
+    let mut pool = ctx.accounts.pool.load_mut()?;
+    
+    // Check if pool has passed threshold using the flags API
+    if pool.is_past_threshold() {
         // Calculate the amount of tokens to burn
-        let burn_amount = calculate_burn_amount(amount, &ctx.accounts.pool)?;
+        let burn_amount = calculate_burn_amount(amount, &pool)?;
         
         // Burn synthetic tokens
         token::burn(
@@ -62,15 +65,15 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
         )?;
         
         // Update pool state
-        ctx.accounts.pool.total_supply = ctx.accounts.pool.total_supply.checked_sub(burn_amount)
+        pool.total_supply = pool.total_supply.checked_sub(burn_amount)
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
         
         // Update total burned amount
-        ctx.accounts.pool.total_burned = ctx.accounts.pool.total_burned.checked_add(burn_amount)
+        pool.total_burned = pool.total_burned.checked_add(burn_amount)
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
         
         // Calculate the amount of real tokens to transfer
-        let transfer_amount = calculate_transfer_amount(amount, &ctx.accounts.pool)?;
+        let transfer_amount = calculate_transfer_amount(amount, &pool)?;
         
         // Transfer real tokens from vault to seller
         token::transfer(
@@ -84,18 +87,18 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
                 &[&[
                     b"bonding-pool",
                     ctx.accounts.real_token_mint.key().as_ref(),
-                    &[ctx.accounts.pool.bump],
+                    &[pool.bump],
                 ]],
             ),
             transfer_amount,
         )?;
         
         // Update total distributed amount
-        ctx.accounts.pool.total_distributed = ctx.accounts.pool.total_distributed.checked_add(transfer_amount)
+        pool.total_distributed = pool.total_distributed.checked_add(transfer_amount)
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
         
         // Update market cap
-        ctx.accounts.pool.current_market_cap = ctx.accounts.pool.current_market_cap.checked_sub(transfer_amount)
+        pool.current_market_cap = pool.current_market_cap.checked_sub(transfer_amount)
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
         
         // Log the transaction
@@ -120,11 +123,11 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
         )?;
         
         // Update pool state
-        ctx.accounts.pool.total_supply = ctx.accounts.pool.total_supply.checked_sub(burn_amount)
+        pool.total_supply = pool.total_supply.checked_sub(burn_amount)
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
         
         // Calculate the amount of real tokens to transfer based on bonding curve
-        let transfer_amount = calculate_bonding_curve_output(burn_amount, &ctx.accounts.pool)?;
+        let transfer_amount = calculate_bonding_curve_output(burn_amount, &pool)?;
         
         // Transfer real tokens from vault to seller
         token::transfer(
@@ -138,20 +141,20 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
                 &[&[
                     b"bonding-pool",
                     ctx.accounts.real_token_mint.key().as_ref(),
-                    &[ctx.accounts.pool.bump],
+                    &[pool.bump],
                 ]],
             ),
             transfer_amount,
         )?;
         
         // Update market cap
-        ctx.accounts.pool.current_market_cap = ctx.accounts.pool.current_market_cap.checked_sub(transfer_amount)
+        pool.current_market_cap = pool.current_market_cap.checked_sub(transfer_amount)
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
         
         // Check if we should set past threshold flag
-        if should_set_past_threshold(&ctx.accounts.pool) {
-            // Use the setter method from the new flags API
-            ctx.accounts.pool.set_past_threshold(true);
+        if should_set_past_threshold(&pool) {
+            // Use the setter method from the flags API
+            pool.set_past_threshold(true);
             msg!("Pool has passed the threshold");
         }
         
@@ -163,7 +166,7 @@ pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
 }
 
 // Helper function to calculate burn amount
-fn calculate_burn_amount(amount: u64, pool: &BondingCurvePool) -> Result<u64> {
+fn calculate_burn_amount(amount: u64, _pool: &BondingCurvePool) -> Result<u64> {
     // Simple implementation - in a real scenario this might be more complex
     Ok(amount)
 }
