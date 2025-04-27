@@ -1,10 +1,9 @@
 use anchor_lang::prelude::*;
-use anchor_lang::__private::bytemuck::{Pod, Zeroable};
+// Remove the explicit bytemuck imports as they're not needed with #[account(zero_copy)]
 
-// Use zero_copy for direct memory access without stack allocation
 #[account(zero_copy)]
 #[derive(Default)]
-#[repr(C, packed)] // Ensure proper memory alignment for BPF VM
+#[repr(C, packed)]
 pub struct BondingCurvePool {
     // Account references
     pub authority: Pubkey,
@@ -75,6 +74,4 @@ impl BondingCurvePool {
 // Type alias for AccountLoader<BondingCurvePool>
 pub type BondingCurvePoolAccount<'info> = AccountLoader<'info, BondingCurvePool>;
 
-// Implement required traits for zero-copy
-unsafe impl Pod for BondingCurvePool {}
-unsafe impl Zeroable for BondingCurvePool {}
+// No manual implementations needed - #[account(zero_copy)] handles this automatically

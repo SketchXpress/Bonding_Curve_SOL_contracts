@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Mint};
-use crate::state::{BondingCurvePool, BondingCurvePoolAccount};
+use anchor_spl::token::{Token, TokenAccount, Mint};
+use crate::state::BondingCurvePool;
 
 #[derive(Accounts)]
+#[instruction(base_price: u64, growth_factor: u64)]
 pub struct CreatePool<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -34,8 +35,7 @@ pub struct CreatePool<'info> {
         payer = authority,
         seeds = [b"bonding-pool", real_token_mint.key().as_ref()],
         bump,
-        space = BondingCurvePool::SIZE,
-        zero = true, // Added comma here
+        space = 8 + std::mem::size_of::<BondingCurvePool>(),
     )]
     pub pool: AccountLoader<'info, BondingCurvePool>,
     
@@ -44,28 +44,25 @@ pub struct CreatePool<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
-// Main entry point - minimal stack usage
-#[inline(never)]
 pub fn create_pool(
     ctx: Context<CreatePool>,
     base_price: u64,
     growth_factor: u64,
 ) -> Result<()> {
-    // Validate input parameters with minimal stack usage
+    // Validate input parameters
     require!(base_price > 0, crate::errors::ErrorCode::InvalidPrice);
     require!(growth_factor > 0, crate::errors::ErrorCode::InvalidPrice);
     
-    // Get a mutable reference to the pool data
-    // This uses zero-copy approach to avoid stack allocation
-    let mut pool = ctx.accounts.pool.load_mut()?;
+    // Initialize the pool by loading it
+    let mut pool = ctx.accounts.pool.load_init()?;
     
-    // Initialize account references directly
+    // Store only the public keys of accounts, not the accounts themselves
     pool.authority = ctx.accounts.authority.key();
     pool.real_token_mint = ctx.accounts.real_token_mint.key();
     pool.synthetic_token_mint = ctx.accounts.synthetic_token_mint.key();
     pool.real_token_vault = ctx.accounts.real_token_vault.key();
     
-    // Initialize numeric fields directly
+    // Initialize numeric fields
     pool.current_market_cap = 0;
     pool.base_price = base_price;
     pool.growth_factor = growth_factor;
@@ -74,7 +71,7 @@ pub fn create_pool(
     // Initialize flags and other fields
     pool.flags = 0;
     pool.price_history_idx = 0;
-    pool.bump = *ctx.bumps.get("pool").unwrap();
+    pool.bump = ctx.bumps.pool;
     
     // Initialize reserved array
     pool._reserved = [0; 5];

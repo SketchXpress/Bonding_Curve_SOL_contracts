@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
-// Import bytemuck through anchor_lang to ensure compatibility
-use anchor_lang::__private::bytemuck;
+// Don't import bytemuck here if not directly used
+// use anchor_lang::__private::bytemuck;
 
 declare_id!("FzwC1iKmMYjbJUMGbw5xEwQi82uKzRzN5DkUW42AHdqo");
 
@@ -10,35 +10,39 @@ pub mod math;
 pub mod errors;
 pub mod constants;
 
-// Import specific structs and functions instead of using glob imports
-use instructions::{
-    CreatePool, BuyToken, SellToken, CreateUser, CreateNFT, 
-    BuyNft, CreateNFTData, CreateMasterEdition, MigrateToTensor
-};
+// Re-export instruction contexts
+use instructions::create_pool::*;
+use instructions::create_user::*;
+use instructions::buy_token::*;
+use instructions::sell_token::*;
+use instructions::create_nft::*;
+use instructions::buy_nft::*;
+use instructions::create_nft_data::*;
+use instructions::create_master_edition::*;
+use instructions::migrate_to_tensor::*;
 
 #[program]
 pub mod bonding_curve_system {
-    use anchor_lang::prelude::*;
-    use crate::instructions;
-
+    use super::*;
+    
     pub fn create_pool(
         ctx: Context<CreatePool>,
         base_price: u64,
         growth_factor: u64,
     ) -> Result<()> {
-        instructions::create_pool(ctx, base_price, growth_factor)
+        instructions::create_pool::create_pool(ctx, base_price, growth_factor)
     }
 
     pub fn create_user(ctx: Context<CreateUser>, max_nfts: u8) -> Result<()> {
-        instructions::create_user(ctx, max_nfts)
+        instructions::create_user::create_user(ctx, max_nfts)
     }
 
     pub fn buy_token(ctx: Context<BuyToken>, amount: u64) -> Result<()> {
-        instructions::buy_token(ctx, amount)
+        instructions::buy_token::buy_token(ctx, amount)
     }
 
     pub fn sell_token(ctx: Context<SellToken>, amount: u64) -> Result<()> {
-        instructions::sell_token(ctx, amount)
+        instructions::sell_token::sell_token(ctx, amount)
     }
 
     pub fn create_nft(
@@ -48,7 +52,7 @@ pub mod bonding_curve_system {
         uri: String,
         seller_fee_basis_points: u16,
     ) -> Result<()> {
-        instructions::create_nft(
+        instructions::create_nft::create_nft(
             ctx, 
             name,
             symbol,
@@ -64,7 +68,7 @@ pub mod bonding_curve_system {
         uri: String,
         seller_fee_basis_points: u16,
     ) -> Result<()> {
-        instructions::create_nft_data(
+        instructions::create_nft_data::create_nft_data(
             ctx, 
             name,
             symbol,
@@ -74,14 +78,14 @@ pub mod bonding_curve_system {
     }
 
     pub fn create_master_edition(ctx: Context<CreateMasterEdition>) -> Result<()> {
-        instructions::create_master_edition(ctx)
+        instructions::create_master_edition::create_master_edition(ctx)
     }
 
     pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
-        instructions::buy_nft(ctx)
+        instructions::buy_nft::buy_nft(ctx)
     }
     
     pub fn migrate_to_tensor(ctx: Context<MigrateToTensor>) -> Result<()> {
-        instructions::migrate_to_tensor(ctx)
+        instructions::migrate_to_tensor::migrate_to_tensor(ctx)
     }
 }
