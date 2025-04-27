@@ -2,7 +2,7 @@
 set -e
 
 echo "=== Anchor CLI Interaction Demo for Bonding Curve System ==="
-echo "Program ID: DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1"
+echo "Program ID: 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y"
 echo "Network: Devnet"
 
 # Set up environment
@@ -40,7 +40,7 @@ cluster = "devnet"
 wallet = "/home/ubuntu/.config/solana/id.json"
 
 [programs.devnet]
-bonding_curve_system = "DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1"
+bonding_curve_system = "8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
@@ -55,7 +55,7 @@ function display_anchor_command() {
   
   echo -e "\n=== Anchor CLI Command for $INSTRUCTION ==="
   echo "anchor call $INSTRUCTION $ARGS \\"
-  echo "  --program-id DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 \\"
+  echo "  --program-id 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y \\"
   echo "  --provider.cluster devnet \\"
   echo "  --provider.wallet /home/ubuntu/.config/solana/id.json \\"
   if [ ! -z "$ACCOUNTS" ]; then
@@ -120,7 +120,7 @@ echo "4. Always check the IDL for the exact account requirements for each instru
 echo -e "\n=== Example: Creating a User Account ==="
 echo "To create a user account, you would run:"
 echo "anchor call createUser 10 \\"
-echo "  --program-id DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 \\"
+echo "  --program-id 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y \\"
 echo "  --provider.cluster devnet \\"
 echo "  --provider.wallet /home/ubuntu/.config/solana/id.json \\"
 echo "  --idl $IDL_PATH"

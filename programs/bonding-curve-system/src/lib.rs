@@ -35,7 +35,7 @@ pub mod bonding_curve_system {
     }
 
     pub fn create_nft(
-        ctx: Context<CreateNft>, 
+        ctx: Context<CreateNFT>, 
         name: String,
         symbol: String,
         uri: String,
@@ -51,7 +51,7 @@ pub mod bonding_curve_system {
     }
 
     pub fn create_nft_data(
-        ctx: Context<CreateNftData>, 
+        ctx: Context<CreateNFTData>, 
         name: String,
         symbol: String,
         uri: String,

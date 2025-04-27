@@ -1,4 +1,4 @@
-export const PROGRAM_ID = 'DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1';
+export const PROGRAM_ID = '8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y';
 
 export const IDL = {
   "version": "0.1.0",
@@ -648,6 +648,48 @@ export const IDL = {
       }
     }
   ],
+  "events": [
+    {
+      "name": "MigrationEvent",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "authority",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "timestamp",
+          "type": "i64",
+          "index": false
+        },
+        {
+          "name": "marketCap",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "totalSupply",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "totalBurned",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "totalDistributed",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    }
+  ],
   "errors": [
     {
       "code": 6000,
@@ -701,7 +743,7 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1"
+    "address": "8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y"
   }
 };
 

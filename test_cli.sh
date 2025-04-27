@@ -2,7 +2,7 @@
 set -e
 
 echo "=== Comprehensive Solana Contract Testing ==="
-echo "Program ID: DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1"
+echo "Program ID: 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y"
 echo "Network: Devnet"
 
 # Set up environment
@@ -17,7 +17,7 @@ solana balance
 # Test 1: Create User
 echo -e "\n=== Test 1: Create User ==="
 echo "Creating user account..."
-USER_TX=$(solana program call --program-id DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 \
+USER_TX=$(solana program call --program-id 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y \
   createUser 10 \
   --signer /home/ubuntu/.config/solana/id.json \
   --url https://api.devnet.solana.com \
@@ -40,7 +40,7 @@ echo "Token mint created: $TOKEN_MINT"
 # Test 3: Create Pool
 echo -e "\n=== Test 3: Create Pool ==="
 echo "Creating pool..."
-POOL_TX=$(solana program call --program-id DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 \
+POOL_TX=$(solana program call --program-id 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y \
   createPool 1000000 3606 \
   --signer /home/ubuntu/.config/solana/id.json \
   --url https://api.devnet.solana.com \
@@ -60,7 +60,7 @@ echo "Creating NFT..."
 NFT_MINT=$(solana-keygen new --no-bip39-passphrase --force --silent | grep "pubkey" | awk '{print $2}')
 echo "NFT mint created: $NFT_MINT"
 
-NFT_TX=$(solana program call --program-id DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 \
+NFT_TX=$(solana program call --program-id 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y \
   createNft "Test NFT" "TNFT" "https://example.com/nft.json" 500 \
   --signer /home/ubuntu/.config/solana/id.json \
   --url https://api.devnet.solana.com \
@@ -77,7 +77,7 @@ fi
 # Test 5: Check Program Account
 echo -e "\n=== Test 5: Check Program Account ==="
 echo "Checking program account data..."
-PROGRAM_DATA=$(solana account DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 --output json 2>/dev/null || echo "Error checking program account")
+PROGRAM_DATA=$(solana account 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y --output json 2>/dev/null || echo "Error checking program account")
 
 if [[ $PROGRAM_DATA == *"Error"* ]]; then
   echo "Failed to check program account."
@@ -89,7 +89,7 @@ fi
 # Test 6: Verify Deployment
 echo -e "\n=== Test 6: Verify Deployment ==="
 echo "Verifying program deployment..."
-PROGRAM_INFO=$(solana program show DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1 2>/dev/null || echo "Error verifying program")
+PROGRAM_INFO=$(solana program show 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y 2>/dev/null || echo "Error verifying program")
 
 if [[ $PROGRAM_INFO == *"Error"* ]]; then
   echo "Failed to verify program deployment."
@@ -100,5 +100,5 @@ fi
 
 echo -e "\n=== Test Summary ==="
 echo "Wallet: $WALLET_ADDRESS"
-echo "Program ID: DPgH4G6CpH6wr7TTu75ModTWyQg5muPqnNqMrRQQryx1"
+echo "Program ID: 8y1BPB5aUw4cQpEbEFtMcpjePXkLmAB9MyBK4J5i3p9Y"
 echo "Tests completed. See above for individual test results."
