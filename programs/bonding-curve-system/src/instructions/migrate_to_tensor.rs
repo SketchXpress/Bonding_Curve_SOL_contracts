@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::state::{BondingCurvePool, BondingCurvePoolAccount};
+use crate::state::BondingCurvePool;
 
 #[derive(Accounts)]
 pub struct MigrateToTensor<'info> {

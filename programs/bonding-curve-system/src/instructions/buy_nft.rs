@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
-use crate::state::{BondingCurvePool, BondingCurvePoolAccount};
+use crate::state::BondingCurvePool;
 
 #[derive(Accounts)]
 pub struct BuyNft<'info> {

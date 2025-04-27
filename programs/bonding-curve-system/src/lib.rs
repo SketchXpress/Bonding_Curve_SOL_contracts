@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use bytemuck; // Add bytemuck dependency for zero_copy
+// Import bytemuck through anchor_lang to ensure compatibility
+use anchor_lang::__private::bytemuck;
 
 declare_id!("FzwC1iKmMYjbJUMGbw5xEwQi82uKzRzN5DkUW42AHdqo");
 
@@ -17,7 +18,8 @@ use instructions::{
 
 #[program]
 pub mod bonding_curve_system {
-    use super::*;
+    use anchor_lang::prelude::*;
+    use crate::instructions;
 
     pub fn create_pool(
         ctx: Context<CreatePool>,

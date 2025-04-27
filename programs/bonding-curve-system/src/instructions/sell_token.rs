@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer, Burn};
-use crate::state::{BondingCurvePool, BondingCurvePoolAccount};
+use crate::state::BondingCurvePool;
 
 #[derive(Accounts)]
 pub struct SellToken<'info> {

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount, Mint};
+use anchor_spl::token::{self, Token, TokenAccount, Mint};
 use crate::state::{BondingCurvePool, BondingCurvePoolAccount};
 
 #[derive(Accounts)]
@@ -35,7 +35,7 @@ pub struct CreatePool<'info> {
         seeds = [b"bonding-pool", real_token_mint.key().as_ref()],
         bump,
         space = BondingCurvePool::SIZE,
-        zero = true,
+        zero = true, // Added comma here
     )]
     pub pool: AccountLoader<'info, BondingCurvePool>,
     

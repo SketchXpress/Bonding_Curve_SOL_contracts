@@ -1,53 +1,66 @@
 use anchor_lang::prelude::*;
-use bytemuck::{Pod, Zeroable};
+use anchor_lang::__private::bytemuck::{Pod, Zeroable};
 
-// Using zero_copy with proper trait implementations
+// Use zero_copy for direct memory access without stack allocation
 #[account(zero_copy)]
-#[derive(Default, Pod, Zeroable)]
-#[repr(C, packed)]
+#[derive(Default)]
+#[repr(C, packed)] // Ensure proper memory alignment for BPF VM
 pub struct BondingCurvePool {
+    // Account references
     pub authority: Pubkey,
     pub real_token_mint: Pubkey,
     pub synthetic_token_mint: Pubkey,
     pub real_token_vault: Pubkey,
+    
+    // Numeric values
     pub current_market_cap: u64,
     pub base_price: u64,
     pub growth_factor: u64,
     pub total_supply: u64,
-    // Combine boolean fields to reduce padding needs
-    pub flags: u8, // bit 0: past_threshold, bit 1: migrated_to_tensor
+    
+    // Flags byte (replaces individual booleans)
+    pub flags: u8,
+    
+    // Price history index
     pub price_history_idx: u8,
+    
+    // Bump seed for PDA derivation
     pub bump: u8,
-    pub _reserved: [u8; 5], // Single padding field
-    // Removed price_history array - will be initialized separately if needed
+    
+    // Reserved space for future upgrades
+    pub _reserved: [u8; 5],
+    
+    // Additional numeric values
     pub total_burned: u64,
     pub total_distributed: u64,
     pub tensor_migration_timestamp: i64,
 }
 
-// AccountLoader is used with zero_copy to load the account data
-pub type BondingCurvePoolAccount<'info> = AccountLoader<'info, BondingCurvePool>;
-
+// Flag bit positions
 impl BondingCurvePool {
-    // Flag bit positions
+    // Size constant for account allocation
+    pub const SIZE: usize = std::mem::size_of::<BondingCurvePool>();
+    
+    // Flag constants
     pub const PAST_THRESHOLD_FLAG: u8 = 0x01;
     pub const MIGRATED_TO_TENSOR_FLAG: u8 = 0x02;
     
-    // Getter and setter methods for flags
+    // Getter methods for flags
     pub fn is_past_threshold(&self) -> bool {
         (self.flags & Self::PAST_THRESHOLD_FLAG) != 0
     }
     
+    pub fn is_migrated_to_tensor(&self) -> bool {
+        (self.flags & Self::MIGRATED_TO_TENSOR_FLAG) != 0
+    }
+    
+    // Setter methods for flags
     pub fn set_past_threshold(&mut self, value: bool) {
         if value {
             self.flags |= Self::PAST_THRESHOLD_FLAG;
         } else {
             self.flags &= !Self::PAST_THRESHOLD_FLAG;
         }
-    }
-    
-    pub fn is_migrated_to_tensor(&self) -> bool {
-        (self.flags & Self::MIGRATED_TO_TENSOR_FLAG) != 0
     }
     
     pub fn set_migrated_to_tensor(&mut self, value: bool) {
@@ -57,22 +70,11 @@ impl BondingCurvePool {
             self.flags &= !Self::MIGRATED_TO_TENSOR_FLAG;
         }
     }
-    
-    // Size calculation for account allocation
-    pub const SIZE: usize = 8 +  // discriminator
-        32 + // authority
-        32 + // real_token_mint
-        32 + // synthetic_token_mint
-        32 + // real_token_vault
-        8 + // current_market_cap
-        8 + // base_price
-        8 + // growth_factor
-        8 + // total_supply
-        1 + // flags (combined boolean fields)
-        1 + // price_history_idx
-        1 + // bump
-        5 + // _reserved padding
-        8 + // total_burned
-        8 + // total_distributed
-        8; // tensor_migration_timestamp
 }
+
+// Type alias for AccountLoader<BondingCurvePool>
+pub type BondingCurvePoolAccount<'info> = AccountLoader<'info, BondingCurvePool>;
+
+// Implement required traits for zero-copy
+unsafe impl Pod for BondingCurvePool {}
+unsafe impl Zeroable for BondingCurvePool {}
