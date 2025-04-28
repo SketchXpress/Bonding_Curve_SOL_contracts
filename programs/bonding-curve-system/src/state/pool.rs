@@ -1,9 +1,8 @@
 use anchor_lang::prelude::*;
-// Remove the explicit bytemuck imports as they're not needed with #[account(zero_copy)]
 
 #[account(zero_copy)]
 #[derive(Default)]
-#[repr(C, packed)]
+#[repr(C)]  // Use C representation without packed for zero_copy
 pub struct BondingCurvePool {
     // Account references
     pub authority: Pubkey,
@@ -73,5 +72,3 @@ impl BondingCurvePool {
 
 // Type alias for AccountLoader<BondingCurvePool>
 pub type BondingCurvePoolAccount<'info> = AccountLoader<'info, BondingCurvePool>;
-
-// No manual implementations needed - #[account(zero_copy)] handles this automatically

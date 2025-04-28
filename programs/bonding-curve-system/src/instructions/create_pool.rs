@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount, Mint};
-use crate::state::BondingCurvePool;
+use crate::state::pool::BondingCurvePoolAccount;
+use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
 #[instruction(base_price: u64, growth_factor: u64)]
@@ -10,13 +11,20 @@ pub struct CreatePool<'info> {
     
     pub real_token_mint: Account<'info, Mint>,
     
+    /// CHECK: This account is a PDA that will own token accounts
+    #[account(
+        seeds = [b"bonding-pool", real_token_mint.key().as_ref()],
+        bump,
+    )]
+    pub pool_authority: UncheckedAccount<'info>,
+    
     #[account(
         init,
         payer = authority,
         seeds = [b"synthetic-mint", real_token_mint.key().as_ref()],
         bump,
         mint::decimals = real_token_mint.decimals,
-        mint::authority = pool.key(),
+        mint::authority = pool_authority,
     )]
     pub synthetic_token_mint: Account<'info, Mint>,
     
@@ -26,7 +34,7 @@ pub struct CreatePool<'info> {
         seeds = [b"token-vault", real_token_mint.key().as_ref()],
         bump,
         token::mint = real_token_mint,
-        token::authority = pool.key(),
+        token::authority = pool_authority,
     )]
     pub real_token_vault: Account<'info, TokenAccount>,
     
@@ -35,9 +43,9 @@ pub struct CreatePool<'info> {
         payer = authority,
         seeds = [b"bonding-pool", real_token_mint.key().as_ref()],
         bump,
-        space = 8 + std::mem::size_of::<BondingCurvePool>(),
+        space = 8 + std::mem::size_of::<crate::state::pool::BondingCurvePool>(),
     )]
-    pub pool: AccountLoader<'info, BondingCurvePool>,
+    pub pool: BondingCurvePoolAccount<'info>,
     
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -50,11 +58,11 @@ pub fn create_pool(
     growth_factor: u64,
 ) -> Result<()> {
     // Validate input parameters
-    require!(base_price > 0, crate::errors::ErrorCode::InvalidPrice);
-    require!(growth_factor > 0, crate::errors::ErrorCode::InvalidPrice);
+    require!(base_price > 0, ErrorCode::InvalidPrice);
+    require!(growth_factor > 0, ErrorCode::InvalidPrice);
     
-    // Initialize the pool by loading it
-    let mut pool = ctx.accounts.pool.load_init()?;
+    // Get a reference to the pool using load_init() for zero-copy initialization
+    let pool = &mut ctx.accounts.pool.load_init()?;
     
     // Store only the public keys of accounts, not the accounts themselves
     pool.authority = ctx.accounts.authority.key();
@@ -71,7 +79,7 @@ pub fn create_pool(
     // Initialize flags and other fields
     pool.flags = 0;
     pool.price_history_idx = 0;
-    pool.bump = ctx.bumps.pool;
+    pool.bump = *ctx.bumps.get("pool").unwrap();
     
     // Initialize reserved array
     pool._reserved = [0; 5];

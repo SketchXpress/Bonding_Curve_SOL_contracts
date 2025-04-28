@@ -1,6 +1,4 @@
 use anchor_lang::prelude::*;
-// Don't import bytemuck here if not directly used
-// use anchor_lang::__private::bytemuck;
 
 declare_id!("FzwC1iKmMYjbJUMGbw5xEwQi82uKzRzN5DkUW42AHdqo");
 
