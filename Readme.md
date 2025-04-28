@@ -40,9 +40,9 @@ Key aspects include:
 - **`instructions/sell_nft.rs`**: Logic for burning an NFT via Metaplex and returning SOL from its TOE.
 - **`instructions/migrate_to_tensor.rs`**: Logic to freeze the pool and potentially interact with Tensor (basic structure provided).
 
-### 2. Frontend Implementations (Require Updates)
+### 2. Frontend Implementations
 
-- **NextJS Frontend** (`nextjs-frontend`): Needs updates to reflect the TOE model and removal of fungible tokens.
+- **NextJS Frontend** (`nextjs-frontend`): Updates added to reflect the TOE model.
 - **Simple Frontend** (`simple-frontend`): Needs updates for the new contract interactions.
 
 ### 3. Testing & Migration
@@ -107,7 +107,7 @@ Key aspects include:
 
 ---
 
-## Usage Guide (Conceptual - Requires Frontend Updates)
+## Usage Guide
 
 ### Creating a Pool
 
@@ -173,6 +173,6 @@ Apache-2.0
 
 ## Contributing
 
-Contributions are paused currently.
+Contributions are currently paused.
 
 ---
