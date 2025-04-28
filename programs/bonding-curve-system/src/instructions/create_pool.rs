@@ -55,7 +55,7 @@ pub fn create_pool(
     pool.is_active = true;
     
     // Store the bump
-    pool.bump = *ctx.bumps.get("pool").unwrap();
+    pool.bump = ctx.bumps.pool;
     
     Ok(())
 }

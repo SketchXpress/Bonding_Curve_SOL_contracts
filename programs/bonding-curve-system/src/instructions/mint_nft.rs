@@ -189,7 +189,7 @@ pub fn mint_nft(
     ctx.accounts.escrow.nft_mint = ctx.accounts.nft_mint.key();
     ctx.accounts.escrow.lamports = net_price;
     ctx.accounts.escrow.last_price = price;
-    ctx.accounts.escrow.bump = *ctx.bumps.get("escrow").unwrap();
+    ctx.accounts.escrow.bump = ctx.bumps.escrow;
     
     // Update pool
     ctx.accounts.pool.current_supply = ctx.accounts.pool.current_supply

@@ -19,4 +19,19 @@ pub enum ErrorCode {
     
     #[msg("Pool already migrated to Tensor")]
     AlreadyMigrated,
+    
+    #[msg("Invalid authority")]
+    InvalidAuthority,
+    
+    #[msg("NFT already sold")]
+    NFTAlreadySold,
+    
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
+    
+    #[msg("Invalid amount")]
+    InvalidAmount,
+    
+    #[msg("Invalid pool")]
+    InvalidPool,
 }
