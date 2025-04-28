@@ -1,9 +1,68 @@
-export const PROGRAM_ID = 'FzwC1iKmMYjbJUMGbw5xEwQi82uKzRzN5DkUW42AHdqo';
+export const PROGRAM_ID = '2z9fzHVV4x7D22JXQYyod73EYWzrNS8fq5Fdj9mwiQYo';
 
 export const IDL = {
   "version": "0.1.0",
   "name": "bonding_curve_system",
   "instructions": [
+    {
+      "name": "createCollectionNft",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "collectionMint",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "metadataAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterEditionAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "uri",
+          "type": "string"
+        }
+      ]
+    },
     {
       "name": "createPool",
       "accounts": [
@@ -437,7 +496,10 @@ export const IDL = {
       "name": "InvalidPool",
       "msg": "Invalid pool"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "2z9fzHVV4x7D22JXQYyod73EYWzrNS8fq5Fdj9mwiQYo"
+  }
 };
 
 export default IDL;
