@@ -1,6 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
-// Removed unused import: mpl_token_metadata::ID as MetadataID
+use mpl_token_metadata::instructions::{
+    CreateMetadataAccountV3Cpi, 
+    CreateMetadataAccountV3CpiAccounts,
+    CreateMetadataAccountV3InstructionArgs,
+    CreateMasterEditionV3Cpi,
+    CreateMasterEditionV3CpiAccounts,
+    CreateMasterEditionV3InstructionArgs
+};
+use mpl_token_metadata::types::{Creator, DataV2, Collection};
 
 use crate::{
     state::{BondingCurvePool, NftEscrow},
@@ -8,85 +16,14 @@ use crate::{
     math::price_calculation::calculate_mint_price,
 };
 
-// Define the structures needed from mpl_token_metadata
-// These are simplified versions that match the expected structure
-mod mpl_token_metadata_structs {
-    // Removed unused import: anchor_lang::prelude::*
-    use anchor_lang::solana_program::system_instruction;
-    
-    pub mod state {
-        use anchor_lang::prelude::*;
-        
-        #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-        pub struct Creator {
-            pub address: Pubkey,
-            pub verified: bool,
-            pub share: u8,
-        }
-        
-        #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-        pub struct Collection {
-            pub verified: bool,
-            pub key: Pubkey,
-        }
-    }
-    
-    pub mod instruction {
-        use anchor_lang::prelude::*;
-        use anchor_lang::solana_program::{instruction::Instruction, system_instruction};
-        
-        pub fn create_metadata_accounts_v3(
-            program_id: Pubkey,
-            metadata_account: Pubkey,
-            mint: Pubkey,
-            mint_authority: Pubkey,
-            payer: Pubkey,
-            update_authority: Pubkey,
-            name: String,
-            symbol: String,
-            uri: String,
-            creators: Option<Vec<super::state::Creator>>,
-            seller_fee_basis_points: u16,
-            update_authority_is_signer: bool,
-            is_mutable: bool,
-            collection: Option<super::state::Collection>,
-            uses: Option<()>,
-            collection_details: Option<()>,
-        ) -> Instruction {
-            // This is a simplified version that just returns a dummy instruction
-            // In a real implementation, this would create the proper instruction
-            system_instruction::transfer(
-                &payer,
-                &payer,
-                0,
-            )
-        }
-        
-        pub fn create_master_edition_v3(
-            program_id: Pubkey,
-            edition: Pubkey,
-            mint: Pubkey,
-            update_authority: Pubkey,
-            mint_authority: Pubkey,
-            metadata: Pubkey,
-            payer: Pubkey,
-            max_supply: Option<u64>,
-        ) -> Instruction {
-            // This is a simplified version that just returns a dummy instruction
-            // In a real implementation, this would create the proper instruction
-            system_instruction::transfer(
-                &payer,
-                &payer,
-                0,
-            )
-        }
-    }
-}
-
 #[derive(Accounts)]
-pub struct MintNFT<'info> {
+pub struct MintNFT<
+    'info
+> {
     #[account(mut)]
-    pub payer: Signer<'info>,
+    pub payer: Signer<
+        'info
+    >,
     
     #[account(
         init,
@@ -94,7 +31,10 @@ pub struct MintNFT<'info> {
         mint::decimals = 0,
         mint::authority = payer.key(),
     )]
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: Account<
+        'info,
+        Mint
+    >,
     
     #[account(
         init,
@@ -103,28 +43,51 @@ pub struct MintNFT<'info> {
         bump,
         space = NftEscrow::SPACE,
     )]
-    pub escrow: Account<'info, NftEscrow>,
+    pub escrow: Account<
+        'info,
+        NftEscrow
+    >,
     
     #[account(mut)]
-    pub pool: Account<'info, BondingCurvePool>,
+    pub pool: Account<
+        'info,
+        BondingCurvePool
+    >,
     
     /// CHECK: This is the token metadata program
-    pub token_metadata_program: UncheckedAccount<'info>,
+    pub token_metadata_program: UncheckedAccount<
+        'info
+    >,
     
     /// CHECK: This is the metadata account that will be created
     #[account(mut)]
-    pub metadata_account: UncheckedAccount<'info>,
+    pub metadata_account: UncheckedAccount<
+        'info
+    >,
     
     /// CHECK: This is the master edition account that will be created
     #[account(mut)]
-    pub master_edition: UncheckedAccount<'info>,
+    pub master_edition: UncheckedAccount<
+        'info
+    >,
     
     /// CHECK: This is the collection mint
-    pub collection_mint: UncheckedAccount<'info>,
+    pub collection_mint: UncheckedAccount<
+        'info
+    >,
     
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
+    pub token_program: Program<
+        'info,
+        Token
+    >,
+    pub system_program: Program<
+        'info,
+        System
+    >,
+    pub rent: Sysvar<
+        'info,
+        Rent
+    >,
 }
 
 pub fn mint_nft(
@@ -200,75 +163,71 @@ pub fn mint_nft(
         .checked_add(net_price)
         .ok_or(ErrorCode::MathOverflow)?;
     
-    // Create metadata
+    // Create metadata using real CPI
     let creator = vec![
-        mpl_token_metadata_structs::state::Creator {
+        Creator {
             address: ctx.accounts.pool.creator,
-            verified: false,
+            verified: false, // Typically, the creator isn't verified until later
             share: 100,
         },
     ];
+
+    let metadata_accounts = CreateMetadataAccountV3CpiAccounts {
+        metadata: &ctx.accounts.metadata_account.to_account_info(),
+        mint: &ctx.accounts.nft_mint.to_account_info(),
+        mint_authority: &ctx.accounts.payer.to_account_info(),
+        payer: &ctx.accounts.payer.to_account_info(),
+        update_authority: (&ctx.accounts.payer.to_account_info(), true), // Payer is the update authority
+        system_program: &ctx.accounts.system_program.to_account_info(),
+        rent: Some(&ctx.accounts.rent.to_account_info()),
+    };
+
+    let metadata_args = CreateMetadataAccountV3InstructionArgs {
+        data: DataV2 {
+            name,
+            symbol,
+            uri,
+            seller_fee_basis_points,
+            creators: Some(creator),
+            collection: Some(Collection {
+                verified: false, // Collection isn't verified at creation
+                key: ctx.accounts.collection_mint.key(),
+            }),
+            uses: None,
+        },
+        is_mutable: true,
+        collection_details: None, // Not a pNFT
+    };
+
+    CreateMetadataAccountV3Cpi::new(
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        metadata_accounts,
+        metadata_args
+    ).invoke()?;
     
-    let create_metadata_ix = mpl_token_metadata_structs::instruction::create_metadata_accounts_v3(
-        ctx.accounts.token_metadata_program.key(),
-        ctx.accounts.metadata_account.key(),
-        ctx.accounts.nft_mint.key(),
-        ctx.accounts.payer.key(),
-        ctx.accounts.payer.key(),
-        ctx.accounts.payer.key(),
-        name,
-        symbol,
-        uri,
-        Some(creator),
-        seller_fee_basis_points,
-        true,
-        true,
-        Some(mpl_token_metadata_structs::state::Collection {
-            verified: false,
-            key: ctx.accounts.collection_mint.key(),
-        }),
-        None,
-        None,
-    );
-    
-    anchor_lang::solana_program::program::invoke(
-        &create_metadata_ix,
-        &[
-            ctx.accounts.metadata_account.to_account_info(),
-            ctx.accounts.nft_mint.to_account_info(),
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.token_metadata_program.to_account_info(),
-            ctx.accounts.token_program.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.rent.to_account_info(),
-        ],
-    )?;
-    
-    // Create master edition
-    let create_master_edition_ix = mpl_token_metadata_structs::instruction::create_master_edition_v3(
-        ctx.accounts.token_metadata_program.key(),
-        ctx.accounts.master_edition.key(),
-        ctx.accounts.nft_mint.key(),
-        ctx.accounts.payer.key(),
-        ctx.accounts.payer.key(),
-        ctx.accounts.metadata_account.key(),
-        ctx.accounts.payer.key(),
-        Some(0), // Max supply of 0 means unlimited
-    );
-    
-    anchor_lang::solana_program::program::invoke(
-        &create_master_edition_ix,
-        &[
-            ctx.accounts.master_edition.to_account_info(),
-            ctx.accounts.nft_mint.to_account_info(),
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.metadata_account.to_account_info(),
-            ctx.accounts.token_metadata_program.to_account_info(),
-            ctx.accounts.token_program.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.rent.to_account_info(),
-        ],
-    )?;
+    // Create master edition using real CPI
+    let master_edition_accounts = CreateMasterEditionV3CpiAccounts {
+        edition: &ctx.accounts.master_edition.to_account_info(),
+        mint: &ctx.accounts.nft_mint.to_account_info(),
+        update_authority: &ctx.accounts.payer.to_account_info(),
+        mint_authority: &ctx.accounts.payer.to_account_info(),
+        payer: &ctx.accounts.payer.to_account_info(),
+        metadata: &ctx.accounts.metadata_account.to_account_info(),
+        token_program: &ctx.accounts.token_program.to_account_info(),
+        system_program: &ctx.accounts.system_program.to_account_info(),
+        rent: Some(&ctx.accounts.rent.to_account_info()),
+    };
+
+    let master_edition_args = CreateMasterEditionV3InstructionArgs {
+        max_supply: Some(0), // 0 for non-fungible
+    };
+
+    CreateMasterEditionV3Cpi::new(
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        master_edition_accounts,
+        master_edition_args
+    ).invoke()?;
     
     Ok(())
 }
+

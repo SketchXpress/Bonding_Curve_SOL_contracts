@@ -1,40 +1,15 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount}; // Removed unused: self, Burn
-// use mpl_token_metadata::instruction::burn_nft; // Comment out the direct import
+use anchor_spl::token::{Mint, Token, TokenAccount};
+use mpl_token_metadata::instructions::{
+    BurnNftCpi,
+    BurnNftCpiAccounts
+};
 
 use crate::{
     state::{BondingCurvePool, NftEscrow},
     errors::ErrorCode,
     math::price_calculation::calculate_sell_price,
 };
-
-// Define a simplified local version of burn_nft
-mod mpl_token_metadata_instruction {
-    use anchor_lang::prelude::*;
-    use anchor_lang::solana_program::instruction::Instruction;
-    // Removed unused: system_program
-
-    pub fn burn_nft(
-        program_id: Pubkey,
-        metadata: Pubkey,
-        owner: Pubkey,
-        mint: Pubkey,
-        token_account: Pubkey,
-        edition_account: Pubkey,
-        spl_token_program: Pubkey,
-        spl_token_account: Option<Pubkey>,
-        edition_marker_account: Option<Pubkey>,
-        collection_metadata: Option<Pubkey>,
-    ) -> Instruction {
-        // This is a simplified version that just returns a dummy instruction
-        // In a real implementation, this would create the proper instruction
-        anchor_lang::solana_program::system_instruction::transfer(
-            &owner,
-            &owner,
-            0,
-        )
-    }
-}
 
 #[derive(Accounts)]
 pub struct SellNFT<
@@ -125,36 +100,21 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
     // This acts as a safety check
     require!(ctx.accounts.escrow.lamports >= price, ErrorCode::InsufficientEscrowBalance);
     
-    // Burn the NFT using Metaplex burn_nft instruction
-    let burn_accounts = vec![
-        ctx.accounts.metadata_account.to_account_info(),
-        ctx.accounts.seller.to_account_info(),
-        ctx.accounts.nft_mint.to_account_info(),
-        ctx.accounts.seller_nft_token_account.to_account_info(),
-        ctx.accounts.master_edition_account.to_account_info(),
-        ctx.accounts.token_program.to_account_info(),
-        // Optional SPL Token Account can be added here if needed by burn_nft
-        // Optional Edition Marker Account can be added here if needed by burn_nft
-        ctx.accounts.collection_mint.to_account_info(), // Pass collection mint
-    ];
+    // Burn the NFT using real Metaplex BurnNftCpi
+    let burn_accounts = BurnNftCpiAccounts {
+        metadata: &ctx.accounts.metadata_account.to_account_info(),
+        owner: &ctx.accounts.seller.to_account_info(),
+        mint: &ctx.accounts.nft_mint.to_account_info(),
+        token_account: &ctx.accounts.seller_nft_token_account.to_account_info(),
+        master_edition_account: &ctx.accounts.master_edition_account.to_account_info(),
+        spl_token_program: &ctx.accounts.token_program.to_account_info(),
+        collection_metadata: Some(&ctx.accounts.collection_mint.to_account_info()),
+    };
     
-    let burn_instruction = mpl_token_metadata_instruction::burn_nft(
-        ctx.accounts.token_metadata_program.key(),
-        ctx.accounts.metadata_account.key(),
-        ctx.accounts.seller.key(),
-        ctx.accounts.nft_mint.key(),
-        ctx.accounts.seller_nft_token_account.key(),
-        ctx.accounts.master_edition_account.key(),
-        ctx.accounts.token_program.key(),
-        None, // spl_token_account
-        None, // edition_marker_account
-        Some(ctx.accounts.collection_mint.key()), // Use collection metadata for burning
-    );
-
-    anchor_lang::solana_program::program::invoke(
-        &burn_instruction,
-        &burn_accounts,
-    )?;
+    BurnNftCpi::new(
+        &ctx.accounts.token_metadata_program.to_account_info(),
+        burn_accounts
+    ).invoke()?;
 
     // Transfer SOL from escrow to seller
     // The escrow account holds `escrow.lamports`. We return the calculated `price`.
