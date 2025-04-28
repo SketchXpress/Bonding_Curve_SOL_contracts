@@ -6,4 +6,18 @@ pub mod nft_escrow;
 
 pub use pool::*;
 pub use nft::*;
-pub use nft_escrow::*;
+// Use explicit imports instead of glob imports to avoid ambiguity
+pub use nft_escrow::NftEscrow;
+
+// Add missing UserAccount struct
+#[account]
+pub struct UserAccount {
+    pub owner: Pubkey,
+    pub bump: u8,
+}
+
+impl UserAccount {
+    pub const SPACE: usize = 8 + // discriminator
+        32 + // owner
+        1;  // bump
+}
