@@ -50,7 +50,7 @@ export const IDL = {
         {
           "name": "nftMint",
           "isMut": true,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "escrow",
@@ -192,6 +192,11 @@ export const IDL = {
           "isSigner": false
         },
         {
+          "name": "collectionMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -213,6 +218,62 @@ export const IDL = {
           {
             "name": "lamports",
             "type": "u64"
+          },
+          {
+            "name": "lastPrice",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NFTData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "publicKey"
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
+          },
+          {
+            "name": "collectionId",
+            "type": "publicKey"
+          },
+          {
+            "name": "isMutable",
+            "type": "bool"
+          },
+          {
+            "name": "primarySaleHappened",
+            "type": "bool"
+          },
+          {
+            "name": "sellerFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "mint",
+            "type": "publicKey"
           },
           {
             "name": "lastPrice",
@@ -263,8 +324,58 @@ export const IDL = {
             "type": "bool"
           },
           {
+            "name": "totalDistributed",
+            "type": "u64"
+          },
+          {
+            "name": "totalSupply",
+            "type": "u64"
+          },
+          {
+            "name": "currentMarketCap",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "tensorMigrationTimestamp",
+            "type": "i64"
+          },
+          {
+            "name": "isMigratedToTensor",
+            "type": "bool"
+          },
+          {
+            "name": "isPastThreshold",
+            "type": "bool"
+          },
+          {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "ownedNfts",
+            "type": {
+              "vec": "publicKey"
+            }
           }
         ]
       }
@@ -300,11 +411,33 @@ export const IDL = {
       "code": 6005,
       "name": "AlreadyMigrated",
       "msg": "Pool already migrated to Tensor"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidAuthority",
+      "msg": "Invalid authority"
+    },
+    {
+      "code": 6007,
+      "name": "NFTAlreadySold",
+      "msg": "NFT already sold"
+    },
+    {
+      "code": 6008,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidPool",
+      "msg": "Invalid pool"
     }
-  ],
-  "metadata": {
-    "address": "FzwC1iKmMYjbJUMGbw5xEwQi82uKzRzN5DkUW42AHdqo"
-  }
+  ]
 };
 
 export default IDL;

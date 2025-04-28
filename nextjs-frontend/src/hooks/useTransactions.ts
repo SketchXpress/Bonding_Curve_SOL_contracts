@@ -19,6 +19,100 @@ interface BondingCurvePool {
   bump: number;
 }
 
+// New hook for creating a collection NFT
+export const useCreateCollectionNft = () => {
+  const { program, provider } = useAnchorContext();
+  const wallet = useWallet();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [txSignature, setTxSignature] = useState<string | null>(null);
+  const [collectionMintAddress, setCollectionMintAddress] = useState<string | null>(null);
+
+  const createCollectionNft = async (
+    name: string,
+    symbol: string,
+    uri: string
+  ) => {
+    if (!program || !wallet.publicKey || !provider) {
+      setError("Wallet not connected or program not initialized");
+      return null;
+    }
+
+    setLoading(true);
+    setError(null);
+    setTxSignature(null);
+    setCollectionMintAddress(null);
+
+    try {
+      // Create a new keypair for the collection mint
+      const collectionMint = anchor.web3.Keypair.generate();
+      setCollectionMintAddress(collectionMint.publicKey.toString());
+
+      // Derive the metadata account address
+      const [metadataAccount] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").toBuffer(),
+          collectionMint.publicKey.toBuffer(),
+        ],
+        new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
+      );
+
+      // Derive the master edition account address
+      const [masterEditionAccount] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").toBuffer(),
+          collectionMint.publicKey.toBuffer(),
+          Buffer.from("edition"),
+        ],
+        new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
+      );
+
+      console.log("Creating collection NFT with accounts:", {
+        payer: wallet.publicKey.toString(),
+        collectionMint: collectionMint.publicKey.toString(),
+        metadataAccount: metadataAccount.toString(),
+        masterEditionAccount: masterEditionAccount.toString(),
+        tokenMetadataProgram: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+      });
+
+      // Execute the transaction with the required accounts and args
+      const tx = await program.methods
+        .createCollectionNft(name, symbol, uri)
+        .accounts({
+          payer: wallet.publicKey,
+          collectionMint: collectionMint.publicKey,
+          metadataAccount: metadataAccount,
+          masterEditionAccount: masterEditionAccount,
+          tokenMetadataProgram: new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([collectionMint]) // Need to include the mint keypair as a signer
+        .rpc({
+          skipPreflight: false,
+          commitment: "confirmed"
+        });
+
+      setTxSignature(tx);
+      return {
+        txSignature: tx,
+        collectionMintAddress: collectionMint.publicKey.toString()
+      };
+    } catch (err) {
+      console.error("Error creating collection NFT:", err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { createCollectionNft, loading, error, txSignature, collectionMintAddress };
+};
+
 // Removed useBuyToken, useSellToken, useCreateUser hooks as they are obsolete
 
 export const useCreatePool = () => {
@@ -161,4 +255,3 @@ export const useMigrateToTensor = () => {
 
   return { migrateToTensor, loading, error, txSignature };
 };
-

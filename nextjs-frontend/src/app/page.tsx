@@ -8,6 +8,7 @@ import CreateNftCard from '@/components/CreateNftCard';
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
+import CreateCollectionNftCard from '@/components/CreateCollectionNftCard';
 import { useTransactionIntegration } from '@/hooks/useTransactionIntegration';
 import BigIntPatcher from '@/components/BigIntPatcher';
 
@@ -58,6 +59,18 @@ const AppContent = () => {
             <PoolInfoCard poolAddress={poolAddress} />
           </div>
         </section>
+        <section className="mb-8">
+        <h2 className="text-2xl font-bold mb-4">Contract Functions</h2>
+        {/* Add the new card here */}
+        <div className="mb-6">
+          <CreateCollectionNftCard /> 
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CreatePoolCard />
+          <CreateNftCard />
+          <MigrateToTensorCard />
+        </div>
+      </section>
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Contract Functions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
