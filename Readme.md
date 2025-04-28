@@ -1,148 +1,178 @@
----
+# SketchXpress SOL Contracts
 
-# SketchXpress SOL Contracts  
-A Solana blockchain project implementing a **bonding curve system for NFTs** with dynamic pricing, burn mechanics, and Tensor marketplace integration.  
-
----
-
-## Overview  
-This project combines an exponential bonding curve model with NFT creation/trading, enabling:  
-- **Dynamic NFT Pricing**: Prices increase exponentially with supply (`price = base_price * e^(growth_factor * supply)`).  
-- **Burn-Distribute Mechanism**: A percentage of secondary sales and buybacks is burned (reducing supply) and redistributed to holders.  
-- **Tensor Migration**: Collections automatically graduate to Tensor marketplace when reaching $69k market cap.  
-- **Self-Regulating Economy**: Fees fund platform sustainability while incentivizing early adopters and long-term holders.  
+A Solana blockchain project implementing an **NFT-Only Bonding Curve AMM** with **Token-Owned Escrow (TOE)**, dynamic pricing, and Tensor marketplace integration.
 
 ---
 
-## Key Features  
-- **Bonding Curve Pools**: Create NFT collections with customizable `base_price` and `growth_factor`.  
-- **NFT Minting**: Mint NFTs at algorithmically determined prices.  
-- **Secondary Trading**: Buy/sell NFTs peer-to-peer or via buyback to the pool.  
-- **Burn & Redistribution**:  
-  - 3% of secondary sales burned (reduces supply) + 1.5% distributed to holders.  
-  - 5% buyback penalty (2.5% burned + 2.5% distributed).  
-- **Tensor Integration**: Seamless migration to Tensor for enhanced liquidity.  
+## Overview
+
+This project implements a novel NFT liquidity system using an exponential bonding curve combined with a Token-Owned Escrow (TOE) mechanism. It eliminates the need for separate fungible tokens, embedding liquidity directly within each NFT.
+
+Key aspects include:
+
+- **NFT-Only Liquidity**: All value is captured within the NFTs and their associated SOL escrows.
+- **Dynamic NFT Pricing**: Prices increase algorithmically with supply based on the bonding curve (`price = base_price * growth_factor^supply`).
+- **Token-Owned Escrow (TOE)**: Each minted NFT has a dedicated Program Derived Address (PDA) account that escrows its SOL value.
+- **Direct SOL Interaction**: Users mint NFTs by depositing SOL directly into the TOE and sell NFTs by burning them to retrieve SOL from the TOE.
+- **Tensor Migration**: Collections can migrate to the Tensor marketplace upon reaching a specific liquidity threshold (e.g., 69k SOL total escrowed).
+- **Simplified Economics**: Focuses on mint fees and standard Metaplex creator royalties.
 
 ---
 
-## Project Structure  
-### 1. Smart Contracts (`programs/bonding-curve-system`)  
-- **Pool Management**: Create/update bonding curve pools.  
-- **NFT Operations**: Mint, buy, sell, and burn NFTs with integrated fee logic.  
-- **User Accounts**: Track owned NFTs and earned rewards.  
+## Key Features
 
-### 2. Frontend Implementations  
-- **NextJS Frontend** (`nextjs-frontend`):  
-  - Real-time bonding curve visualization.  
-  - Burn/distribution tracking dashboard.  
-  - Migration status to Tensor.  
-- **Simple Frontend** (`simple-frontend`): Lightweight UI for core functions.  
-
-### 3. Testing & Migration  
-- **Tests**: Validate bonding curve math, burn/distribution, and threshold detection.  
-- **Tensor Sync**: Automated metadata and liquidity migration.  
+- **Bonding Curve Pools**: Create NFT collections with customizable `base_price` and `growth_factor`.
+- **NFT Minting with TOE**: Mint NFTs at the current curve price; the SOL (minus protocol fee) is locked into the NFT's dedicated escrow (TOE).
+- **NFT Selling (Burning)**: Sell NFTs back to the pool by burning them; the SOL locked in the TOE is returned to the seller.
+- **Metaplex Compatibility**: Uses Metaplex standards for NFT creation and metadata.
+- **Tensor Integration**: Designed for seamless migration to Tensor for secondary market trading.
 
 ---
 
-## Technical Details  
-### Bonding Curve Implementation  
-- **Price Formula**: `price = base_price * e^(growth_factor * supply)`  
-- **Supply Adjustments**:  
-  - **Minting**: Increases supply → price rises.  
-  - **Buybacks**: Decreases supply → price drops.  
-- **Burn Mechanics**:  
-  - 50% of burn fees permanently remove SOL from circulation.  
-  - 50% distributed to NFT holders proportionally.  
+## Project Structure
 
-### NFT Functionality  
-- **Metadata Standards**: Metaplex-compatible with enforced royalties.  
-- **Provenance Tracking**: All NFTs tagged "Minted via SketchXpress".  
+### 1. Smart Contracts (`programs/bonding-curve-system`)
 
-### Threshold Detection  
-- **Migration Trigger**: `sol_reserves >= 69,000 SOL` (~$69k).  
-- **Post-Migration**:  
-  - NFTs listed on Tensor with retained metadata.  
-  - Royalties enforced via Tensor’s AMM.  
+- **`state/pool.rs`**: Defines the `BondingCurvePool` account holding curve parameters, supply, collection info, etc.
+- **`state/nft_escrow.rs`**: Defines the `NftEscrow` account (TOE) linked to each NFT, holding its SOL value.
+- **`instructions/create_pool.rs`**: Logic for initializing a new bonding curve pool.
+- **`instructions/mint_nft.rs`**: Logic for minting an NFT, creating its metadata/master edition via Metaplex, calculating the price, and funding its TOE.
+- **`instructions/sell_nft.rs`**: Logic for burning an NFT via Metaplex and returning SOL from its TOE.
+- **`instructions/migrate_to_tensor.rs`**: Logic to freeze the pool and potentially interact with Tensor (basic structure provided).
+
+### 2. Frontend Implementations (Require Updates)
+
+- **NextJS Frontend** (`nextjs-frontend`): Needs updates to reflect the TOE model and removal of fungible tokens.
+- **Simple Frontend** (`simple-frontend`): Needs updates for the new contract interactions.
+
+### 3. Testing & Migration
+
+- **Tests** (`tests/`): Require significant updates to match the new NFT-Only TOE system.
+- **Tensor Sync**: Migration logic based on `total_escrowed` SOL in the pool.
 
 ---
 
-## Setup & Installation  
-### Prerequisites  
-- Solana CLI  
-- Node.js, npm/yarn  
-- Rust, Anchor  
+## Technical Details
 
-### Quick Start  
-1. Clone the repository:  
+### Bonding Curve Implementation
+
+- **Price Formula**: `price = base_price * growth_factor^supply` (Note: `growth_factor` is often represented as a fixed-point number, e.g., 1.2 might be 1_200_000).
+- **Supply Adjustments**:
+  - **Minting**: Increases `current_supply` -> price rises for the _next_ mint.
+  - **Selling (Burning)**: Decreases `current_supply` -> price drops for the _next_ mint.
+
+### Token-Owned Escrow (TOE)
+
+- Each NFT mint address is used as a seed (along with a prefix) to derive a unique PDA (`NftEscrow` account).
+- When an NFT is minted, the calculated SOL price (minus fees) is transferred directly into this escrow PDA.
+- When the NFT is sold back to the pool (burned), the SOL is transferred out of the escrow PDA back to the seller, and the escrow account is closed.
+
+### NFT Functionality
+
+- **Metadata Standards**: Metaplex-compatible (Token Metadata program).
+- **Creation**: Handled within the `mint_nft` instruction using CPIs to the Metaplex program.
+- **Burning**: Handled within the `sell_nft` instruction using CPIs to the Metaplex program.
+
+### Threshold Detection (Tensor Migration)
+
+- **Migration Trigger**: Based on `total_escrowed` SOL across all `NftEscrow` accounts associated with the pool (e.g., `pool.total_escrowed >= 69_000_000_000` lamports).
+- **Post-Migration**: The pool's `is_active` flag is set to `false`, preventing further mints/sells via the bonding curve.
+
+---
+
+## Setup & Installation
+
+### Prerequisites
+
+- Solana CLI
+- Node.js, npm/yarn
+- Rust, Cargo
+- Anchor CLI (Install via `cargo install --git https://github.com/coral-xyz/anchor avm --locked --force && avm install latest && avm use latest`)
+
+### Quick Start
+
+1. Clone the repository:
    ```bash
    git clone https://github.com/SketchXpress/Bonding_Curve_SOL_contracts.git
    cd Bonding_Curve_SOL_contracts
    ```
-2. Install dependencies:  
+2. Install dependencies:
    ```bash
-   npm install
+   yarn install
    ```
-3. Build the program:  
+3. Build the program:
    ```bash
    anchor build
    ```
 
 ---
 
-## Usage Guide  
-### Creating a Pool  
-1. Connect wallet.  
-2. Navigate to **Create Pool**.  
-3. Set parameters:  
-   - `base_price`: Initial NFT price (e.g., 0.1 SOL).  
-   - `growth_factor`: Exponential growth rate (e.g., 0.0001).  
-4. Submit transaction (~0.003 SOL fee).  
+## Usage Guide (Conceptual - Requires Frontend Updates)
 
-### Minting NFTs  
-1. Select a pool.  
-2. Pay current price + 1% platform fee.  
-3. NFT added to your wallet and collection supply.  
+### Creating a Pool
 
-### Secondary Trading  
-- **Peer-to-Peer**: List NFTs ≥ current curve price (5% creator + 2% platform fees).  
-- **Buyback to Pool**: Sell at 95% of current price (5% penalty: 2.5% burned + 2.5% distributed).  
+1. Define parameters:
+   - `collection_mint`: The mint address of the Metaplex collection.
+   - `base_price`: Initial NFT price in lamports (e.g., 1,000,000 for 0.001 SOL).
+   - `growth_factor`: Fixed-point growth rate (e.g., 120000 for 1.2x).
+2. Call the `create_pool` instruction.
 
-### Migrating to Tensor  
-1. When `sol_reserves` hits 69k SOL, click **Migrate to Tensor**.  
-2. Confirm transaction (6 SOL fee).  
-3. Trade on Tensor with aggregated liquidity.  
+### Minting NFTs
 
----
+1. Select a pool.
+2. Call the `mint_nft` instruction, providing NFT metadata (name, symbol, uri) and paying the current curve price + protocol fee.
+3. SOL (net of fee) is locked in the new NFT's TOE, and the NFT is minted to the user's wallet.
 
-## Economic Model  
-| Action          | Fees/Penalties              | Recipient          |
-|-----------------|-----------------------------|--------------------|
-| **Mint**        | 1% of price                 | Platform           |
-| **Secondary Sale** | 5% royalty              | Creator            |
-| **Secondary Sale** | 3% burn/distribute      | Burn (1.5%) + Holders (1.5%) |
-| **Buyback**     | 5% penalty                  | Burn (2.5%) + Holders (2.5%) |  
+### Selling NFTs
+
+1. Call the `sell_nft` instruction with the NFT you own.
+2. The contract verifies ownership, calculates the sell price (based on `current_supply - 1`), burns the NFT, and transfers the SOL from the TOE to the seller.
+
+### Migrating to Tensor
+
+1. When `pool.total_escrowed` reaches the threshold (e.g., 69k SOL), call `migrate_to_tensor`.
+2. The pool becomes inactive.
+3. Further trading occurs on secondary marketplaces like Tensor.
 
 ---
 
-## Testing  
+## Economic Model
+
+| Action             | Fees/Penalties               | Recipient      |
+| ------------------ | ---------------------------- | -------------- |
+| **Mint**           | 1% of price (configurable)   | Pool Creator   |
+| **Secondary Sale** | Standard Metaplex Royalty    | NFT Creator(s) |
+| **Sell (Burn)**    | None (Implicit price change) | N/A            |
+
+_Note: Secondary sales happen on external marketplaces (like Tensor after migration) and are subject to Metaplex royalties._
+
+---
+
+## Testing
+
 ```bash
+# Requires updated tests reflecting the TOE model
 anchor test
 ```
-**Key Tests**:  
-- Bonding curve price accuracy.  
-- Fee distribution and burn mechanics.  
-- Threshold detection and Tensor migration.  
+
+**Key Tests Needed**:
+
+- Pool creation.
+- `mint_nft` price calculation and TOE funding.
+- `sell_nft` price calculation, NFT burning, and TOE withdrawal.
+- Fee calculation and distribution.
+- Migration threshold and pool freezing.
 
 ---
 
-## License  
-Apache-2.0  
+## License
+
+Apache-2.0
 
 ---
 
-## Contributing  
-Contributions paused pending post-migration analytics.  
+## Contributing
+
+Contributions are paused currently.
 
 ---
-
-This README reflects the updated bonding curve mechanics, burn-distribute model, and Tensor integration. 
