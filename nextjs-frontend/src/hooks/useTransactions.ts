@@ -1,245 +1,25 @@
-import { useAnchorContext } from '@/contexts/AnchorContextProvider';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey, SystemProgram, Keypair, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { useState } from 'react';
-import { SafeBN, safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
-import * as anchor from '@project-serum/anchor';
+import { useAnchorContext } from "@/contexts/AnchorContextProvider";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token"; // Keep for Metaplex interactions if needed elsewhere
+import { useState } from "react";
+import { SafeBN, safePublicKey, isValidPublicKeyFormat } from "@/utils/bn-polyfill";
+import * as anchor from "@coral-xyz/anchor";
 
-// Define interfaces for the account data structures
+// Define interfaces for the account data structures based on updated IDL
 interface BondingCurvePool {
-  realTokenVault: PublicKey;
-  syntheticTokenMint: PublicKey;
-  totalBurned: anchor.BN;
-  totalDistributed: anchor.BN;
-  migratedToTensor: boolean;
-  tensorMigrationTimestamp: anchor.BN;
-  // Add other fields as needed
+  collection: PublicKey;
+  basePrice: anchor.BN;
+  growthFactor: anchor.BN;
+  currentSupply: anchor.BN;
+  protocolFee: anchor.BN;
+  creator: PublicKey;
+  totalEscrowed: anchor.BN;
+  isActive: boolean;
+  bump: number;
 }
 
-export const useBuyToken = () => {
-  const { program } = useAnchorContext();
-  const wallet = useWallet();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [txSignature, setTxSignature] = useState<string | null>(null);
-
-  const buyToken = async (poolAddress: string, amount: number) => {
-    if (!program || !wallet.publicKey) {
-      setError('Wallet not connected or program not initialized');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setTxSignature(null);
-
-    try {
-      // Validate pool address format before attempting to create PublicKey
-      if (typeof poolAddress !== 'string' || !isValidPublicKeyFormat(poolAddress)) {
-        throw new Error('Invalid pool address format');
-      }
-      
-      // Use safePublicKey instead of direct PublicKey instantiation
-      const pool = safePublicKey(poolAddress);
-      if (!pool) {
-        throw new Error('Invalid pool address');
-      }
-      
-      // Get pool account data to find other accounts
-      // Use proper type assertion instead of @ts-expect-error
-      const poolData = await program.account.bondingCurvePool.fetch(pool) as unknown as BondingCurvePool;
-      
-      // Use the real token vault from pool data with proper type assertion
-      const realTokenVault = poolData.realTokenVault as PublicKey;
-      const syntheticTokenMint = poolData.syntheticTokenMint as PublicKey;
-      
-      // In a real implementation, we would create or get token accounts
-      // For now, we'll use valid public keys for token accounts
-      const buyerRealTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
-      const buyerSyntheticTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
-
-      // Find user account PDA
-      const [userAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user-account'), wallet.publicKey.toBuffer()],
-        program.programId
-      );
-
-      // Use SafeBN for amount to prevent bigint binding issues
-      const safeAmount = new SafeBN(amount).toBN();
-
-      // Execute the transaction
-      const tx = await program.methods
-        .buyToken(safeAmount)
-        .accounts({
-          pool,
-          userAccount,
-          buyer: wallet.publicKey,
-          buyerTokenAccount: buyerRealTokenAccount,
-          buyerSyntheticTokenAccount,
-          realTokenVault,
-          realTokenMint: new PublicKey('So11111111111111111111111111111111111111112'), // SOL
-          syntheticTokenMint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc({
-          skipPreflight: false,
-          commitment: 'confirmed'
-        });
-
-      setTxSignature(tx);
-      return tx;
-    } catch (err) {
-      console.error('Error buying token:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { buyToken, loading, error, txSignature };
-};
-
-export const useSellToken = () => {
-  const { program } = useAnchorContext();
-  const wallet = useWallet();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [txSignature, setTxSignature] = useState<string | null>(null);
-
-  const sellToken = async (poolAddress: string, amount: number) => {
-    if (!program || !wallet.publicKey) {
-      setError('Wallet not connected or program not initialized');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setTxSignature(null);
-
-    try {
-      // Validate pool address format before attempting to create PublicKey
-      if (typeof poolAddress !== 'string' || !isValidPublicKeyFormat(poolAddress)) {
-        throw new Error('Invalid pool address format');
-      }
-      
-      // Use safePublicKey instead of direct PublicKey instantiation
-      const pool = safePublicKey(poolAddress);
-      if (!pool) {
-        throw new Error('Invalid pool address');
-      }
-      
-      // Get pool account data to find other accounts
-      // Use proper type assertion instead of @ts-expect-error
-      const poolData = await program.account.bondingCurvePool.fetch(pool) as unknown as BondingCurvePool;
-      
-      // Use the real token vault from pool data with proper type assertion
-      const realTokenVault = poolData.realTokenVault as PublicKey;
-      const syntheticTokenMint = poolData.syntheticTokenMint as PublicKey;
-      
-      // In a real implementation, we would create or get token accounts
-      // For now, we'll use valid public keys for token accounts
-      const sellerRealTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
-      const sellerSyntheticTokenAccount = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
-
-      // Find user account PDA
-      const [userAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user-account'), wallet.publicKey.toBuffer()],
-        program.programId
-      );
-
-      // Use SafeBN for amount to prevent bigint binding issues
-      const safeAmount = new SafeBN(amount).toBN();
-
-      // Execute the transaction
-      const tx = await program.methods
-        .sellToken(safeAmount)
-        .accounts({
-          pool,
-          userAccount,
-          seller: wallet.publicKey,
-          sellerTokenAccount: sellerRealTokenAccount,
-          sellerSyntheticTokenAccount,
-          realTokenVault,
-          realTokenMint: new PublicKey('So11111111111111111111111111111111111111112'), // SOL
-          syntheticTokenMint,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc({
-          skipPreflight: false,
-          commitment: 'confirmed'
-        });
-
-      setTxSignature(tx);
-      return tx;
-    } catch (err) {
-      console.error('Error selling token:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { sellToken, loading, error, txSignature };
-};
-
-export const useCreateUser = () => {
-  const { program } = useAnchorContext();
-  const wallet = useWallet();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [txSignature, setTxSignature] = useState<string | null>(null);
-
-  const createUser = async (maxNfts: number = 5) => {
-    if (!program || !wallet.publicKey) {
-      setError('Wallet not connected or program not initialized');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setTxSignature(null);
-
-    try {
-      // Find user account PDA
-      const [userAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user-account'), wallet.publicKey.toBuffer()],
-        program.programId
-      );
-
-      console.log('Creating user with accounts:', {
-        owner: wallet.publicKey.toString(),
-        userAccount: userAccount.toString(),
-        systemProgram: SystemProgram.programId.toString()
-      });
-
-      // Execute the transaction
-      const tx = await program.methods
-        .createUser(maxNfts)
-        .accounts({
-          userAccount,
-          owner: wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc({
-          skipPreflight: false,
-          commitment: 'confirmed'
-        });
-
-      setTxSignature(tx);
-      return tx;
-    } catch (err) {
-      console.error('Error creating user:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { createUser, loading, error, txSignature };
-};
+// Removed useBuyToken, useSellToken, useCreateUser hooks as they are obsolete
 
 export const useCreatePool = () => {
   const { program, provider } = useAnchorContext();
@@ -249,13 +29,12 @@ export const useCreatePool = () => {
   const [txSignature, setTxSignature] = useState<string | null>(null);
 
   const createPool = async (
-    initialPrice: number,
-    slope: number,
-    realTokenMint: string,
-    syntheticTokenMint: string
+    basePrice: number,
+    growthFactor: number,
+    collectionMint: string
   ) => {
     if (!program || !wallet.publicKey || !provider) {
-      setError('Wallet not connected or program not initialized');
+      setError("Wallet not connected or program not initialized");
       return;
     }
 
@@ -264,80 +43,53 @@ export const useCreatePool = () => {
     setTxSignature(null);
 
     try {
-      // Validate real token mint format before attempting to create PublicKey
-      if (typeof realTokenMint !== 'string' || !isValidPublicKeyFormat(realTokenMint)) {
-        throw new Error('Invalid real token mint format');
+      // Validate collection mint format
+      if (typeof collectionMint !== "string" || !isValidPublicKeyFormat(collectionMint)) {
+        throw new Error("Invalid collection mint format");
       }
       
-      // Use safePublicKey instead of direct PublicKey instantiation
-      const realMint = safePublicKey(realTokenMint);
-      if (!realMint) {
-        throw new Error('Invalid real token mint address');
+      // Use safePublicKey for collection mint
+      const collectionMintKey = safePublicKey(collectionMint);
+      if (!collectionMintKey) {
+        throw new Error("Invalid collection mint address");
       }
 
-      // For synthetic token mint, we'll use a PDA derived from the real token mint
-      // This is how the contract expects it to be created
-      const [syntheticMintPDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from('synthetic-mint'), realMint.toBuffer()],
-        program.programId
-      );
-
-      // Find pool account PDA - FIXED: using 'bonding-pool' to match contract
+      // Find pool account PDA using collection mint as seed
       const [poolAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('bonding-pool'), realMint.toBuffer()],
+        [Buffer.from("bonding-curve-pool"), collectionMintKey.toBuffer()],
         program.programId
       );
 
-      // Find user account PDA
-      const [userAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user-account'), wallet.publicKey.toBuffer()],
-        program.programId
-      );
-      
-      // Find real token vault PDA
-      const [realTokenVault] = PublicKey.findProgramAddressSync(
-        [Buffer.from('token-vault'), realMint.toBuffer()],
-        program.programId
-      );
+      // Use SafeBN for numeric parameters
+      const safeBasePrice = new SafeBN(basePrice).toBN();
+      const safeGrowthFactor = new SafeBN(growthFactor).toBN();
 
-      // Use SafeBN for numeric parameters to prevent bigint binding issues
-      const safeInitialPrice = new SafeBN(initialPrice).toBN();
-      const safeSlope = new SafeBN(slope).toBN();
-
-      console.log('Creating pool with accounts:', {
-        authority: wallet.publicKey.toString(),
-        realTokenMint: realMint.toString(),
-        syntheticTokenMint: syntheticMintPDA.toString(),
-        realTokenVault: realTokenVault.toString(),
+      console.log("Creating pool with accounts:", {
+        creator: wallet.publicKey.toString(),
+        collectionMint: collectionMintKey.toString(),
         pool: poolAccount.toString(),
         systemProgram: SystemProgram.programId.toString(),
-        tokenProgram: TOKEN_PROGRAM_ID.toString(),
-        rent: SYSVAR_RENT_PUBKEY.toString()
       });
 
-      // Execute the transaction with explicit account mapping
+      // Execute the transaction with updated accounts and args
       const tx = await program.methods
-        .createPool(safeInitialPrice, safeSlope)
+        .createPool(safeBasePrice, safeGrowthFactor)
         .accounts({
-          authority: wallet.publicKey,
-          realTokenMint: realMint,
-          syntheticTokenMint: syntheticMintPDA,
-          realTokenVault: realTokenVault,
+          creator: wallet.publicKey,
+          collectionMint: collectionMintKey,
           pool: poolAccount,
           systemProgram: SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          rent: SYSVAR_RENT_PUBKEY,
         })
         .rpc({
-          skipPreflight: false, // Ensure preflight checks are performed
-          commitment: 'confirmed' // Use confirmed commitment level
+          skipPreflight: false,
+          commitment: "confirmed"
         });
 
       setTxSignature(tx);
       return tx;
     } catch (err) {
-      console.error('Error creating pool:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      console.error("Error creating pool:", err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setLoading(false);
     }
@@ -355,7 +107,7 @@ export const useMigrateToTensor = () => {
 
   const migrateToTensor = async (poolAddress: string) => {
     if (!program || !wallet.publicKey) {
-      setError('Wallet not connected or program not initialized');
+      setError("Wallet not connected or program not initialized");
       return;
     }
 
@@ -365,43 +117,43 @@ export const useMigrateToTensor = () => {
 
     try {
       // Validate pool address format
-      if (typeof poolAddress !== 'string' || !isValidPublicKeyFormat(poolAddress)) {
-        throw new Error('Invalid pool address format');
+      if (typeof poolAddress !== "string" || !isValidPublicKeyFormat(poolAddress)) {
+        throw new Error("Invalid pool address format");
       }
       
-      // Use safePublicKey instead of direct PublicKey instantiation
+      // Use safePublicKey for pool address
       const pool = safePublicKey(poolAddress);
       if (!pool) {
-        throw new Error('Invalid pool address');
+        throw new Error("Invalid pool address");
       }
       
-      // Get pool account data
+      // Get pool account data to check status
       const poolData = await program.account.bondingCurvePool.fetch(pool) as unknown as BondingCurvePool;
+
       
-      // Check if already migrated
-      if (poolData.migratedToTensor) {
-        throw new Error('Pool already migrated to Tensor');
+      // Check if already migrated (inactive)
+      if (!poolData.isActive) {
+        throw new Error("Pool already migrated/frozen");
       }
 
-      // Execute the transaction
+      // Execute the transaction with simplified accounts
       const tx = await program.methods
         .migrateToTensor()
         .accounts({
-          authority: wallet.publicKey,
+          authority: wallet.publicKey, // Assuming the wallet user is the authority
           pool,
-          realTokenMint: new PublicKey('So11111111111111111111111111111111111111112'), // SOL
           systemProgram: SystemProgram.programId,
         })
         .rpc({
           skipPreflight: false,
-          commitment: 'confirmed'
+          commitment: "confirmed"
         });
 
       setTxSignature(tx);
       return tx;
     } catch (err) {
-      console.error('Error migrating to Tensor:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      console.error("Error migrating to Tensor:", err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setLoading(false);
     }
@@ -409,3 +161,4 @@ export const useMigrateToTensor = () => {
 
   return { migrateToTensor, loading, error, txSignature };
 };
+

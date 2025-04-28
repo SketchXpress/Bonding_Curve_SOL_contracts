@@ -4,24 +4,21 @@ import React, { useState } from 'react';
 import { useCreatePool } from '@/hooks/useTransactions';
 
 const CreatePoolCard = () => {
-  const [basePrice, setBasePrice] = useState(1000000);
-  const [growthFactor, setGrowthFactor] = useState(3606);
+  const [basePrice, setBasePrice] = useState(1000000); // 0.001 SOL in lamports
+  const [growthFactor, setGrowthFactor] = useState(120000); // 1.2 as fixed-point (1.2 = 120000)
+  const [collectionMint, setCollectionMint] = useState('');
   const { createPool, loading, error, txSignature } = useCreatePool();
   const [poolAddress, setPoolAddress] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Using valid Solana token mint addresses in base58 format
-    // For real token mint, using wrapped SOL token mint address
-    const realTokenMint = "So11111111111111111111111111111111111111112";
     
-    // For synthetic token mint, we don't need to provide an actual address
-    // The contract will create it as a PDA derived from the real token mint
-    // But we need to provide a valid public key format for the frontend validation
-    // Using a different known token address for demonstration
-    const syntheticTokenMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+    if (!collectionMint) {
+      alert('Please enter a collection mint address');
+      return;
+    }
     
-    const result = await createPool(basePrice, growthFactor, realTokenMint, syntheticTokenMint);
+    const result = await createPool(basePrice, growthFactor, collectionMint);
     if (result) {
       setPoolAddress("Generated Pool Address"); // In a real implementation, we would get this from the transaction result
     }
@@ -29,10 +26,22 @@ const CreatePoolCard = () => {
 
   return (
     <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-      <h3 className="text-xl font-bold mb-4">Create Pool</h3>
+      <h3 className="text-xl font-bold mb-4">Create Bonding Curve Pool</h3>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label htmlFor="base-price" className="block text-gray-700 mb-2">Base Price:</label>
+          <label htmlFor="collection-mint" className="block text-gray-700 mb-2">Collection Mint Address:</label>
+          <input
+            type="text"
+            id="collection-mint"
+            value={collectionMint}
+            onChange={(e) => setCollectionMint(e.target.value)}
+            placeholder="Enter Metaplex collection mint address"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
+          />
+          <p className="text-xs text-gray-500 mt-1">The Metaplex collection that this pool will be associated with</p>
+        </div>
+        <div className="mb-4">
+          <label htmlFor="base-price" className="block text-gray-700 mb-2">Base Price (lamports):</label>
           <input
             type="number"
             id="base-price"
@@ -40,6 +49,7 @@ const CreatePoolCard = () => {
             onChange={(e) => setBasePrice(parseInt(e.target.value))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
+          <p className="text-xs text-gray-500 mt-1">Initial NFT price in lamports (1 SOL = 1,000,000,000 lamports)</p>
         </div>
         <div className="mb-4">
           <label htmlFor="growth-factor" className="block text-gray-700 mb-2">Growth Factor:</label>
@@ -50,6 +60,7 @@ const CreatePoolCard = () => {
             onChange={(e) => setGrowthFactor(parseInt(e.target.value))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
+          <p className="text-xs text-gray-500 mt-1">Fixed-point growth rate (e.g., 120000 = 1.2x)</p>
         </div>
         <button
           type="submit"

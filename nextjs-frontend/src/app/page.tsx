@@ -3,12 +3,8 @@ import React, { useState } from 'react';
 import { WalletContextProvider } from '@/contexts/WalletContextProvider';
 import { AnchorContextProvider } from '@/contexts/AnchorContextProvider';
 import WalletSection from '@/components/WalletSection';
-import CreateUserCard from '@/components/CreateUserCard';
 import CreatePoolCard from '@/components/CreatePoolCard';
-import BuyTokenCard from '@/components/BuyTokenCard';
-import SellTokenCard from '@/components/SellTokenCard';
 import CreateNftCard from '@/components/CreateNftCard';
-import BuyNftCard from '@/components/BuyNftCard';
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
@@ -29,8 +25,8 @@ const AppContent = () => {
       <BigIntPatcher />
       <div className="max-w-7xl mx-auto">
         <header className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Solana Bonding Curve System</h1>
-          <p className="text-xl text-gray-600">Interact with your deployed Solana contract</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Solana NFT-Only Bonding Curve System</h1>
+          <p className="text-xl text-gray-600">With Token-Owned Escrow (TOE)</p>
         </header>
         <WalletSection />
         <section className="mb-8">
@@ -65,12 +61,8 @@ const AppContent = () => {
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Contract Functions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <CreateUserCard />
             <CreatePoolCard />
-            <BuyTokenCard />
-            <SellTokenCard />
             <CreateNftCard />
-            <BuyNftCard />
             <MigrateToTensorCard />
           </div>
         </section>

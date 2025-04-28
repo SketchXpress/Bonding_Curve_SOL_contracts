@@ -1,8 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { PublicKey } from '@solana/web3.js';
+import { BN } from '@coral-xyz/anchor';
 
 const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
   const { program } = useAnchorContext();
@@ -60,63 +62,76 @@ const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
     );
   }
 
+  // Helper to format lamports to SOL
+  const formatLamports = (lamports: BN) => {
+    return (lamports.toNumber() / 1_000_000_000).toFixed(9);
+  };
+
   return (
     <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-      <h3 className="text-xl font-bold mb-4">Pool Information</h3>
+      <h3 className="text-xl font-bold mb-4">Pool Information ({poolAddress.slice(0, 4)}...{poolAddress.slice(-4)})</h3>
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="font-semibold">Base Price:</h4>
-          <p>{poolInfo.basePrice.toString()}</p>
+          <h4 className="font-semibold">Collection Mint:</h4>
+          <p className="text-xs break-all">{poolInfo.collection.toString()}</p>
+        </div>
+        <div>
+          <h4 className="font-semibold">Creator:</h4>
+          <p className="text-xs break-all">{poolInfo.creator.toString()}</p>
+        </div>
+        <div>
+          <h4 className="font-semibold">Base Price (SOL):</h4>
+          <p>{formatLamports(poolInfo.basePrice)}</p>
         </div>
         <div>
           <h4 className="font-semibold">Growth Factor:</h4>
-          <p>{poolInfo.growthFactor.toString()}</p>
+          {/* Assuming fixed point with 6 decimals for display */}
+          <p>{(poolInfo.growthFactor.toNumber() / 1_000_000).toFixed(6)}</p>
         </div>
         <div>
-          <h4 className="font-semibold">Current Market Cap:</h4>
-          <p>{poolInfo.currentMarketCap.toString()} SOL</p>
+          <h4 className="font-semibold">Current NFT Supply:</h4>
+          <p>{poolInfo.currentSupply.toString()}</p>
         </div>
         <div>
-          <h4 className="font-semibold">Total Supply:</h4>
-          <p>{poolInfo.totalSupply.toString()}</p>
+          <h4 className="font-semibold">Protocol Fee (%):</h4>
+          {/* Assuming fee stored as basis points / 10000 */}
+          <p>{(poolInfo.protocolFee.toNumber() / 100).toFixed(2)}%</p>
+        </div>
+        <div>
+          <h4 className="font-semibold">Total SOL Escrowed:</h4>
+          <p>{formatLamports(poolInfo.totalEscrowed)} SOL</p>
+        </div>
+        <div>
+          <h4 className="font-semibold">Pool Active:</h4>
+          <p>{poolInfo.isActive ? 'Yes' : 'No (Frozen)'}</p>
         </div>
         
-        {/* New fields for burn-distribute mechanism */}
-        <div>
-          <h4 className="font-semibold">Total Burned:</h4>
-          <p>{poolInfo.totalBurned?.toString() || '0'} SOL</p>
-        </div>
-        <div>
-          <h4 className="font-semibold">Total Distributed:</h4>
-          <p>{poolInfo.totalDistributed?.toString() || '0'} SOL</p>
-        </div>
-        
-        {/* Tensor migration status */}
+        {/* Tensor migration status based on totalEscrowed */}
         <div className="col-span-2">
           <h4 className="font-semibold">Tensor Migration Status:</h4>
           <p>
-            {poolInfo.migratedToTensor 
-              ? `Migrated (Timestamp: ${new Date(poolInfo.tensorMigrationTimestamp * 1000).toLocaleString()})` 
-              : poolInfo.pastThreshold 
-                ? 'Ready for migration' 
+            {!poolInfo.isActive 
+              ? `Migrated (Pool Frozen)` 
+              : poolInfo.totalEscrowed.gte(new BN(69_000_000_000)) 
+                ? 'Ready for migration (Threshold Met)' 
                 : 'Not eligible for migration yet'}
           </p>
         </div>
         
-        {/* Threshold status */}
+        {/* Threshold status visualization */}
         <div className="col-span-2">
-          <h4 className="font-semibold">Threshold Status:</h4>
+          <h4 className="font-semibold">Migration Threshold Progress:</h4>
           <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
             <div 
-              className={`h-2.5 rounded-full ${poolInfo.pastThreshold ? 'bg-green-600' : 'bg-blue-600'}`}
-              style={{ width: `${Math.min(100, (Number(poolInfo.currentMarketCap) / 69000000000) * 100)}%` }}
+              className={`h-2.5 rounded-full ${poolInfo.totalEscrowed.gte(new BN(69_000_000_000)) ? 'bg-green-600' : 'bg-blue-600'}`}
+              style={{ width: `${Math.min(100, (poolInfo.totalEscrowed.toNumber() / 69_000_000_000) * 100)}%` }}
             ></div>
           </div>
           <p className="text-sm mt-1">
-            {poolInfo.pastThreshold 
-              ? 'Threshold reached! ($69k)' 
-              : `Progress: ${((Number(poolInfo.currentMarketCap) / 69000000000) * 100).toFixed(2)}% of $69k`}
+            {poolInfo.totalEscrowed.gte(new BN(69_000_000_000)) 
+              ? 'Threshold reached! (69k SOL)' 
+              : `Progress: ${formatLamports(poolInfo.totalEscrowed)} / 69,000 SOL`}
           </p>
         </div>
       </div>
@@ -125,3 +140,4 @@ const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
 };
 
 export default PoolInfoCard;
+
