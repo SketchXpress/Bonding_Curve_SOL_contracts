@@ -1,17 +1,18 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
+use anchor_spl::token::{Mint, Token, TokenAccount}; // Removed unused: self, Burn
 // use mpl_token_metadata::instruction::burn_nft; // Comment out the direct import
 
 use crate::{
     state::{BondingCurvePool, NftEscrow},
     errors::ErrorCode,
-    math::price_calculation::{calculate_sell_price},
+    math::price_calculation::calculate_sell_price,
 };
 
 // Define a simplified local version of burn_nft
 mod mpl_token_metadata_instruction {
     use anchor_lang::prelude::*;
-    use anchor_lang::solana_program::{instruction::Instruction, system_program};
+    use anchor_lang::solana_program::instruction::Instruction;
+    // Removed unused: system_program
 
     pub fn burn_nft(
         program_id: Pubkey,
@@ -27,7 +28,7 @@ mod mpl_token_metadata_instruction {
     ) -> Instruction {
         // This is a simplified version that just returns a dummy instruction
         // In a real implementation, this would create the proper instruction
-        system_program::transfer(
+        anchor_lang::solana_program::system_instruction::transfer(
             &owner,
             &owner,
             0,
@@ -36,12 +37,19 @@ mod mpl_token_metadata_instruction {
 }
 
 #[derive(Accounts)]
-pub struct SellNFT<\'info> {
+pub struct SellNFT<
+    'info
+> {
     #[account(mut)]
-    pub seller: Signer<\'info>,
+    pub seller: Signer<
+        'info
+    >,
     
     #[account(mut)]
-    pub pool: Account<\'info, BondingCurvePool>,
+    pub pool: Account<
+        'info,
+        BondingCurvePool
+    >,
     
     #[account(
         mut,
@@ -49,34 +57,57 @@ pub struct SellNFT<\'info> {
         bump = escrow.bump,
         close = seller // Close the escrow account and return rent to the seller
     )]
-    pub escrow: Account<\'info, NftEscrow>,
+    pub escrow: Account<
+        'info,
+        NftEscrow
+    >,
     
     #[account(mut)]
-    pub nft_mint: Account<\'info, Mint>,
+    pub nft_mint: Account<
+        'info,
+        Mint
+    >,
     
     #[account(
         mut,
         associated_token::mint = nft_mint,
         associated_token::authority = seller
     )]
-    pub seller_nft_token_account: Account<\'info, TokenAccount>,
+    pub seller_nft_token_account: Account<
+        'info,
+        TokenAccount
+    >,
     
     /// CHECK: This is the token metadata program
-    pub token_metadata_program: UncheckedAccount<\'info>,
+    pub token_metadata_program: UncheckedAccount<
+        'info
+    >,
     
     /// CHECK: This is the metadata account associated with the NFT
     #[account(mut)]
-    pub metadata_account: UncheckedAccount<\'info>,
+    pub metadata_account: UncheckedAccount<
+        'info
+    >,
     
     /// CHECK: This is the master edition account associated with the NFT
     #[account(mut)]
-    pub master_edition_account: UncheckedAccount<\'info>,
+    pub master_edition_account: UncheckedAccount<
+        'info
+    >,
     
     /// CHECK: This is the collection mint
-    pub collection_mint: UncheckedAccount<\'info>,
+    pub collection_mint: UncheckedAccount<
+        'info
+    >,
     
-    pub token_program: Program<\'info, Token>,
-    pub system_program: Program<\'info, System>,
+    pub token_program: Program<
+        'info,
+        Token
+    >,
+    pub system_program: Program<
+        'info,
+        System
+    >,
 }
 
 pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
@@ -146,4 +177,3 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
 
     Ok(())
 }
-

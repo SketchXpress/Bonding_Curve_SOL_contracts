@@ -25,7 +25,7 @@ pub struct BuyNft<'info> {
     pub buyer_nft_token_account: Account<'info, anchor_spl::token::TokenAccount>,
     
     #[account(mut)]
-    pub pool: AccountLoader<'info, BondingCurvePool>,
+    pub pool: Account<'info, BondingCurvePool>,
     
     pub token_program: Program<'info, anchor_spl::token::Token>,
     pub system_program: Program<'info, System>,
@@ -44,11 +44,8 @@ pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
         crate::errors::ErrorCode::NFTAlreadySold
     );
     
-    // Load pool data using zero-copy approach
-    let mut pool = ctx.accounts.pool.load_mut()?;
-    
     // Calculate price based on pool state and NFT data
-    let price = calculate_nft_price(&ctx.accounts.nft_data, &pool)?;
+    let price = calculate_nft_price(&ctx.accounts.nft_data, &ctx.accounts.pool)?;
     
     // Check if buyer has enough funds
     require!(
@@ -98,20 +95,20 @@ pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
     }
     
     // Update pool state if needed based on threshold
-    if pool.is_past_threshold() {
+    if ctx.accounts.pool.is_past_threshold() {
         // If past threshold, update distribution metrics
         let fee = calculate_fee(price)?;
         
         // Update total distributed
-        pool.total_distributed = pool.total_distributed
+        ctx.accounts.pool.total_distributed = ctx.accounts.pool.total_distributed
             .checked_add(fee)
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
         
         msg!("NFT sold with fee distribution of {} lamports", fee);
     } else {
         // If not past threshold, check if this transaction should trigger threshold
-        if should_set_past_threshold(&pool, price) {
-            pool.set_past_threshold(true);
+        if should_set_past_threshold(&ctx.accounts.pool, price) {
+            ctx.accounts.pool.set_past_threshold(true);
             msg!("Pool has passed the threshold after NFT sale");
         }
     }

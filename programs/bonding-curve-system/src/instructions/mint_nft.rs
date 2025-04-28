@@ -1,17 +1,18 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
-use mpl_token_metadata::ID as MetadataID;
+// Removed unused import: mpl_token_metadata::ID as MetadataID
 
 use crate::{
     state::{BondingCurvePool, NftEscrow},
     errors::ErrorCode,
-    math::price_calculation::{calculate_mint_price},
+    math::price_calculation::calculate_mint_price,
 };
 
 // Define the structures needed from mpl_token_metadata
 // These are simplified versions that match the expected structure
 mod mpl_token_metadata_structs {
-    use anchor_lang::prelude::*;
+    // Removed unused import: anchor_lang::prelude::*
+    use anchor_lang::solana_program::system_instruction;
     
     pub mod state {
         use anchor_lang::prelude::*;
@@ -32,7 +33,7 @@ mod mpl_token_metadata_structs {
     
     pub mod instruction {
         use anchor_lang::prelude::*;
-        use anchor_lang::solana_program::{instruction::Instruction, system_program};
+        use anchor_lang::solana_program::{instruction::Instruction, system_instruction};
         
         pub fn create_metadata_accounts_v3(
             program_id: Pubkey,
@@ -54,7 +55,7 @@ mod mpl_token_metadata_structs {
         ) -> Instruction {
             // This is a simplified version that just returns a dummy instruction
             // In a real implementation, this would create the proper instruction
-            system_program::transfer(
+            system_instruction::transfer(
                 &payer,
                 &payer,
                 0,
@@ -73,7 +74,7 @@ mod mpl_token_metadata_structs {
         ) -> Instruction {
             // This is a simplified version that just returns a dummy instruction
             // In a real implementation, this would create the proper instruction
-            system_program::transfer(
+            system_instruction::transfer(
                 &payer,
                 &payer,
                 0,
@@ -127,7 +128,7 @@ pub struct MintNFT<'info> {
 }
 
 pub fn mint_nft(
-    ctx: Context<MintNFT>, 
+    ctx: Context<MintNFT>,
     name: String,
     symbol: String,
     uri: String,

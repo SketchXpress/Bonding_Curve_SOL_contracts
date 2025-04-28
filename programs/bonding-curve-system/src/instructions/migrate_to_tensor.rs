@@ -2,25 +2,38 @@ use anchor_lang::prelude::*;
 use crate::state::BondingCurvePool;
 
 #[derive(Accounts)]
-pub struct MigrateToTensor<'info> {
+pub struct MigrateToTensor<
+    'info
+> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub authority: Signer<
+        'info
+    >,
     
     #[account(
         mut,
         seeds = [b"bonding-pool", real_token_mint.key().as_ref()],
-        bump = pool.load()?.bump,
+        bump = pool.bump, // Use pool.bump directly
     )]
-    pub pool: AccountLoader<'info, BondingCurvePool>,
+    pub pool: Account<
+        'info,
+        BondingCurvePool
+    >, // Changed from AccountLoader to Account
     
-    pub real_token_mint: Account<'info, anchor_spl::token::Mint>,
+    pub real_token_mint: Account<
+        'info,
+        anchor_spl::token::Mint
+    >,
     
-    pub system_program: Program<'info, System>,
+    pub system_program: Program<
+        'info,
+        System
+    >,
 }
 
 pub fn migrate_to_tensor(ctx: Context<MigrateToTensor>) -> Result<()> {
-    // Load pool data using zero-copy approach
-    let mut pool = ctx.accounts.pool.load_mut()?;
+    // Access pool data directly
+    let pool = &mut ctx.accounts.pool;
     
     // Verify authority
     require!(
