@@ -31,3 +31,20 @@ impl NFTData {
         8 + // last_price
         1; // bump
 }
+
+#[account]
+pub struct NftEscrow {
+    pub nft_mint: Pubkey,            // Associated NFT
+    pub lamports: u64,               // Escrowed SOL value
+    pub last_price: u64,             // Price at last action
+    pub bump: u8,                    // PDA bump
+}
+
+impl NftEscrow {
+    pub const SIZE: usize = 8 + // discriminator
+        32 + // nft_mint
+        8 +  // lamports
+        8 +  // last_price
+        1 +  // bump
+        8;   // padding/reserved
+}

@@ -4,22 +4,19 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Math overflow")]
     MathOverflow,
-    #[msg("Invalid amount")]
-    InvalidAmount,
+    
+    #[msg("Pool is inactive")]
+    PoolInactive,
+    
+    #[msg("Insufficient escrow balance")]
+    InsufficientEscrowBalance,
+    
+    #[msg("Migration threshold not met")]
+    ThresholdNotMet,
+    
     #[msg("Invalid price")]
     InvalidPrice,
-    #[msg("Insufficient funds")]
-    InsufficientFunds,
-    #[msg("Invalid token account")]
-    InvalidTokenAccount,
-    #[msg("Invalid pool")]
-    InvalidPool,
-    #[msg("Invalid authority")]
-    InvalidAuthority,
-    #[msg("NFT already sold")]
-    NFTAlreadySold,
-    #[msg("Insufficient pool balance")]
-    InsufficientPoolBalance,
-    #[msg("Market cap below threshold")]
-    BelowThreshold,
+    
+    #[msg("Pool already migrated to Tensor")]
+    AlreadyMigrated,
 }
