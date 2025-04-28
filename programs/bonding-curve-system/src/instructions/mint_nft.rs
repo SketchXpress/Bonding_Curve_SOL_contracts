@@ -172,6 +172,9 @@ pub fn mint_nft(
         },
     ];
 
+    // Create a binding for the rent account info to satisfy lifetime requirements
+    let rent_account_info = ctx.accounts.rent.to_account_info();
+
     let metadata_accounts = CreateMetadataAccountV3CpiAccounts {
         metadata: &ctx.accounts.metadata_account.to_account_info(),
         mint: &ctx.accounts.nft_mint.to_account_info(),
@@ -179,7 +182,7 @@ pub fn mint_nft(
         payer: &ctx.accounts.payer.to_account_info(),
         update_authority: (&ctx.accounts.payer.to_account_info(), true), // Payer is the update authority
         system_program: &ctx.accounts.system_program.to_account_info(),
-        rent: Some(&ctx.accounts.rent.to_account_info()),
+        rent: Some(&rent_account_info), // Use the binding here
     };
 
     let metadata_args = CreateMetadataAccountV3InstructionArgs {
@@ -206,6 +209,9 @@ pub fn mint_nft(
     ).invoke()?;
     
     // Create master edition using real CPI
+    // Create another binding for the rent account info for master edition
+    let rent_account_info_for_master = ctx.accounts.rent.to_account_info();
+    
     let master_edition_accounts = CreateMasterEditionV3CpiAccounts {
         edition: &ctx.accounts.master_edition.to_account_info(),
         mint: &ctx.accounts.nft_mint.to_account_info(),
@@ -215,7 +221,7 @@ pub fn mint_nft(
         metadata: &ctx.accounts.metadata_account.to_account_info(),
         token_program: &ctx.accounts.token_program.to_account_info(),
         system_program: &ctx.accounts.system_program.to_account_info(),
-        rent: Some(&ctx.accounts.rent.to_account_info()),
+        rent: Some(&rent_account_info_for_master),
     };
 
     let master_edition_args = CreateMasterEditionV3InstructionArgs {

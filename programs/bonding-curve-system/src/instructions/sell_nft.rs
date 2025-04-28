@@ -101,6 +101,9 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
     require!(ctx.accounts.escrow.lamports >= price, ErrorCode::InsufficientEscrowBalance);
     
     // Burn the NFT using real Metaplex BurnNftCpi
+    // Create a binding for the collection mint account info to satisfy lifetime requirements
+    let collection_mint_info = ctx.accounts.collection_mint.to_account_info();
+    
     let burn_accounts = BurnNftCpiAccounts {
         metadata: &ctx.accounts.metadata_account.to_account_info(),
         owner: &ctx.accounts.seller.to_account_info(),
@@ -108,7 +111,7 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
         token_account: &ctx.accounts.seller_nft_token_account.to_account_info(),
         master_edition_account: &ctx.accounts.master_edition_account.to_account_info(),
         spl_token_program: &ctx.accounts.token_program.to_account_info(),
-        collection_metadata: Some(&ctx.accounts.collection_mint.to_account_info()),
+        collection_metadata: Some(&collection_mint_info), // Use the binding here
     };
     
     BurnNftCpi::new(

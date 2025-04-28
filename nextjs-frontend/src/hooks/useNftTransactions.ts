@@ -53,7 +53,7 @@ const safeStringifyError = (error: unknown): string => {
   return `[Unknown Error: ${typeof error}]`;
 };
 
-// Named export for useMintNft (renamed from useCreateNft)
+// Named export for useMintNft
 export const useMintNft = () => {
   const { program, provider } = useAnchorContext();
   const wallet = useWallet();
