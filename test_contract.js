@@ -25,7 +25,7 @@ async function main() {
   anchor.setProvider(provider);
   
   // Program ID from our deployment
-  const programId = new PublicKey('J72SyAhR7pwGfMvzSNrDTpkfmWSpNp2oqiR5hY5mWBf');
+  const programId = new PublicKey('3oYxNsPE6bqNimzengYPdaEr8oZzjARoeWAMLKEPy1zP');
   console.log("Using program ID:", programId.toString());
   
   try {

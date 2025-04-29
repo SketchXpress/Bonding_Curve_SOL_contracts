@@ -11,6 +11,7 @@ import {
 import { 
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
   getAccount
 } from '@solana/spl-token';
@@ -142,7 +143,7 @@ export const useMintNft = () => {
       );
       
       // Get the associated token address for the NFT
-      const associatedTokenAddress = await getAssociatedTokenAddress(
+      const tokenAccount = await getAssociatedTokenAddress(
         nftMint,
         wallet.publicKey
       );
@@ -167,11 +168,13 @@ export const useMintNft = () => {
           nftMint: nftMint,
           escrow: escrow,
           pool: pool,
+          tokenAccount: tokenAccount,
           tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
           metadataAccount: metadataAccount,
           masterEdition: masterEdition,
           collectionMint: collectionMint,
           tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY
         })

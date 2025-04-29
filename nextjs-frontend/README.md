@@ -202,7 +202,7 @@ The frontend integrates with the Solana smart contracts using Anchor. The contra
 The Solana program ID is defined in `AnchorContextProvider.tsx`:
 
 ```typescript
-const PROGRAM_ID = "J72SyAhR7pwGfMvzSNrDTpkfmWSpNp2oqiR5hY5mWBf";
+const PROGRAM_ID = "3oYxNsPE6bqNimzengYPdaEr8oZzjARoeWAMLKEPy1zP";
 ```
 
 ### IDL
