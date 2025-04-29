@@ -1,5 +1,5 @@
 // Constants
-const PROGRAM_ID = '85KVeJTCfHhLB6jfno5E41eHKBfzBxVZEADUHznnUfjG';
+const PROGRAM_ID = 'J72SyAhR7pwGfMvzSNrDTpkfmWSpNp2oqiR5hY5mWBf';
 const NETWORK = 'devnet';
 const SOLANA_NETWORK = 'https://api.devnet.solana.com';
 

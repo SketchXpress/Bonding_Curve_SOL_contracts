@@ -1,7 +1,11 @@
 import { useAnchorContext } from "@/contexts/AnchorContextProvider";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token"; // Keep for Metaplex interactions if needed elsewhere
+import { 
+  TOKEN_PROGRAM_ID, 
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress 
+} from "@solana/spl-token"; // Added imports for ATA derivation
 import { useState } from "react";
 import { SafeBN, safePublicKey, isValidPublicKeyFormat } from "@/utils/bn-polyfill";
 import * as anchor from "@coral-xyz/anchor";
@@ -19,7 +23,7 @@ interface BondingCurvePool {
   bump: number;
 }
 
-// New hook for creating a collection NFT
+// Updated hook for creating a collection NFT
 export const useCreateCollectionNft = () => {
   const { program, provider } = useAnchorContext();
   const wallet = useWallet();
@@ -69,15 +73,24 @@ export const useCreateCollectionNft = () => {
         new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
       );
 
+      // Derive the associated token account address for the wallet and collection mint
+      const tokenAccount = await getAssociatedTokenAddress(
+        collectionMint.publicKey,  // mint
+        wallet.publicKey,          // owner
+        false                       // allowOwnerOffCurve = false (default)
+      );
+
       console.log("Creating collection NFT with accounts:", {
         payer: wallet.publicKey.toString(),
         collectionMint: collectionMint.publicKey.toString(),
+        tokenAccount: tokenAccount.toString(), // Log the token account
         metadataAccount: metadataAccount.toString(),
         masterEditionAccount: masterEditionAccount.toString(),
         tokenMetadataProgram: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
       });
 
       // Execute the transaction with the required accounts and args
+      // Now including the token_account and associated_token_program
       const tx = await program.methods
         .createCollectionNft(name, symbol, uri)
         .accounts({
@@ -85,8 +98,10 @@ export const useCreateCollectionNft = () => {
           collectionMint: collectionMint.publicKey,
           metadataAccount: metadataAccount,
           masterEditionAccount: masterEditionAccount,
+          tokenAccount: tokenAccount, // Add the token account
           tokenMetadataProgram: new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
           tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, // Add the associated token program
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY,
         })
@@ -229,13 +244,17 @@ export const useMigrateToTensor = () => {
       if (!poolData.isActive) {
         throw new Error("Pool already migrated/frozen");
       }
+      
+      // Get collection mint from pool data to derive PDA correctly
+      const collectionMintKey = poolData.collection;
 
-      // Execute the transaction with simplified accounts
+      // Execute the transaction with updated accounts including collection_mint
       const tx = await program.methods
         .migrateToTensor()
         .accounts({
           authority: wallet.publicKey, // Assuming the wallet user is the authority
           pool,
+          collectionMint: collectionMintKey, // Add collection mint here
           systemProgram: SystemProgram.programId,
         })
         .rpc({
@@ -255,3 +274,5 @@ export const useMigrateToTensor = () => {
 
   return { migrateToTensor, loading, error, txSignature };
 };
+
+

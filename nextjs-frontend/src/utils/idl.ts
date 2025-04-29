@@ -1,4 +1,4 @@
-export const PROGRAM_ID = '85KVeJTCfHhLB6jfno5E41eHKBfzBxVZEADUHznnUfjG';
+export const PROGRAM_ID = 'J72SyAhR7pwGfMvzSNrDTpkfmWSpNp2oqiR5hY5mWBf';
 
 export const IDL = {
   "version": "0.1.0",
@@ -28,12 +28,25 @@ export const IDL = {
           "isSigner": false
         },
         {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "It will be created by the AssociatedToken program if it doesn't exist."
+          ]
+        },
+        {
           "name": "tokenMetadataProgram",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -122,6 +135,14 @@ export const IDL = {
           "isSigner": false
         },
         {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "It will be created by the AssociatedToken program if it doesn't exist."
+          ]
+        },
+        {
           "name": "tokenMetadataProgram",
           "isMut": false,
           "isSigner": false
@@ -143,6 +164,11 @@ export const IDL = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -498,7 +524,7 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "85KVeJTCfHhLB6jfno5E41eHKBfzBxVZEADUHznnUfjG"
+    "address": "J72SyAhR7pwGfMvzSNrDTpkfmWSpNp2oqiR5hY5mWBf"
   }
 };
 
