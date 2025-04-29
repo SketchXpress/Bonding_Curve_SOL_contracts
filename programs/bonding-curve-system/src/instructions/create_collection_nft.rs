@@ -1,7 +1,8 @@
-// Instructions for creating a Metaplex Collection NFT
+// Corrected modifications for create_collection_nft.rs
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token};
+use anchor_spl::token::{Mint, Token, MintTo, mint_to};
+use anchor_spl::associated_token::AssociatedToken; // Import AssociatedToken program
 use mpl_token_metadata::instructions::{
     CreateMetadataAccountV3Cpi,
     CreateMetadataAccountV3CpiAccounts,
@@ -46,6 +47,13 @@ pub struct CreateCollectionNft<
         'info
     >,
 
+    /// CHECK: This is the token account that will hold the minted NFT. 
+    /// It will be created by the AssociatedToken program if it doesn't exist.
+    #[account(mut)]
+    pub token_account: UncheckedAccount<
+        'info
+    >,
+
     /// CHECK: Metaplex Token Metadata program ID
     pub token_metadata_program: UncheckedAccount<
         'info
@@ -55,10 +63,18 @@ pub struct CreateCollectionNft<
         'info,
         Token
     >,
+
+    // Associated Token Program required for creating the token account
+    pub associated_token_program: Program<
+        'info,
+        AssociatedToken
+    >,
+
     pub system_program: Program<
         'info,
         System
     >,
+    // Rent sysvar is needed by the AssociatedToken program CPI
     pub rent: Sysvar<
         'info,
         Rent
@@ -111,8 +127,39 @@ pub fn create_collection_nft(
         metadata_accounts,
         metadata_args
     ).invoke_signed(
-        // We need seeds if the payer is a PDA, but here it's a Signer
         &[],
+    )?;
+
+    // CPI to the Associated Token Program to create the token account
+    // This is idempotent, it will only create the account if it doesn't exist.
+    msg!("Creating Associated Token Account via CPI");
+    anchor_spl::associated_token::create(
+        CpiContext::new(
+            ctx.accounts.associated_token_program.to_account_info(),
+            anchor_spl::associated_token::Create {
+                payer: ctx.accounts.payer.to_account_info(),
+                associated_token: ctx.accounts.token_account.to_account_info(),
+                authority: ctx.accounts.payer.to_account_info(), // Authority is the payer
+                mint: ctx.accounts.collection_mint.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+                token_program: ctx.accounts.token_program.to_account_info(),
+                // Rent is implicitly passed via the context
+            },
+        )
+    )?;
+
+    // Mint exactly one token to the token account
+    msg!("Minting one token to the Associated Token Account");
+    mint_to(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            MintTo {
+                mint: ctx.accounts.collection_mint.to_account_info(),
+                to: ctx.accounts.token_account.to_account_info(),
+                authority: ctx.accounts.payer.to_account_info(), // Payer is the mint authority
+            },
+        ),
+        1, // Amount = 1
     )?;
 
     // CPI to create the master edition account
@@ -138,13 +185,12 @@ pub fn create_collection_nft(
         master_edition_accounts,
         master_edition_args
     ).invoke_signed(
-        // We need seeds if the payer is a PDA, but here it's a Signer
         &[],
     )?;
 
     msg!("Collection NFT created successfully!");
     msg!("Collection Mint Address: {}", ctx.accounts.collection_mint.key());
+    msg!("Token Account Address: {}", ctx.accounts.token_account.key());
 
     Ok(())
 }
-
