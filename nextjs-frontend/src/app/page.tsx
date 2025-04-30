@@ -39,7 +39,7 @@ const AppContent = () => {
           <div className="bg-white shadow-md rounded-lg p-6 mb-6">
             <p className="mb-2">
               <span className="font-medium">Program ID:</span>{' '}
-              <span className="font-mono">EorBhKiy6t2G9q7xJPgNVXn98BSRZqcYPiSmA6xkiTvc</span>
+              <span className="font-mono">EQuEYCaWyXXKeQ3hmkJD2iTmLr4Zy1B8o5VnGcjKHXY</span>
             </p>
             <p>
               <span className="font-medium">Network:</span> <span>Devnet</span>
