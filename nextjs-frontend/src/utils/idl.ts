@@ -1,4 +1,4 @@
-export const PROGRAM_ID = '3oYxNsPE6bqNimzengYPdaEr8oZzjARoeWAMLKEPy1zP';
+export const PROGRAM_ID = 'EorBhKiy6t2G9q7xJPgNVXn98BSRZqcYPiSmA6xkiTvc';
 
 export const IDL = {
   "version": "0.1.0",
@@ -86,7 +86,7 @@ export const IDL = {
         },
         {
           "name": "collectionMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -217,6 +217,11 @@ export const IDL = {
         },
         {
           "name": "escrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
           "isMut": true,
           "isSigner": false
         },
@@ -524,7 +529,7 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "3oYxNsPE6bqNimzengYPdaEr8oZzjARoeWAMLKEPy1zP"
+    "address": "EorBhKiy6t2G9q7xJPgNVXn98BSRZqcYPiSmA6xkiTvc"
   }
 };
 

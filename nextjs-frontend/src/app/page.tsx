@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { WalletContextProvider } from '@/contexts/WalletContextProvider';
@@ -5,6 +6,7 @@ import { AnchorContextProvider } from '@/contexts/AnchorContextProvider';
 import WalletSection from '@/components/WalletSection';
 import CreatePoolCard from '@/components/CreatePoolCard';
 import CreateNftCard from '@/components/CreateNftCard';
+import SellNftCard from '@/components/SellNftCard'; // Import the new component
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
@@ -29,13 +31,15 @@ const AppContent = () => {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Solana NFT-Only Bonding Curve System</h1>
           <p className="text-xl text-gray-600">With Token-Owned Escrow (TOE)</p>
         </header>
+        
         <WalletSection />
+        
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Contract Information</h2>
           <div className="bg-white shadow-md rounded-lg p-6 mb-6">
             <p className="mb-2">
               <span className="font-medium">Program ID:</span>{' '}
-              <span className="font-mono">3oYxNsPE6bqNimzengYPdaEr8oZzjARoeWAMLKEPy1zP</span>
+              <span className="font-mono">EorBhKiy6t2G9q7xJPgNVXn98BSRZqcYPiSmA6xkiTvc</span>
             </p>
             <p>
               <span className="font-medium">Network:</span> <span>Devnet</span>
@@ -59,26 +63,25 @@ const AppContent = () => {
             <PoolInfoCard poolAddress={poolAddress} />
           </div>
         </section>
-        <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">Contract Functions</h2>
-        {/* Add the new card here */}
-        <div className="mb-6">
-          <CreateCollectionNftCard /> 
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <CreatePoolCard />
-          <CreateNftCard />
-          <MigrateToTensorCard />
-        </div>
-      </section>
+        
+        {/* Combined and cleaned Contract Functions section */}
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Contract Functions</h2>
+          {/* Create Collection NFT Card (placed above the grid for prominence) */}
+          <div className="mb-6">
+            <CreateCollectionNftCard /> 
+          </div>
+          {/* Grid for other functions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CreatePoolCard />
             <CreateNftCard />
+            <SellNftCard /> {/* Added the SellNftCard */}
             <MigrateToTensorCard />
           </div>
         </section>
+        
+        {/* Removed the duplicate Contract Functions section */}
+        
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Transaction History</h2>
           <TransactionHistory />
@@ -87,6 +90,7 @@ const AppContent = () => {
     </main>
   );
 };
+
 export default function Home() {
   return (
     <WalletContextProvider>
@@ -96,3 +100,4 @@ export default function Home() {
     </WalletContextProvider>
   );
 }
+

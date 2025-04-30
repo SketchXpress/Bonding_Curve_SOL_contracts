@@ -6,7 +6,8 @@ import {
   Keypair, 
   PublicKey, 
   SystemProgram, 
-  SYSVAR_RENT_PUBKEY
+  SYSVAR_RENT_PUBKEY,
+  ComputeBudgetProgram
 } from '@solana/web3.js';
 import { 
   TOKEN_PROGRAM_ID,
@@ -160,6 +161,12 @@ export const useMintNft = () => {
       
       console.log(`Estimated price for minting NFT: ${estimatedPrice / 1_000_000_000} SOL`);
       
+      // --- ADD COMPUTE UNIT LIMIT INSTRUCTION --- 
+      const computeUnitLimitInstruction = ComputeBudgetProgram.setComputeUnitLimit({ 
+        units: 400000 // Request 400,000 CUs (adjust if needed)
+      });
+      // --- END ADD COMPUTE UNIT LIMIT INSTRUCTION ---
+      
       // Execute the transaction to mint the NFT with TOE
       const tx = await program.methods
         .mintNft(name, symbol, uri, sellerFeeBasisPoints)
@@ -179,6 +186,7 @@ export const useMintNft = () => {
           rent: SYSVAR_RENT_PUBKEY
         })
         .signers([nftMintKeypair])
+        .preInstructions([computeUnitLimitInstruction])
         .rpc({
           skipPreflight: false,
           commitment: 'confirmed'
@@ -219,7 +227,7 @@ export const useSellNft = () => {
 
   const sellNft = async (nftMintAddress: string, poolAddress: string) => {
     if (!program || !wallet.publicKey) {
-      setError('Program not initialized or wallet not connected');
+      setError("Program not initialized or wallet not connected");
       return null;
     }
 
@@ -230,75 +238,75 @@ export const useSellNft = () => {
     try {
       // Validate NFT mint address
       if (!isValidPublicKeyFormat(nftMintAddress)) {
-        throw new Error('Invalid NFT mint address format');
+        throw new Error("Invalid NFT mint address format");
       }
-      
       const nftMint = safePublicKey(nftMintAddress);
       if (!nftMint) {
-        throw new Error('Invalid NFT mint address');
+        throw new Error("Invalid NFT mint address");
       }
-      
+
       // Validate pool address
       if (!isValidPublicKeyFormat(poolAddress)) {
-        throw new Error('Invalid pool address format');
+        throw new Error("Invalid pool address format");
       }
-      
       const pool = safePublicKey(poolAddress);
       if (!pool) {
-        throw new Error('Invalid pool address');
+        throw new Error("Invalid pool address");
       }
-      
-      // Get pool data to retrieve collection mint
+
+      // Get pool data to retrieve collection mint AND CREATOR
       const poolData = await program.account.bondingCurvePool.fetch(pool);
       const collectionMint = poolData.collection as PublicKey;
-      
+      const creator = poolData.creator as PublicKey; // <-- Get the creator public key
+
       // Find NFT escrow PDA
       const [escrow] = PublicKey.findProgramAddressSync(
-        [Buffer.from('nft-escrow'), nftMint.toBuffer()],
+        [Buffer.from("nft-escrow"), nftMint.toBuffer()],
         program.programId
       );
-      
+
       // Get the associated token address for the NFT
       const sellerNftTokenAccount = await getAssociatedTokenAddress(
         nftMint,
         wallet.publicKey
       );
-      
-      // Verify the seller owns the NFT
+
+      // Verify the seller owns the NFT (optional but good practice)
       try {
-        const tokenAccount = await getAccount(
+        const tokenAccountInfo = await getAccount(
           program.provider.connection,
           sellerNftTokenAccount
         );
-        
-        if (tokenAccount.amount !== BigInt(1)) {
-          throw new Error('You do not own this NFT');
+        if (tokenAccountInfo.amount !== BigInt(1)) {
+          throw new Error("You do not own this NFT or the token account is incorrect.");
         }
       } catch (err) {
-        throw new Error('Failed to verify NFT ownership');
+        // Handle cases where the token account might not exist yet or other errors
+        console.error("Verification Error:", err);
+        throw new Error("Failed to verify NFT ownership. Ensure the token account exists.");
       }
-      
+
       // Find Metaplex metadata account PDA
       const [metadataAccount] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('metadata'),
+          Buffer.from("metadata"),
           TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-          nftMint.toBuffer()
+          nftMint.toBuffer(),
         ],
         TOKEN_METADATA_PROGRAM_ID
       );
-      
+
       // Find Metaplex master edition account PDA
       const [masterEditionAccount] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('metadata'),
+          Buffer.from("metadata"),
           TOKEN_METADATA_PROGRAM_ID.toBuffer(),
           nftMint.toBuffer(),
-          Buffer.from('edition')
+          Buffer.from("edition"),
         ],
         TOKEN_METADATA_PROGRAM_ID
       );
-      
+
       // Execute the transaction to sell (burn) the NFT and retrieve SOL from escrow
       const tx = await program.methods
         .sellNft()
@@ -306,6 +314,7 @@ export const useSellNft = () => {
           seller: wallet.publicKey,
           pool: pool,
           escrow: escrow,
+          creator: creator, // <-- ADD THE CREATOR ACCOUNT HERE
           nftMint: nftMint,
           sellerNftTokenAccount: sellerNftTokenAccount,
           tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
@@ -313,20 +322,21 @@ export const useSellNft = () => {
           masterEditionAccount: masterEditionAccount,
           collectionMint: collectionMint,
           tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId
+          systemProgram: SystemProgram.programId,
         })
         .rpc({
-          skipPreflight: false,
-          commitment: 'confirmed'
+          skipPreflight: false, // Consider setting to true for debugging if needed
+          commitment: "confirmed",
         });
-      
-      console.log('NFT sold successfully with signature:', tx);
-      
+
+      console.log("NFT sold successfully with signature:", tx);
+
       setTxSignature(tx);
       return tx;
     } catch (err) {
-      console.error('Error selling NFT:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      const errorMessage = safeStringifyError(err); // Use the helper function
+      console.error("Error selling NFT:", errorMessage);
+      setError(errorMessage);
       return null;
     } finally {
       setLoading(false);

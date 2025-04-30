@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("3oYxNsPE6bqNimzengYPdaEr8oZzjARoeWAMLKEPy1zP"); // Replace with your program ID
+declare_id!("EorBhKiy6t2G9q7xJPgNVXn98BSRZqcYPiSmA6xkiTvc"); // Replace with your program ID
 
 pub mod state;
 pub mod instructions;
