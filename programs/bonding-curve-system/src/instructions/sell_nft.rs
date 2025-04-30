@@ -1,10 +1,7 @@
 // programs/bonding-curve-system/src/instructions/sell_nft.rs
-// FINAL COMBINED EXAMPLE: Fix for InsufficientEscrowBalance, 5% Sell Fee, AND Mutability Error
+// FINAL FIX v2: Fixes InsufficientEscrowBalance, 5% Sell Fee, Mutability Error, AND Transfer Error
 
-use anchor_lang::{
-    prelude::*,
-    solana_program::{program::invoke_signed, system_instruction},
-};
+use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use mpl_token_metadata::instructions::{
     BurnNftCpi,
@@ -36,7 +33,8 @@ pub struct SellNFT<
         mut,
         seeds = [b"nft-escrow", nft_mint.key().as_ref()],
         bump = escrow.bump,
-        // REMOVED: close = seller // Manual transfers implemented
+        // Account will be zeroed out and closed by Anchor automatically at end of instruction
+        close = seller
     )]
     pub escrow: Account<
         'info,
@@ -85,7 +83,7 @@ pub struct SellNFT<
 
     // Collection Mint - Needs to be mutable for BurnNftCpi
     /// CHECK: This is the collection mint account.
-    #[account(mut)] // <-- ADDED MUT HERE
+    #[account(mut)]
     pub collection_mint: UncheckedAccount<
         'info
     >,
@@ -110,15 +108,8 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
 
     require!(ctx.accounts.pool.is_active, ErrorCode::PoolInactive);
 
-    // --- REMOVED FAULTY CHECK --- 
-    // require!(ctx.accounts.escrow.lamports >= price, ErrorCode::InsufficientEscrowBalance);
-    // --- END REMOVAL --- 
-
-    // --- Burn Logic ---
-    // Get AccountInfo for collection_mint
+    // --- Burn Logic (remains the same) ---
     let collection_mint_info = ctx.accounts.collection_mint.to_account_info();
-    
-    // Prepare accounts for BurnNftCpi
     let burn_accounts = BurnNftCpiAccounts {
         metadata: &ctx.accounts.metadata_account.to_account_info(),
         owner: &ctx.accounts.seller.to_account_info(),
@@ -126,20 +117,22 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
         token_account: &ctx.accounts.seller_nft_token_account.to_account_info(),
         master_edition_account: &ctx.accounts.master_edition_account.to_account_info(),
         spl_token_program: &ctx.accounts.token_program.to_account_info(),
-        // Pass the collection_metadata derived from collection_mint_info
-        // Metaplex requires this to be mutable, hence collection_mint must be mut
         collection_metadata: Some(&collection_mint_info), 
     };
-    
-    // Invoke BurnNftCpi
     BurnNftCpi::new(
         &ctx.accounts.token_metadata_program.to_account_info(),
         burn_accounts
     ).invoke()?;
     // --- End Burn Logic ---
 
-    // --- Manual Fund Transfer Logic with 5% Fee ---
-    let escrow_total_lamports = ctx.accounts.escrow.to_account_info().lamports();
+    // --- Direct Lamport Transfer Logic with 5% Fee ---
+    // Create longer-lived bindings for the account_info objects
+    let escrow_info = ctx.accounts.escrow.to_account_info();
+    let creator_info = ctx.accounts.creator.to_account_info();
+    let seller_info = ctx.accounts.seller.to_account_info();
+
+    // Get escrow total lamports before any changes
+    let escrow_total_lamports = escrow_info.lamports();
     let rent_exempt_minimum = Rent::get()?.minimum_balance(NftEscrow::SPACE);
 
     // Calculate available lamports (excluding rent)
@@ -156,69 +149,37 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
     let net_amount_to_seller = available_lamports
         .checked_sub(sell_fee)
         .ok_or(ErrorCode::MathOverflow)?;
+    
+    // Calculate total amount to transfer out
+    let total_transfer_amount = sell_fee
+        .checked_add(net_amount_to_seller)
+        .ok_or(ErrorCode::MathOverflow)?;
+    
+    // Ensure we don't try to transfer more than exists
+    if total_transfer_amount > escrow_total_lamports {
+        return err!(ErrorCode::InsufficientEscrowBalance);
+    }
 
-    // Prepare PDA seeds for invoke_signed
-    let nft_mint_key = ctx.accounts.nft_mint.key();
-    let seeds = &[
-        b"nft-escrow".as_ref(),
-        nft_mint_key.as_ref(),
-        &[ctx.accounts.escrow.bump],
-    ];
-    let signer_seeds = &[&seeds[..]];
+    // Now borrow mutably from the longer-lived bindings
+    let mut escrow_lamports = escrow_info.try_borrow_mut_lamports()?;
+    let mut creator_lamports = creator_info.try_borrow_mut_lamports()?;
+    let mut seller_lamports = seller_info.try_borrow_mut_lamports()?;
 
-    // Transfer Fee from Escrow PDA to Creator
+    // Perform transfers using direct lamport manipulation
+    **escrow_lamports = escrow_lamports.checked_sub(total_transfer_amount).ok_or(ErrorCode::MathOverflow)?;
+    
     if sell_fee > 0 {
-        invoke_signed(
-            &system_instruction::transfer(
-                &ctx.accounts.escrow.key(),
-                &ctx.accounts.creator.key(),
-                sell_fee,
-            ),
-            &[
-                ctx.accounts.escrow.to_account_info(),
-                ctx.accounts.creator.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-            signer_seeds,
-        )?;
+        **creator_lamports = creator_lamports.checked_add(sell_fee).ok_or(ErrorCode::MathOverflow)?;
     }
-
-    // Transfer Net Amount from Escrow PDA to Seller
+    
+    // Seller receives net amount
     if net_amount_to_seller > 0 {
-        invoke_signed(
-            &system_instruction::transfer(
-                &ctx.accounts.escrow.key(),
-                &ctx.accounts.seller.key(),
-                net_amount_to_seller,
-            ),
-            &[
-                ctx.accounts.escrow.to_account_info(),
-                ctx.accounts.seller.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-            signer_seeds,
-        )?;
+        **seller_lamports = seller_lamports.checked_add(net_amount_to_seller).ok_or(ErrorCode::MathOverflow)?;
     }
-
-    // --- Transfer Remaining Rent from Escrow to Seller ---
-    let remaining_lamports = ctx.accounts.escrow.to_account_info().lamports();
-    if remaining_lamports > 0 {
-         invoke_signed(
-            &system_instruction::transfer(
-                &ctx.accounts.escrow.key(),
-                &ctx.accounts.seller.key(), // Send rent to the seller
-                remaining_lamports,
-            ),
-            &[
-                ctx.accounts.escrow.to_account_info(),
-                ctx.accounts.seller.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-            signer_seeds,
-        )?;
-    }
-    // Escrow balance is now 0. Anchor will handle account data removal.
-    // --- End Manual Fund Transfer --- 
+    
+    // Note: The rent exemption lamports will be returned to the seller automatically
+    // because we've specified `close = seller` in the account constraints
+    // --- End Direct Lamport Transfer --- 
 
     // --- Update Pool State (remains the same) ---
     ctx.accounts.pool.current_supply = ctx.accounts.pool.current_supply

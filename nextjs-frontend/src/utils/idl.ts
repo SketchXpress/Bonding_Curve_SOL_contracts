@@ -86,7 +86,7 @@ export const IDL = {
         },
         {
           "name": "collectionMint",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -252,7 +252,7 @@ export const IDL = {
         },
         {
           "name": "collectionMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
