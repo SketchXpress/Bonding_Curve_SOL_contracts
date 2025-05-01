@@ -34,4 +34,8 @@ pub enum ErrorCode {
     
     #[msg("Invalid pool")]
     InvalidPool,
+
+    #[msg("Escrow account not empty after transfer")] // Added new error code
+    EscrowNotEmpty,
 }
+
