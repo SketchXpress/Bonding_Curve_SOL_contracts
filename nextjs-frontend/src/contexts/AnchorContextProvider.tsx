@@ -14,7 +14,7 @@ interface AnchorContextProviderProps {
   children: ReactNode;
 }
 
-interface AnchorContextState {
+export interface AnchorContextState { // Export the interface
   program: Program | null;
   provider: AnchorProvider | null;
   initialized: boolean;

@@ -10,8 +10,9 @@ import SellNftCard from '@/components/SellNftCard'; // Import the new component
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
-import CreateCollectionNftCard from '@/components/CreateCollectionNftCard';
-import { useTransactionIntegration } from '@/hooks/useTransactionIntegration';
+import CreateCollectionNftCard from '@/components/CreateCollectionNftCard'
+import BondingCurveHistoryCard from "@/components/BondingCurveHistoryCard"; // Import the history card
+import { useTransactionIntegration } from "@/hooks/useTransactionIntegration";
 import BigIntPatcher from '@/components/BigIntPatcher';
 
 // Create a wrapper component that uses the hook inside the providers
@@ -82,6 +83,12 @@ const AppContent = () => {
         
         {/* Removed the duplicate Contract Functions section */}
         
+        {/* Bonding Curve History Section */}
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">Bonding Curve History</h2>
+          <BondingCurveHistoryCard poolAddress={poolAddress} />
+        </section>
+
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Transaction History</h2>
           <TransactionHistory />
