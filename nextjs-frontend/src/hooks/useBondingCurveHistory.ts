@@ -1,7 +1,7 @@
-// /home/ubuntu/Bonding_Curve_SOL_contracts/nextjs-frontend/src/hooks/useBondingCurveHistory_helius_v7.ts
+// /home/ubuntu/Bonding_Curve_SOL_contracts/nextjs-frontend/src/hooks/useBondingCurveHistory.ts
 // NOTE: This is a conceptual example. Actual implementation requires error handling, 
 //       proper state management, dependency installation (@solana/web3.js, @coral-xyz/anchor).
-// FIXES APPLIED (v15) - Use /v0/transactions endpoint to get innerInstructions
+// FIXES APPLIED (v16) - Use nativeTransfers for price extraction from Enhanced API
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -12,6 +12,13 @@ import {
 } from "@solana/web3.js";
 import { AnchorProvider, Idl, BorshInstructionCoder, Program } from "@coral-xyz/anchor";
 import { IDL as BondingCurveIDL, PROGRAM_ID } from "../utils/idl";
+
+// Define interfaces for Helius API responses
+interface NativeTransfer {
+  fromUserAccount: string;
+  toUserAccount: string;
+  amount: number;
+}
 
 interface TransferInstruction {
   programId: string;
@@ -25,6 +32,22 @@ interface TransferInstruction {
   };
 }
 
+interface HeliusTransaction {
+  signature: string;
+  description?: string;
+  type?: string;
+  source?: string;
+  fee?: number;
+  feePayer: string;
+  slot?: number;
+  timestamp?: number;
+  nativeTransfers?: NativeTransfer[];
+  tokenTransfers?: any[];
+  accountData?: any[];
+  transactionError?: any;
+  instructions: any[];
+  events?: any;
+}
 
 // Export the HistoryItem interface
 export interface HistoryItem {
@@ -108,7 +131,7 @@ export function useBondingCurveHistory(limit: number = 50) {
         const signatures = signaturesResponseData.map((tx) => tx.signature);
         const basicInfoMap = new Map(signaturesResponseData.map(tx => [tx.signature, { timestamp: tx.timestamp }]));
 
-        // Step 2: Get detailed transaction data (including innerInstructions) using /transactions endpoint
+        // Step 2: Get detailed transaction data using Enhanced API /transactions endpoint
         console.log("Fetching detailed transaction data for signatures:", signatures);
         const transactionsUrl = `${HELIUS_API_BASE}/transactions?api-key=${HELIUS_API_KEY}`;
         
@@ -133,11 +156,19 @@ export function useBondingCurveHistory(limit: number = 50) {
         
         // Debug: Log summary of received data
         console.log(`Received ${detailedTransactionsData.length} detailed transactions`);
-        console.log("First transaction sample:", detailedTransactionsData[0]?.signature);
-        console.log("Transaction has innerInstructions:", 
-          detailedTransactionsData[0]?.innerInstructions ? 
-          `Yes (${detailedTransactionsData[0]?.innerInstructions.length})` : 
-          "No");
+        
+        if (detailedTransactionsData.length > 0) {
+          console.log("First transaction sample:", detailedTransactionsData[0]?.signature);
+          
+          // Add transaction structure debugging
+          console.log("Transaction structure:", Object.keys(detailedTransactionsData[0] || {}));
+          
+          if (detailedTransactionsData[0]?.nativeTransfers) {
+            console.log(`Transaction has nativeTransfers: Yes (${detailedTransactionsData[0].nativeTransfers.length})`);
+          } else {
+            console.log("Transaction has nativeTransfers: No");
+          }
+        }
 
         if (!Array.isArray(detailedTransactionsData)) {
           throw new Error("Unexpected response format from Helius Transactions API");
@@ -145,7 +176,7 @@ export function useBondingCurveHistory(limit: number = 50) {
 
         // Step 3: Process detailed data and extract info
         const parsedHistory: HistoryItem[] = [];
-        detailedTransactionsData.forEach((tx: any) => {
+        detailedTransactionsData.forEach((tx: HeliusTransaction) => {
           const basicInfo = basicInfoMap.get(tx.signature);
           if (!basicInfo) return; // Should not happen if APIs are consistent
 
@@ -193,74 +224,64 @@ export function useBondingCurveHistory(limit: number = 50) {
               }
             }
 
-            // --- Refined Price Extraction using Inner Instructions ---
-            if (tx.meta?.innerInstructions && Array.isArray(tx.meta.innerInstructions) && escrowAddress && mainProgramInstructionIndex !== -1) {
-              console.log(`[${tx.signature}] Processing inner instructions for escrow: ${escrowAddress}`);
-              console.log(`[${tx.signature}] Found ${tx.innerInstructions.length} inner instruction groups`);
+            // --- Price Extraction using nativeTransfers ---
+            if (tx.nativeTransfers && Array.isArray(tx.nativeTransfers) && escrowAddress) {
+              console.log(`[${tx.signature}] Processing native transfers for escrow: ${escrowAddress}`);
+              console.log(`[${tx.signature}] Found ${tx.nativeTransfers.length} native transfers`);
               
-              const relevantInnerInstructions = tx.innerInstructions.find((inner: any) => inner.index === mainProgramInstructionIndex);
-              
-              console.log(`[${tx.signature}] Relevant inner instructions for index ${mainProgramInstructionIndex}: ${relevantInnerInstructions ? 'Found' : 'Not found'}`);
-              
-              if (relevantInnerInstructions && Array.isArray(relevantInnerInstructions.instructions)) {
-                console.log(`[${tx.signature}] Processing ${relevantInnerInstructions.instructions.length} inner instructions for ${decodedName}`);
+              if (decodedName === "mintNft") {
+                const payer = tx.feePayer;
+                console.log(`[${tx.signature}] Looking for transfer from payer: ${payer} to escrow: ${escrowAddress}`);
                 
-                if (decodedName === "mintNft") {
-                  const payer = tx.feePayer;
-                  console.log(`[${tx.signature}] Looking for transfer from payer: ${payer} to escrow: ${escrowAddress}`);
-                  
-                  const systemTransferToEscrow = relevantInnerInstructions.instructions.find(
-                    (innerIx: any) => 
-                      innerIx.programId === SystemProgram.programId.toBase58() &&
-                      innerIx.parsed?.type === "transfer" &&
-                      innerIx.parsed?.info?.source === payer &&
-                      innerIx.parsed?.info?.destination === escrowAddress
-                  );
-                  
-                  if (systemTransferToEscrow) {
-                    price = systemTransferToEscrow.parsed.info.lamports / LAMPORTS_PER_SOL;
-                    console.log(`[${tx.signature}] 💰 Found mintNft price: ${price} SOL (${systemTransferToEscrow.parsed.info.lamports} lamports)`);
-                  } else {
-                    console.log(`[${tx.signature}] ❌ No matching transfer instruction found for mintNft`);
-                    // Debug: Log all transfer instructions to help identify issues
-                    const allTransfers = relevantInnerInstructions.instructions.filter(
-                      (innerIx: any) => innerIx.programId === SystemProgram.programId.toBase58() && innerIx.parsed?.type === "transfer"
-                    );
-                    console.log(`[${tx.signature}] All transfers:`, allTransfers.map((t: TransferInstruction) => ({
-                      from: t.parsed?.info?.source,
-                      to: t.parsed?.info?.destination,
-                      amount: (t.parsed?.info?.lamports ?? 0) / LAMPORTS_PER_SOL
-                    }))
-                    );
-                  }
-                } else if (decodedName === "sellNft") {
-                  const seller = tx.feePayer;
-                  console.log(`[${tx.signature}] Looking for transfer from escrow: ${escrowAddress} to seller: ${seller}`);
-                  
-                  const systemTransferFromEscrow = relevantInnerInstructions.instructions.find(
-                    (innerIx: any) => 
-                      innerIx.programId === SystemProgram.programId.toBase58() &&
-                      innerIx.parsed?.type === "transfer" &&
-                      innerIx.parsed?.info?.source === escrowAddress &&
-                      innerIx.parsed?.info?.destination === seller
-                  );
-                  
-                  if (systemTransferFromEscrow) {
-                    price = systemTransferFromEscrow.parsed.info.lamports / LAMPORTS_PER_SOL;
-                    console.log(`[${tx.signature}] 💰 Found sellNft price: ${price} SOL (${systemTransferFromEscrow.parsed.info.lamports} lamports)`);
-                  } else {
-                    console.log(`[${tx.signature}] ❌ No matching transfer instruction found for sellNft`);
-                    // Debug: Log all transfer instructions to help identify issues
-                    const allTransfers = relevantInnerInstructions.instructions.filter(
-                      (innerIx: any) => innerIx.programId === SystemProgram.programId.toBase58() && innerIx.parsed?.type === "transfer"
-                    );
-                    console.log(`[${tx.signature}] All transfers:`, allTransfers.map((t: TransferInstruction) => ({
-                      from: t.parsed?.info?.source,
-                      to: t.parsed?.info?.destination,
-                      amount: (t.parsed?.info?.lamports ?? 0) / LAMPORTS_PER_SOL
-                    }))
-                    );
-                  }
+                // Finding the LARGEST transfer for mintNft
+                const transfersToEscrow = tx.nativeTransfers
+                .filter((transfer: NativeTransfer) => 
+                  transfer.fromUserAccount === payer &&
+                  transfer.toUserAccount === escrowAddress
+                )
+                .sort((a, b) => b.amount - a.amount); // Sort by amount descending
+
+                if (transfersToEscrow.length > 0) {
+                // Use the largest transfer as the price
+                price = transfersToEscrow[0].amount / LAMPORTS_PER_SOL;
+                console.log(`[${tx.signature}] 💰 Found mintNft price: ${price} SOL (${transfersToEscrow[0].amount} lamports)`);
+                console.log(`[${tx.signature}] 📊 All transfers to escrow: ${transfersToEscrow.map(t => t.amount/LAMPORTS_PER_SOL).join(', ')} SOL`);
+                }
+                else {
+                  console.log(`[${tx.signature}] ❌ No matching transfer found for mintNft`);
+                  // Debug: Log all transfers to help identify issues
+                  console.log(`[${tx.signature}] All transfers:`, tx.nativeTransfers.map((t: NativeTransfer) => ({
+                    from: t.fromUserAccount,
+                    to: t.toUserAccount,
+                    amount: t.amount / LAMPORTS_PER_SOL
+                  })));
+                }
+              } else if (decodedName === "sellNft") {
+                const seller = tx.feePayer;
+                console.log(`[${tx.signature}] Looking for transfer from escrow: ${escrowAddress} to seller: ${seller}`);
+                
+                // Finding the LARGEST transfer for sellNft
+                const transfersFromEscrow = tx.nativeTransfers
+                .filter((transfer: NativeTransfer) => 
+                  transfer.fromUserAccount === escrowAddress &&
+                  transfer.toUserAccount === seller
+                )
+                .sort((a, b) => b.amount - a.amount); // Sort by amount descending
+
+                if (transfersFromEscrow.length > 0) {
+                // Use the largest transfer as the price
+                price = transfersFromEscrow[0].amount / LAMPORTS_PER_SOL;
+                console.log(`[${tx.signature}] 💰 Found sellNft price: ${price} SOL (${transfersFromEscrow[0].amount} lamports)`);
+                console.log(`[${tx.signature}] 📊 All transfers from escrow: ${transfersFromEscrow.map(t => t.amount/LAMPORTS_PER_SOL).join(', ')} SOL`);
+                }
+                else {
+                  console.log(`[${tx.signature}] ❌ No matching transfer found for sellNft`);
+                  // Debug: Log all transfers to help identify issues
+                  console.log(`[${tx.signature}] All transfers:`, tx.nativeTransfers.map((t: NativeTransfer) => ({
+                    from: t.fromUserAccount,
+                    to: t.toUserAccount,
+                    amount: t.amount / LAMPORTS_PER_SOL
+                  })));
                 }
               }
             }
@@ -273,9 +294,9 @@ export function useBondingCurveHistory(limit: number = 50) {
             instructionName: decodedName,
             accounts: decodedAccounts,
             args: decodedArgs,
-            description: tx.description,
-            type: tx.type,
-            source: tx.source,
+            description: tx.description || "",
+            type: tx.type || "",
+            source: tx.source || "",
             error: tx.transactionError,
             poolAddress: poolAddress,
             price: price,
