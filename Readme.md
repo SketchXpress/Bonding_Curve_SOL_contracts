@@ -142,7 +142,7 @@ Key aspects include:
 | ------------------ | ---------------------------- | -------------- |
 | **Mint**           | 1% of price (configurable)   | Pool Creator   |
 | **Secondary Sale** | Standard Metaplex Royalty    | NFT Creator(s) |
-| **Sell (Burn)**    | None (Implicit price change) | N/A            |
+| **Sell (Burn)**    | 5% of penalty                | Pool Creator   |
 
 _Note: Secondary sales happen on external marketplaces (like Tensor after migration) and are subject to Metaplex royalties._
 
