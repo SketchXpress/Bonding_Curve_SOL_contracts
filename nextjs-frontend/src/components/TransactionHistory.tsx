@@ -1,6 +1,5 @@
-// /home/ubuntu/Bonding_Curve_SOL_contracts/nextjs-frontend/src/components/TransactionHistory_enhanced.tsx
-// NOTE: This is a conceptual example. Styling and detailed data presentation need refinement.
-// FIXES APPLIED (v2) - Updated import path, added type for tx, display pool address and price
+// /src/components/TransactionHistory_enhanced.tsx
+
 
 "use client";
 
