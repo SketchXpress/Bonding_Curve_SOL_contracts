@@ -43,7 +43,6 @@ Key aspects include:
 ### 2. Frontend Implementations
 
 - **NextJS Frontend** (`nextjs-frontend`): Updates added to reflect the TOE model.
-- **Simple Frontend** (`simple-frontend`): Needs updates for the new contract interactions.
 
 ### 3. Testing & Migration
 
