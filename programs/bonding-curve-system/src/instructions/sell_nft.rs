@@ -88,6 +88,11 @@ pub struct SellNFT<
         'info
     >,
 
+    /// CHECK: This is the collection metadata account
+    #[account(mut)]
+    pub collection_metadata: UncheckedAccount<'info>,
+
+
     pub token_program: Program<
         'info,
         Token
@@ -109,16 +114,21 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
     require!(ctx.accounts.pool.is_active, ErrorCode::PoolInactive);
 
     // --- Burn Logic (remains the same) ---
-    let collection_mint_info = ctx.accounts.collection_mint.to_account_info();
+    // let collection_mint_info = ctx.accounts.collection_mint.to_account_info();
+
+    // Create a binding for the collection metadata account info
+    let collection_metadata_info = ctx.accounts.collection_metadata.to_account_info();
+    
     let burn_accounts = BurnNftCpiAccounts {
         metadata: &ctx.accounts.metadata_account.to_account_info(),
-        owner: &ctx.accounts.seller.to_account_info(), // Seller is mutably borrowed here
+        owner: &ctx.accounts.seller.to_account_info(),
         mint: &ctx.accounts.nft_mint.to_account_info(),
         token_account: &ctx.accounts.seller_nft_token_account.to_account_info(),
         master_edition_account: &ctx.accounts.master_edition_account.to_account_info(),
         spl_token_program: &ctx.accounts.token_program.to_account_info(),
-        collection_metadata: Some(&collection_mint_info),
+        collection_metadata: Some(&collection_metadata_info),
     };
+
     BurnNftCpi::new(
         &ctx.accounts.token_metadata_program.to_account_info(),
         burn_accounts

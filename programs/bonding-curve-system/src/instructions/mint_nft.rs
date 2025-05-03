@@ -87,6 +87,10 @@ pub struct MintNFT<
         'info
     >,
     
+     /// CHECK: This is the collection metadata account
+     #[account(mut)]
+     pub collection_metadata: UncheckedAccount<'info>,
+     
     pub token_program: Program<
         'info,
         Token
