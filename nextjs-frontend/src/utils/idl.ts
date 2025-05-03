@@ -1,4 +1,4 @@
-export const PROGRAM_ID = 'APxe9bgmFbbQvd1PjDKNXD6iNKKcif2pCXTDk8Ksmiad';
+export const PROGRAM_ID = 'iKanJyXYErz5GwG4amnCKE7ymrxvLtBuwQ7f3Q11FsX';
 
 export const IDL = {
   "version": "0.1.0",
@@ -175,6 +175,11 @@ export const IDL = {
         {
           "name": "associatedTokenProgram",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -544,7 +549,7 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "APxe9bgmFbbQvd1PjDKNXD6iNKKcif2pCXTDk8Ksmiad"
+    "address": "iKanJyXYErz5GwG4amnCKE7ymrxvLtBuwQ7f3Q11FsX"
   }
 };
 

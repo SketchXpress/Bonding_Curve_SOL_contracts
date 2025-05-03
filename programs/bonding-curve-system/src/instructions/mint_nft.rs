@@ -90,7 +90,7 @@ pub struct MintNFT<
      /// CHECK: This is the collection metadata account
      #[account(mut)]
      pub collection_metadata: UncheckedAccount<'info>,
-     
+
     pub token_program: Program<
         'info,
         Token
@@ -102,6 +102,12 @@ pub struct MintNFT<
         AssociatedToken
     >,
 
+    /// CHECK: Creator account from the pool, needs to be mutable to receive funds
+    #[account(mut, address = pool.creator)]
+    pub creator: UncheckedAccount<
+        'info
+    >,
+    
     pub system_program: Program<
         'info,
         System
@@ -154,6 +160,7 @@ pub fn mint_nft(
         &transfer_to_creator,
         &[
             ctx.accounts.payer.to_account_info(),
+            ctx.accounts.creator.to_account_info(),
             ctx.accounts.system_program.to_account_info(),
         ],
     )?;

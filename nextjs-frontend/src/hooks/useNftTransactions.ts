@@ -177,6 +177,11 @@ export const useMintNft = () => {
       });
       // --- END ADD COMPUTE UNIT LIMIT INSTRUCTION ---
       
+      console.log('Creator:', creator.toString());
+      console.log('Collection Mint:', collectionMint.toString());
+      console.log('Collection Metadata:', collectionMetadata.toString());
+// Log other relevant accounts
+
       // Execute the transaction to mint the NFT with TOE
       const tx = await program.methods
         .mintNft(name, symbol, uri, sellerFeeBasisPoints)
