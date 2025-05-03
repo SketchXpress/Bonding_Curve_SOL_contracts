@@ -113,8 +113,18 @@ export const useMintNft = () => {
       // Generate a new keypair for the NFT mint
       const nftMintKeypair = Keypair.generate();
       const nftMint = nftMintKeypair.publicKey;
-      
+      const creator = poolData.creator as PublicKey;
+
       console.log('Generated NFT mint keypair:', nftMintKeypair.publicKey.toString());
+
+      const [collectionMetadata] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+          collectionMint.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+      );
       
       // Find NFT escrow PDA
       const [escrow] = PublicKey.findProgramAddressSync(
@@ -180,7 +190,9 @@ export const useMintNft = () => {
           metadataAccount: metadataAccount,
           masterEdition: masterEdition,
           collectionMint: collectionMint,
+          collectionMetadata: collectionMetadata,
           tokenProgram: TOKEN_PROGRAM_ID,
+          creator: creator,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY
@@ -259,6 +271,16 @@ export const useSellNft = () => {
       const collectionMint = poolData.collection as PublicKey;
       const creator = poolData.creator as PublicKey; // <-- Get the creator public key
 
+      // Add this code to derive collection metadata PDA
+      const [collectionMetadata] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+          collectionMint.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+      );
+
       // Find NFT escrow PDA
       const [escrow] = PublicKey.findProgramAddressSync(
         [Buffer.from("nft-escrow"), nftMint.toBuffer()],
@@ -321,6 +343,7 @@ export const useSellNft = () => {
           metadataAccount: metadataAccount,
           masterEditionAccount: masterEditionAccount,
           collectionMint: collectionMint,
+          collectionMetadata: collectionMetadata,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
