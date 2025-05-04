@@ -14,7 +14,7 @@ Key aspects include:
 - **Dynamic NFT Pricing**: Prices increase algorithmically with supply based on the bonding curve (`price = base_price * growth_factor^supply`).
 - **Token-Owned Escrow (TOE)**: Each minted NFT has a dedicated Program Derived Address (PDA) account that escrows its SOL value.
 - **Direct SOL Interaction**: Users mint NFTs by depositing SOL directly into the TOE and sell NFTs by burning them to retrieve SOL from the TOE.
-- **Tensor Migration**: Collections can migrate to the Tensor marketplace upon reaching a specific liquidity threshold (e.g., 69k SOL total escrowed).
+- **Tensor Migration**: Collections can migrate to the Tensor marketplace upon reaching a specific liquidity threshold (e.g., 690 SOL total escrowed).
 - **Simplified Economics**: Focuses on mint fees and standard Metaplex creator royalties.
 
 ---
@@ -74,7 +74,7 @@ Key aspects include:
 
 ### Threshold Detection (Tensor Migration)
 
-- **Migration Trigger**: Based on `total_escrowed` SOL across all `NftEscrow` accounts associated with the pool (e.g., `pool.total_escrowed >= 69_000_000_000` lamports).
+- **Migration Trigger**: Based on `total_escrowed` SOL across all `NftEscrow` accounts associated with the pool (e.g., `pool.total_escrowed >= 690_000_000` lamports).
 - **Post-Migration**: The pool's `is_active` flag is set to `false`, preventing further mints/sells via the bonding curve.
 
 ---
@@ -129,7 +129,7 @@ Key aspects include:
 
 ### Migrating to Tensor
 
-1. When `pool.total_escrowed` reaches the threshold (e.g., 69k SOL), call `migrate_to_tensor`.
+1. When `pool.total_escrowed` reaches the threshold (e.g., 690 SOL), call `migrate_to_tensor`.
 2. The pool becomes inactive.
 3. Further trading occurs on secondary marketplaces like Tensor.
 
@@ -137,11 +137,11 @@ Key aspects include:
 
 ## Economic Model
 
-| Action             | Fees/Penalties               | Recipient      |
-| ------------------ | ---------------------------- | -------------- |
-| **Mint**           | 1% of price (configurable)   | Pool Creator   |
-| **Secondary Sale** | Standard Metaplex Royalty    | NFT Creator(s) |
-| **Sell (Burn)**    | 5% of penalty                | Pool Creator   |
+| Action             | Fees/Penalties             | Recipient      |
+| ------------------ | -------------------------- | -------------- |
+| **Mint**           | 1% of price (configurable) | Pool Creator   |
+| **Secondary Sale** | Standard Metaplex Royalty  | NFT Creator(s) |
+| **Sell (Burn)**    | 5% of penalty              | Pool Creator   |
 
 _Note: Secondary sales happen on external marketplaces (like Tensor after migration) and are subject to Metaplex royalties._
 
