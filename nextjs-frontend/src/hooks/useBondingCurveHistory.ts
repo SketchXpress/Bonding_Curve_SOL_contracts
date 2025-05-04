@@ -1,7 +1,15 @@
-// /home/ubuntu/Bonding_Curve_SOL_contracts/nextjs-frontend/src/hooks/useBondingCurveHistory.ts
+// /home/ubuntu/Bonding_Curve_SOL_contracts/nextjs-frontend/src/hooks/useBondingCurveHistory_updated.ts
+// Updated implementation incorporating the provided solution for sell NFT fee detection.
 
 import { useState, useEffect, useCallback } from "react";
-import { PublicKey, LAMPORTS_PER_SOL, Connection } from "@solana/web3.js";
+import {
+  PublicKey,
+  LAMPORTS_PER_SOL,
+  Connection, // Used for both REST and RPC connections
+  SystemProgram,
+  TransactionResponse, // Import TransactionResponse type
+  VersionedTransactionResponse, // Import VersionedTransactionResponse type
+} from "@solana/web3.js";
 import { AnchorProvider, Idl, BorshInstructionCoder, Program } from "@coral-xyz/anchor";
 import { IDL as BondingCurveIDL, PROGRAM_ID } from "../utils/idl";
 
@@ -12,13 +20,15 @@ interface NativeTransfer {
   amount: number;
 }
 
-interface AccountData {
-  account: string;
-  preBalance: number;
-  postBalance: number;
+// Simplified Helius Transaction type from /addresses endpoint
+interface HeliusSignatureInfo {
+  signature: string;
+  timestamp: number;
+  // Add other relevant fields if needed from this endpoint
 }
 
-interface HeliusTransaction {
+// Enhanced Helius Transaction type from /transactions POST endpoint
+interface HeliusEnhancedTransaction {
   signature: string;
   description?: string;
   type?: string;
@@ -29,13 +39,13 @@ interface HeliusTransaction {
   timestamp?: number;
   nativeTransfers?: NativeTransfer[];
   tokenTransfers?: any[];
-  accountData?: AccountData[];
+  accountData?: any[];
   transactionError?: any;
-  instructions: any[];
+  instructions: any[]; // Contains programId, accounts, data (base58)
   events?: any;
 }
 
-// Export the HistoryItem interface
+// Export the HistoryItem interface (no changes needed here)
 export interface HistoryItem {
   signature: string;
   blockTime: number | null | undefined;
@@ -46,21 +56,48 @@ export interface HistoryItem {
   type: string;
   source: string;
   error: any;
-  poolAddress?: string;
-  price?: number;
+  poolAddress?: string; // Added: Pool address involved
+  price?: number; // Added: Price in SOL
 }
 
-// Helius API configuration - Fixed URLs
-const HELIUS_API_KEY = "69b4db73-1ed1-4558-8e85-192e0994e556";
-const HELIUS_API_BASE = "https://api-devnet.helius.xyz/v0"; // For REST API calls
-const HELIUS_RPC_ENDPOINT = "https://devnet.helius.xyz/v0"; // For RPC calls
+// Helius API Configuration (Separate REST and RPC)
+const HELIUS_API_KEY = "69b4db73-1ed1-4558-8e85-192e0994e556"; // Use environment variable in production
+const HELIUS_API_BASE = `https://api-devnet.helius.xyz/v0`; // For REST API calls
+const HELIUS_RPC_ENDPOINT = `https://rpc-devnet.helius.xyz/?api-key=${HELIUS_API_KEY}`; // For RPC calls
 const programId = new PublicKey(PROGRAM_ID);
 
 // Helper function to find account index by name in IDL
 const findAccountIndex = (idlInstruction: any, accountName: string): number => {
-  if (!idlInstruction?.accounts) return -1;
+  if (!idlInstruction || !idlInstruction.accounts) return -1;
   return idlInstruction.accounts.findIndex((acc: any) => acc.name === accountName);
 };
+
+// Helper to safely get account keys from transaction response
+const getAccountKeys = (txDetails: TransactionResponse | VersionedTransactionResponse): PublicKey[] => {
+  const message = txDetails.transaction.message;
+  
+  // For versioned transactions with staticAccountKeys
+  if ('staticAccountKeys' in message) {
+    return message.staticAccountKeys;
+  }
+  // For versioned transactions with getAccountKeys method
+  else if ('getAccountKeys' in message && typeof message.getAccountKeys === 'function') {
+    return message.getAccountKeys();
+  }
+  // For legacy transactions
+  else if ('accountKeys' in message) {
+    return message.accountKeys;
+  }
+  // Fallback case
+  else {
+    console.warn('Could not extract account keys from transaction message');
+    return [];
+  }
+};
+
+
+
+
 
 export function useBondingCurveHistory(limit: number = 50) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -69,82 +106,112 @@ export function useBondingCurveHistory(limit: number = 50) {
   const [canLoadMore, setCanLoadMore] = useState<boolean>(true);
   const [lastSignature, setLastSignature] = useState<string | undefined>(undefined);
 
-  // Initialize connection and program - Use correct RPC endpoint
-  const connection = new Connection(`${HELIUS_RPC_ENDPOINT}?api-key=${HELIUS_API_KEY}`, "confirmed");
-  const provider = new AnchorProvider(connection, {} as any, { commitment: "confirmed" });
+  // Connections for Helius REST and RPC
+  const restConnection = new Connection(`${HELIUS_API_BASE}/?api-key=${HELIUS_API_KEY}`, "confirmed");
+  const rpcConnection = new Connection(HELIUS_RPC_ENDPOINT, "confirmed");
+
+  // Anchor setup (using RPC connection for potential on-chain reads if needed, though primarily for coder here)
+  const provider = new AnchorProvider(rpcConnection, {} as any, { commitment: "confirmed" });
   const program = new Program(BondingCurveIDL as Idl, programId, provider);
   const instructionCoder = program.coder.instruction as BorshInstructionCoder;
 
-  // Helper to extract price from transaction
-  const extractPrice = async (tx: HeliusTransaction, decodedName: string, escrowAddress?: string): Promise<number | undefined> => {
-    // For mint operations, the existing approach works well
-    if (decodedName === "mintNft") {
-      if (!tx.nativeTransfers || !Array.isArray(tx.nativeTransfers) || !escrowAddress) {
-        return undefined;
-      }
+  // --- Function to extract price --- 
+  const extractPrice = async (
+    tx: HeliusEnhancedTransaction,
+    decodedName: string,
+    relevantInstruction: any,
+    idlInstruction: any
+  ): Promise<number | undefined> => {
+    let price: number | undefined = undefined;
+    let escrowAddress: string | undefined = undefined;
 
-      const payer = tx.feePayer;
+    // Find escrow address if relevant
+    if (decodedName === "mintNft" || decodedName === "sellNft") {
+      const escrowAccountIndex = findAccountIndex(idlInstruction, "escrow");
+      if (escrowAccountIndex !== -1 && relevantInstruction.accounts.length > escrowAccountIndex) {
+        escrowAddress = relevantInstruction.accounts[escrowAccountIndex];
+      }
+    }
+
+    // --- Mint Price Extraction (using nativeTransfers from Enhanced API) ---
+    if (decodedName === "mintNft" && escrowAddress && tx.nativeTransfers && Array.isArray(tx.nativeTransfers)) {
+      const payer = tx.feePayer; // Assume fee payer is the buyer
+      console.log(`[${tx.signature}] (Mint) Looking for transfer from payer: ${payer} to escrow: ${escrowAddress}`);
       const transfersToEscrow = tx.nativeTransfers
-        .filter((transfer: NativeTransfer) => 
+        .filter((transfer: NativeTransfer) =>
           transfer.fromUserAccount === payer &&
           transfer.toUserAccount === escrowAddress
         )
-        .sort((a, b) => b.amount - a.amount);
+        .sort((a, b) => b.amount - a.amount); // Sort by amount descending
 
       if (transfersToEscrow.length > 0) {
-        return transfersToEscrow[0].amount / LAMPORTS_PER_SOL;
-      }
-      return undefined;
-    } 
-    
-    // For sell operations
-    else if (decodedName === "sellNft") {
-      // Method 1: Check for significant transfers in Helius data
-      if (tx.nativeTransfers && Array.isArray(tx.nativeTransfers)) {
-        // Look for significant transfers (likely the actual sale amount)
-        const significantTransfers = tx.nativeTransfers
-          .sort((a, b) => b.amount - a.amount)
-          .filter(t => t.amount > 5000000); // Over 0.005 SOL
-        
-        if (significantTransfers.length > 0) {
-          const price = significantTransfers[0].amount / LAMPORTS_PER_SOL;
-          return price;
-        }
-      }
-
-      // Method 2: Try to get account balance changes from Helius (if available)
-      if (tx.accountData && Array.isArray(tx.accountData)) {
-        const negativeBalanceChanges = tx.accountData
-          .filter(account => account.postBalance < account.preBalance)
-          .map(account => ({
-            address: account.account,
-            change: (account.preBalance - account.postBalance) / LAMPORTS_PER_SOL
-          }))
-          .filter(change => change.change > 0.005) // Filter significant changes
-          .sort((a, b) => b.change - a.change);
-
-        if (negativeBalanceChanges.length > 0) {
-          const price = negativeBalanceChanges[0].change;
-          return price;
-        }
-      }
-      
-      // Method 3: Last resort - pattern-based detection for specific accounts
-      // For your bonding curve contract, we've observed the 10th account often contains the sell amount
-      try {
-        if (tx.instructions && tx.instructions[0]?.accounts?.length >= 10) {
-          const tenthAccount = tx.instructions[0].accounts[9];
-          
-          // This value is based on your transaction pattern
-          return 0.0183948;
-        }
-      } catch (err) {
-        // Silently handle this error as it's our last resort
+        price = transfersToEscrow[0].amount / LAMPORTS_PER_SOL;
+        console.log(`[${tx.signature}] (Mint) 💰 Found price via nativeTransfer: ${price} SOL`);
+      } else {
+        console.log(`[${tx.signature}] (Mint) ❌ No matching nativeTransfer found.`);
       }
     }
-    
-    return undefined;
+    // --- Sell Price Extraction (using getTransaction and balance changes) ---
+    else if (decodedName === "sellNft" && escrowAddress) {
+      console.log(`[${tx.signature}] (Sell) Attempting price extraction via getTransaction for escrow: ${escrowAddress}`);
+      try {
+        // Use RPC connection to get full transaction details
+        const txDetails = await rpcConnection.getTransaction(tx.signature, {
+          commitment: "confirmed",
+          maxSupportedTransactionVersion: 0 // Request version 0 for balance info
+        });
+
+        if (txDetails?.meta?.preBalances && txDetails?.meta?.postBalances) {
+          const preBalances = txDetails.meta.preBalances;
+          const postBalances = txDetails.meta.postBalances;
+          const accountKeys = getAccountKeys(txDetails); // Use helper to get keys
+          const accountKeysStrings = accountKeys.map(pk => pk.toBase58());
+
+          const escrowAccountIndexInTx = accountKeysStrings.findIndex(key => key === escrowAddress);
+          const sellerAddress = tx.feePayer; // Assume fee payer is the seller
+          const sellerAccountIndexInTx = accountKeysStrings.findIndex(key => key === sellerAddress);
+
+          console.log(`[${tx.signature}] (Sell) Escrow index: ${escrowAccountIndexInTx}, Seller index: ${sellerAccountIndexInTx}`);
+
+          if (escrowAccountIndexInTx !== -1 && preBalances.length > escrowAccountIndexInTx && postBalances.length > escrowAccountIndexInTx) {
+            const escrowPreBalance = preBalances[escrowAccountIndexInTx];
+            const escrowPostBalance = postBalances[escrowAccountIndexInTx];
+            const escrowBalanceChange = (escrowPreBalance - escrowPostBalance);
+
+            console.log(`[${tx.signature}] (Sell) Escrow Balance Change (lamports): ${escrowBalanceChange}`);
+
+            // Use the escrow's decrease in balance as the price
+            // Add a small tolerance for potential rent changes or minor discrepancies
+            if (escrowBalanceChange > 1000) { // Check if change is significant (more than dust)
+              price = escrowBalanceChange / LAMPORTS_PER_SOL;
+              console.log(`[${tx.signature}] (Sell) 💰 Found price via balance change: ${price} SOL`);
+
+              // Optional: Verify seller's balance increase as a sanity check
+              if (sellerAccountIndexInTx !== -1 && preBalances.length > sellerAccountIndexInTx && postBalances.length > sellerAccountIndexInTx) {
+                const sellerPreBalance = preBalances[sellerAccountIndexInTx];
+                const sellerPostBalance = postBalances[sellerAccountIndexInTx];
+                const sellerBalanceChange = (sellerPostBalance - sellerPreBalance);
+                console.log(`[${tx.signature}] (Sell) Seller Balance Change (lamports): ${sellerBalanceChange}`);
+                // You might compare sellerBalanceChange with escrowBalanceChange here
+              }
+            } else {
+               console.log(`[${tx.signature}] (Sell) ⚠️ Escrow balance change is not significant.`);
+            }
+          } else {
+            console.log(`[${tx.signature}] (Sell) ❌ Escrow account index not found in transaction details.`);
+          }
+        } else {
+          console.log(`[${tx.signature}] (Sell) ❌ Could not get pre/post balances from getTransaction.`);
+        }
+      } catch (err: any) {
+        console.error(`[${tx.signature}] (Sell) Error fetching/processing transaction details:`, err.message);
+        // Fallback or error state could be set here
+      }
+    }
+
+    return price;
   };
+  // --- End extractPrice --- 
 
   const fetchHeliusHistory = useCallback(
     async (fetchBeforeSignature?: string) => {
@@ -153,30 +220,29 @@ export function useBondingCurveHistory(limit: number = 50) {
       setError(null);
 
       try {
-        // Step 1: Get signatures and basic info
+        // Step 1: Get signatures using Helius REST API (/addresses endpoint)
         let signaturesUrl = `${HELIUS_API_BASE}/addresses/${programId.toBase58()}/transactions?api-key=${HELIUS_API_KEY}&limit=${limit}`;
         if (fetchBeforeSignature) {
           signaturesUrl += `&before=${fetchBeforeSignature}`;
         }
 
+        console.log("Fetching transaction signatures from:", signaturesUrl);
         const signaturesResponse = await fetch(signaturesUrl);
         if (!signaturesResponse.ok) {
           const errorData = await signaturesResponse.json().catch(() => ({ message: signaturesResponse.statusText }));
           throw new Error(`Helius Signatures API Error: ${signaturesResponse.status} - ${errorData.message || "Failed to fetch signatures"}`);
         }
-        
-        const signaturesResponseData = await signaturesResponse.json();
+        const signaturesResponseData: HeliusSignatureInfo[] = await signaturesResponse.json();
+        console.log(`Received ${signaturesResponseData.length} transaction signatures`);
 
         if (!Array.isArray(signaturesResponseData)) {
           throw new Error("Unexpected response format from Helius Signatures API");
         }
-
         if (signaturesResponseData.length === 0) {
           setCanLoadMore(false);
           setIsLoading(false);
           return;
         }
-
         if (signaturesResponseData.length < limit) {
           setCanLoadMore(false);
         }
@@ -184,14 +250,12 @@ export function useBondingCurveHistory(limit: number = 50) {
         const signatures = signaturesResponseData.map((tx) => tx.signature);
         const basicInfoMap = new Map(signaturesResponseData.map(tx => [tx.signature, { timestamp: tx.timestamp }]));
 
-        // Step 2: Get detailed transaction data
+        // Step 2: Get enhanced transaction data using Helius REST API (/transactions POST endpoint)
+        console.log("Fetching enhanced transaction data for signatures:", signatures);
         const transactionsUrl = `${HELIUS_API_BASE}/transactions?api-key=${HELIUS_API_KEY}`;
-        
         const detailedResponse = await fetch(transactionsUrl, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transactions: signatures }),
         });
 
@@ -199,114 +263,112 @@ export function useBondingCurveHistory(limit: number = 50) {
           const errorData = await detailedResponse.json().catch(() => ({ message: detailedResponse.statusText }));
           throw new Error(`Helius Transactions API Error: ${detailedResponse.status} - ${errorData.message || "Failed to fetch transactions"}`);
         }
-        
-        const detailedTransactionsData = await detailedResponse.json();
-        
+        const detailedTransactionsData: HeliusEnhancedTransaction[] = await detailedResponse.json();
+        console.log(`Received ${detailedTransactionsData.length} enhanced transactions`);
+
         if (!Array.isArray(detailedTransactionsData)) {
           throw new Error("Unexpected response format from Helius Transactions API");
         }
 
-        // Step 3: Process detailed data and extract info
-        const parsedHistory: HistoryItem[] = [];
-        
-        // Process transactions sequentially to handle async price extraction
-        for (const tx of detailedTransactionsData) {
+        // Step 3: Process transactions and extract info (including price)
+        const parsedHistoryPromises: Promise<HistoryItem | null>[] = detailedTransactionsData.map(async (tx) => {
           const basicInfo = basicInfoMap.get(tx.signature);
-          if (!basicInfo) continue;
+          if (!basicInfo) return null; // Skip if no basic info (shouldn't happen)
 
           let decodedName = "Unknown";
           let decodedArgs: any = {};
           let decodedAccounts: PublicKey[] = [];
           let poolAddress: string | undefined = undefined;
-          let escrowAddress: string | undefined = undefined; 
-          let mainProgramInstructionIndex = -1;
+          let price: number | undefined = undefined;
+          let relevantInstruction: any = undefined;
+          let idlInstruction: any = undefined;
 
           if (tx.instructions && Array.isArray(tx.instructions)) {
-            mainProgramInstructionIndex = tx.instructions.findIndex(
+            const mainProgramInstructionIndex = tx.instructions.findIndex(
               (ix: any) => ix.programId === programId.toBase58() && ix.data
             );
-            
-            if (mainProgramInstructionIndex === -1) continue;
-            
-            const relevantInstruction = tx.instructions[mainProgramInstructionIndex];
+            relevantInstruction = tx.instructions[mainProgramInstructionIndex];
 
-            try {
-              const decoded = instructionCoder.decode(relevantInstruction.data, "base58");
-              if (decoded) {
-                decodedName = decoded.name;
-                decodedArgs = decoded.data;
-                if (relevantInstruction.accounts && Array.isArray(relevantInstruction.accounts)) {
-                  decodedAccounts = relevantInstruction.accounts.map((acc: string) => new PublicKey(acc));
+            if (relevantInstruction) {
+              try {
+                const decoded = instructionCoder.decode(relevantInstruction.data, "base58");
+                if (decoded) {
+                  decodedName = decoded.name;
+                  decodedArgs = decoded.data;
+                  if (relevantInstruction.accounts && Array.isArray(relevantInstruction.accounts)) {
+                    decodedAccounts = relevantInstruction.accounts.map((acc: string) => new PublicKey(acc));
+                    idlInstruction = BondingCurveIDL.instructions.find(ix => ix.name === decodedName);
 
-                  const idlInstruction = BondingCurveIDL.instructions.find(ix => ix.name === decodedName);
-                  
-                  const poolAccountIndex = findAccountIndex(idlInstruction, "pool");
-                  if (poolAccountIndex !== -1 && relevantInstruction.accounts.length > poolAccountIndex) {
-                    poolAddress = relevantInstruction.accounts[poolAccountIndex];
-                  }
-                  
-                  if (decodedName === "mintNft" || decodedName === "sellNft") {
-                    const escrowAccountIndex = findAccountIndex(idlInstruction, "escrow");
-                    if (escrowAccountIndex !== -1 && relevantInstruction.accounts.length > escrowAccountIndex) {
-                      escrowAddress = relevantInstruction.accounts[escrowAccountIndex];
+                    // Extract Pool Address
+                    const poolAccountIndex = findAccountIndex(idlInstruction, "pool");
+                    if (poolAccountIndex !== -1 && relevantInstruction.accounts.length > poolAccountIndex) {
+                      poolAddress = relevantInstruction.accounts[poolAccountIndex];
                     }
+
+                    // --- Extract Price --- 
+                    // Call the dedicated price extraction function
+                    price = await extractPrice(tx, decodedName, relevantInstruction, idlInstruction);
+                    // --- End Extract Price ---
                   }
                 }
+              } catch (e) {
+                console.error(`[${tx.signature}] Error decoding instruction:`, e);
               }
-            } catch (e) {
-              console.error(`[${tx.signature}] Error decoding instruction:`, e);
-              continue;
             }
-
-            // Extract price information asynchronously
-            const price = await extractPrice(tx, decodedName, escrowAddress);
-
-            parsedHistory.push({
-              signature: tx.signature,
-              blockTime: basicInfo.timestamp,
-              instructionName: decodedName,
-              accounts: decodedAccounts,
-              args: decodedArgs,
-              description: tx.description || "",
-              type: tx.type || "",
-              source: tx.source || "",
-              error: tx.transactionError,
-              poolAddress,
-              price,
-            });
           }
-        }
+
+          return {
+            signature: tx.signature,
+            blockTime: basicInfo.timestamp,
+            instructionName: decodedName,
+            accounts: decodedAccounts,
+            args: decodedArgs,
+            description: tx.description || "",
+            type: tx.type || "",
+            source: tx.source || "",
+            error: tx.transactionError,
+            poolAddress: poolAddress,
+            price: price,
+          };
+        });
+
+        // Wait for all price extractions and processing to complete
+        const parsedHistoryResults = await Promise.all(parsedHistoryPromises);
+        const parsedHistory = parsedHistoryResults.filter(item => item !== null) as HistoryItem[];
 
         if (parsedHistory.length > 0) {
           const newLastSignature = parsedHistory[parsedHistory.length - 1].signature;
           setLastSignature(newLastSignature);
 
+          // Update state (ensure no duplicates and maintain sort order)
           setHistory((prev) => {
             const existingSignatures = new Set(prev.map((item) => item.signature));
             const newItems = parsedHistory.filter((item) => !existingSignatures.has(item.signature));
             const combined = [...newItems, ...prev];
-            combined.sort((a, b) => (b.blockTime ?? 0) - (a.blockTime ?? 0));
+            combined.sort((a, b) => (b.blockTime ?? 0) - (a.blockTime ?? 0)); // Sort descending by time
             return combined;
           });
         }
       } catch (err: any) {
         console.error("Error in fetchHeliusHistory:", err);
         setError(err.message || "Failed to fetch transaction history");
-        setCanLoadMore(false);
+        setCanLoadMore(false); // Stop loading more on error
       } finally {
         setIsLoading(false);
       }
     },
-    [isLoading, limit, instructionCoder, connection]
+    [isLoading, limit, instructionCoder, extractPrice] // Add extractPrice dependency
   );
 
+  // Initial fetch
   useEffect(() => {
-    if (history.length === 0 && !isLoading) {
+    if (history.length === 0 && !isLoading && canLoadMore) {
       fetchHeliusHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Run only once on mount
 
+  // Function to load more history items
   const loadMore = () => {
     if (canLoadMore && lastSignature && !isLoading) {
       fetchHeliusHistory(lastSignature);
@@ -315,3 +377,4 @@ export function useBondingCurveHistory(limit: number = 50) {
 
   return { history, isLoading, error, loadMore, canLoadMore };
 }
+
