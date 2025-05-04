@@ -1,10 +1,11 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
+
+const MIGRATION_THRESHOLD_LAMPORTS = new BN(690_000_000_000); // 690 SOL
 
 const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
   const { program } = useAnchorContext();
@@ -64,12 +65,18 @@ const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
 
   // Helper to format lamports to SOL
   const formatLamports = (lamports: BN) => {
-    return (lamports.toNumber() / 1_000_000_000).toFixed(9);
+    return (lamports.toNumber() / 1_000_000_000).toFixed(3);
   };
+
+  const escrowed = poolInfo.totalEscrowed as BN;
+  const thresholdMet = escrowed.gte(MIGRATION_THRESHOLD_LAMPORTS);
+  const progressPercent = Math.min(100, (escrowed.toNumber() / MIGRATION_THRESHOLD_LAMPORTS.toNumber()) * 100).toFixed(2);
 
   return (
     <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-      <h3 className="text-xl font-bold mb-4">Pool Information ({poolAddress.slice(0, 4)}...{poolAddress.slice(-4)})</h3>
+      <h3 className="text-xl font-bold mb-4">
+        Pool Information ({poolAddress.slice(0, 4)}...{poolAddress.slice(-4)})
+      </h3>
       
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -86,7 +93,6 @@ const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
         </div>
         <div>
           <h4 className="font-semibold">Growth Factor:</h4>
-          {/* Assuming fixed point with 6 decimals for display */}
           <p>{(poolInfo.growthFactor.toNumber() / 1_000_000).toFixed(6)}</p>
         </div>
         <div>
@@ -95,43 +101,40 @@ const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
         </div>
         <div>
           <h4 className="font-semibold">Protocol Fee (%):</h4>
-          {/* Assuming fee stored as basis points / 10000 */}
           <p>{(poolInfo.protocolFee.toNumber() / 100).toFixed(2)}%</p>
         </div>
         <div>
           <h4 className="font-semibold">Total SOL Escrowed:</h4>
-          <p>{formatLamports(poolInfo.totalEscrowed)} SOL</p>
+          <p>{formatLamports(escrowed)} SOL</p>
         </div>
         <div>
           <h4 className="font-semibold">Pool Active:</h4>
           <p>{poolInfo.isActive ? 'Yes' : 'No (Frozen)'}</p>
         </div>
-        
-        {/* Tensor migration status based on totalEscrowed */}
+
         <div className="col-span-2">
           <h4 className="font-semibold">Tensor Migration Status:</h4>
           <p>
             {!poolInfo.isActive 
-              ? `Migrated (Pool Frozen)` 
-              : poolInfo.totalEscrowed.gte(new BN(69_000_000_000)) 
+              ? 'Migrated (Pool Frozen)' 
+              : thresholdMet 
                 ? 'Ready for migration (Threshold Met)' 
                 : 'Not eligible for migration yet'}
           </p>
         </div>
-        
-        {/* Threshold status visualization */}
+
         <div className="col-span-2">
           <h4 className="font-semibold">Migration Threshold Progress:</h4>
           <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
             <div 
-              className={`h-2.5 rounded-full ${poolInfo.totalEscrowed.gte(new BN(69_000_000_000)) ? 'bg-green-600' : 'bg-blue-600'}`}
-              style={{ width: `${Math.min(100, (poolInfo.totalEscrowed.toNumber() / 69_000_000_000) * 100)}%` }}
+              className={`h-2.5 rounded-full ${thresholdMet ? 'bg-green-600' : 'bg-blue-600'}`}
+              style={{ width: `${progressPercent}%` }}
             ></div>
           </div>
           <p className="text-sm mt-1">
-            {poolInfo.totalEscrowed.gte(new BN(69_000_000_000)) 
-              ? 'Threshold reached! (69k SOL)' 
-              : `Progress: ${formatLamports(poolInfo.totalEscrowed)} / 69,000 SOL`}
+            {thresholdMet
+              ? 'Threshold reached! (690 SOL)'
+              : `Progress: ${formatLamports(escrowed)} / 690 SOL`}
           </p>
         </div>
       </div>
@@ -140,4 +143,3 @@ const PoolInfoCard = ({ poolAddress }: { poolAddress: string }) => {
 };
 
 export default PoolInfoCard;
-
