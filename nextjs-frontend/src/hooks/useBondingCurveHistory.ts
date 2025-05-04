@@ -63,7 +63,7 @@ export interface HistoryItem {
 // Helius API Configuration (Separate REST and RPC)
 const HELIUS_API_KEY = "69b4db73-1ed1-4558-8e85-192e0994e556"; // Use environment variable in production
 const HELIUS_API_BASE = `https://api-devnet.helius.xyz/v0`; // For REST API calls
-const HELIUS_RPC_ENDPOINT = `https://rpc-devnet.helius.xyz/?api-key=${HELIUS_API_KEY}`; // For RPC calls
+const HELIUS_RPC_ENDPOINT = `https://devnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`; // For RPC calls
 const programId = new PublicKey(PROGRAM_ID);
 
 // Helper function to find account index by name in IDL
@@ -72,25 +72,33 @@ const findAccountIndex = (idlInstruction: any, accountName: string): number => {
   return idlInstruction.accounts.findIndex((acc: any) => acc.name === accountName);
 };
 
-// Helper to safely get account keys from transaction response
+// Revised Helper v2: Check legacy first
 const getAccountKeys = (txDetails: TransactionResponse | VersionedTransactionResponse): PublicKey[] => {
+  // Ensure txDetails and the nested properties exist
+  if (!txDetails?.transaction?.message) {
+    console.warn("Transaction details or message is missing");
+    return [];
+  }
+
   const message = txDetails.transaction.message;
-  
-  // For versioned transactions with staticAccountKeys
-  if ('staticAccountKeys' in message) {
+
+  // Check if it's a legacy TransactionMessage (presence of accountKeys is definitive)
+  if ("accountKeys" in message) {
+    // It's a TransactionMessage
+    return message.accountKeys; // Should be safe now
+  }
+  // Check if it's a VersionedMessage (presence of staticAccountKeys is definitive)
+  else if ("staticAccountKeys" in message) {
+    // It's a VersionedMessage
     return message.staticAccountKeys;
   }
-  // For versioned transactions with getAccountKeys method
-  else if ('getAccountKeys' in message && typeof message.getAccountKeys === 'function') {
-    return message.getAccountKeys();
-  }
-  // For legacy transactions
-  else if ('accountKeys' in message) {
-    return message.accountKeys;
-  }
-  // Fallback case
+  // Fallback if neither expected structure is found
   else {
-    console.warn('Could not extract account keys from transaction message');
+    console.warn("Could not extract account keys from transaction message: Unknown format");
+    // Attempt to log the message structure for debugging
+    try {
+      console.log("Unknown message structure:", JSON.stringify(message));
+    } catch { /* Ignore stringify errors */ }
     return [];
   }
 };
