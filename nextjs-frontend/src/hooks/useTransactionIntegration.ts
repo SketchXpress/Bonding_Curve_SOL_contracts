@@ -102,14 +102,33 @@ export const useTransactionIntegration = () => {
         return result;
       };
 
-      const originalBuyNft = program.methods.buyNft;
-      program.methods.buyNft = function(...args: unknown[]) {
-        const result = originalBuyNft.apply(this, args);
+      // Updated to use mintNft instead of buyNft to match the IDL
+      const originalMintNft = program.methods.mintNft;
+      program.methods.mintNft = function(...args: unknown[]) {
+        const result = originalMintNft.apply(this, args);
         const originalRpc = result.rpc;
         result.rpc = async function() {
           try {
             const signature = await originalRpc.apply(this);
-            (window as Window & typeof globalThis & { addTransaction?: (type: string, signature: string) => void }).addTransaction?.('Buy NFT', signature);
+            (window as Window & typeof globalThis & { addTransaction?: (type: string, signature: string) => void }).addTransaction?.('Mint NFT', signature);
+            return signature;
+          } catch (error) {
+            console.error('Transaction error:', error);
+            throw error;
+          }
+        };
+        return result;
+      };
+
+      // Added sellNft method patch which was missing
+      const originalSellNft = program.methods.sellNft;
+      program.methods.sellNft = function(...args: unknown[]) {
+        const result = originalSellNft.apply(this, args);
+        const originalRpc = result.rpc;
+        result.rpc = async function() {
+          try {
+            const signature = await originalRpc.apply(this);
+            (window as Window & typeof globalThis & { addTransaction?: (type: string, signature: string) => void }).addTransaction?.('Sell NFT', signature);
             return signature;
           } catch (error) {
             console.error('Transaction error:', error);
