@@ -1,33 +1,37 @@
 // Revised fixes for mint_nft.rs - Keeping Master Edition while adding ATA creation
+// Added NftMint event emission
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, MintTo, mint_to};
 use anchor_spl::associated_token::AssociatedToken; // Import AssociatedToken program
+use anchor_spl::token::{mint_to, Mint, MintTo, Token};
 use mpl_token_metadata::instructions::{
-    CreateMetadataAccountV3Cpi, 
-    CreateMetadataAccountV3CpiAccounts,
-    CreateMetadataAccountV3InstructionArgs,
-    CreateMasterEditionV3Cpi,
-    CreateMasterEditionV3CpiAccounts,
-    CreateMasterEditionV3InstructionArgs
+    CreateMasterEditionV3Cpi, CreateMasterEditionV3CpiAccounts,
+    CreateMasterEditionV3InstructionArgs, CreateMetadataAccountV3Cpi,
+    CreateMetadataAccountV3CpiAccounts, CreateMetadataAccountV3InstructionArgs,
 };
-use mpl_token_metadata::types::{Creator, DataV2, Collection};
+use mpl_token_metadata::types::{Collection, Creator, DataV2};
 
 use crate::{
-    state::{BondingCurvePool, NftEscrow},
     errors::ErrorCode,
     math::price_calculation::calculate_mint_price,
+    state::{BondingCurvePool, NftEscrow},
 };
 
+#[event]
+pub struct NftMint {
+    pub minter: Pubkey,
+    pub nft_mint: Pubkey,
+    pub pool: Pubkey,
+    pub mint_price: u64,
+    pub protocol_fee: u64,
+    pub timestamp: i64,
+}
+
 #[derive(Accounts)]
-pub struct MintNFT<
-    'info
-> {
+pub struct MintNFT<'info> {
     #[account(mut)]
-    pub payer: Signer<
-        'info
-    >,
-    
+    pub payer: Signer<'info>,
+
     #[account(
         init,
         payer = payer,
@@ -35,11 +39,8 @@ pub struct MintNFT<
         mint::authority = payer.key(),
         mint::freeze_authority = payer.key() // Optional: Set freeze authority
     )]
-    pub nft_mint: Account<
-        'info,
-        Mint
-    >,
-    
+    pub nft_mint: Account<'info, Mint>,
+
     #[account(
         init,
         payer = payer,
@@ -47,75 +48,45 @@ pub struct MintNFT<
         bump,
         space = NftEscrow::SPACE,
     )]
-    pub escrow: Account<
-        'info,
-        NftEscrow
-    >,
-    
-    #[account(mut)]
-    pub pool: Account<
-        'info,
-        BondingCurvePool
-    >,
+    pub escrow: Account<'info, NftEscrow>,
 
-    /// CHECK: This is the token account for the payer/minter. 
+    #[account(mut)]
+    pub pool: Account<'info, BondingCurvePool>,
+
+    /// CHECK: This is the token account for the payer/minter.
     /// It will be created by the AssociatedToken program if it doesn't exist.
     #[account(mut)]
-    pub token_account: UncheckedAccount<
-        'info
-    >,
-    
+    pub token_account: UncheckedAccount<'info>,
+
     /// CHECK: This is the token metadata program
-    pub token_metadata_program: UncheckedAccount<
-        'info
-    >,
-    
+    pub token_metadata_program: UncheckedAccount<'info>,
+
     /// CHECK: This is the metadata account that will be created
     #[account(mut)]
-    pub metadata_account: UncheckedAccount<
-        'info
-    >,
-    
+    pub metadata_account: UncheckedAccount<'info>,
+
     /// CHECK: This is the master edition account that will be created
     #[account(mut)]
-    pub master_edition: UncheckedAccount<
-        'info
-    >,
-    
-    /// CHECK: This is the collection mint
-    pub collection_mint: UncheckedAccount<
-        'info
-    >,
-    
-     /// CHECK: This is the collection metadata account
-     #[account(mut)]
-     pub collection_metadata: UncheckedAccount<'info>,
+    pub master_edition: UncheckedAccount<'info>,
 
-    pub token_program: Program<
-        'info,
-        Token
-    >,
+    /// CHECK: This is the collection mint
+    pub collection_mint: UncheckedAccount<'info>,
+
+    /// CHECK: This is the collection metadata account
+    #[account(mut)]
+    pub collection_metadata: UncheckedAccount<'info>,
+
+    pub token_program: Program<'info, Token>,
 
     // Associated Token Program required for creating the token account
-    pub associated_token_program: Program<
-        'info,
-        AssociatedToken
-    >,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 
     /// CHECK: Creator account from the pool, needs to be mutable to receive funds
     #[account(mut, address = pool.creator)]
-    pub creator: UncheckedAccount<
-        'info
-    >,
-    
-    pub system_program: Program<
-        'info,
-        System
-    >,
-    pub rent: Sysvar<
-        'info,
-        Rent
-    >,
+    pub creator: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 pub fn mint_nft(
@@ -133,8 +104,10 @@ pub fn mint_nft(
     )?;
     require!(ctx.accounts.pool.is_active, ErrorCode::PoolInactive);
     let protocol_fee = price.checked_div(100).ok_or(ErrorCode::MathOverflow)?;
-    let net_price = price.checked_sub(protocol_fee).ok_or(ErrorCode::MathOverflow)?;
-    
+    let net_price = price
+        .checked_sub(protocol_fee)
+        .ok_or(ErrorCode::MathOverflow)?;
+
     // Transfer SOL to escrow
     let transfer_to_escrow = anchor_lang::solana_program::system_instruction::transfer(
         &ctx.accounts.payer.key(),
@@ -149,7 +122,7 @@ pub fn mint_nft(
             ctx.accounts.system_program.to_account_info(),
         ],
     )?;
-    
+
     // Transfer protocol fee to pool creator
     let transfer_to_creator = anchor_lang::solana_program::system_instruction::transfer(
         &ctx.accounts.payer.key(),
@@ -164,34 +137,41 @@ pub fn mint_nft(
             ctx.accounts.system_program.to_account_info(),
         ],
     )?;
-    
+
     // Initialize escrow
     ctx.accounts.escrow.nft_mint = ctx.accounts.nft_mint.key();
     ctx.accounts.escrow.lamports = net_price;
     ctx.accounts.escrow.last_price = price;
     ctx.accounts.escrow.bump = ctx.bumps.escrow;
-    
+
     // Update pool
-    ctx.accounts.pool.current_supply = ctx.accounts.pool.current_supply.checked_add(1).ok_or(ErrorCode::MathOverflow)?;
-    ctx.accounts.pool.total_escrowed = ctx.accounts.pool.total_escrowed.checked_add(net_price).ok_or(ErrorCode::MathOverflow)?;
+    ctx.accounts.pool.current_supply = ctx
+        .accounts
+        .pool
+        .current_supply
+        .checked_add(1)
+        .ok_or(ErrorCode::MathOverflow)?;
+    ctx.accounts.pool.total_escrowed = ctx
+        .accounts
+        .pool
+        .total_escrowed
+        .checked_add(net_price)
+        .ok_or(ErrorCode::MathOverflow)?;
     // --- End Pricing and Pool Logic ---
-    
-    // --- NFT Creation Logic --- 
-    // Create metadata using CPI
-    let creator = vec![
-        Creator {
-            address: ctx.accounts.pool.creator,
-            verified: false, 
-            share: 100,
-        },
-    ];
+
+    // --- NFT Creation Logic ---
+    let creator_pda = vec![Creator {
+        address: ctx.accounts.pool.creator,
+        verified: false,
+        share: 100,
+    }];
     let rent_account_info = ctx.accounts.rent.to_account_info();
     let metadata_accounts = CreateMetadataAccountV3CpiAccounts {
         metadata: &ctx.accounts.metadata_account.to_account_info(),
         mint: &ctx.accounts.nft_mint.to_account_info(),
         mint_authority: &ctx.accounts.payer.to_account_info(),
         payer: &ctx.accounts.payer.to_account_info(),
-        update_authority: (&ctx.accounts.payer.to_account_info(), true), 
+        update_authority: (&ctx.accounts.payer.to_account_info(), true),
         system_program: &ctx.accounts.system_program.to_account_info(),
         rent: Some(&rent_account_info),
     };
@@ -201,7 +181,7 @@ pub fn mint_nft(
             symbol,
             uri,
             seller_fee_basis_points,
-            creators: Some(creator),
+            creators: Some(creator_pda),
             collection: Some(Collection {
                 verified: false, // Collection isn't verified at creation
                 key: ctx.accounts.collection_mint.key(),
@@ -214,26 +194,23 @@ pub fn mint_nft(
     CreateMetadataAccountV3Cpi::new(
         &ctx.accounts.token_metadata_program.to_account_info(),
         metadata_accounts,
-        metadata_args
-    ).invoke()?;
+        metadata_args,
+    )
+    .invoke()?;
 
-    // STEP 1: Create the Associated Token Account for the payer
     msg!("Creating Associated Token Account for NFT via CPI");
-    anchor_spl::associated_token::create(
-        CpiContext::new(
-            ctx.accounts.associated_token_program.to_account_info(),
-            anchor_spl::associated_token::Create {
-                payer: ctx.accounts.payer.to_account_info(),
-                associated_token: ctx.accounts.token_account.to_account_info(),
-                authority: ctx.accounts.payer.to_account_info(), // Payer owns the ATA
-                mint: ctx.accounts.nft_mint.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-                token_program: ctx.accounts.token_program.to_account_info(),
-            },
-        )
-    )?;
+    anchor_spl::associated_token::create(CpiContext::new(
+        ctx.accounts.associated_token_program.to_account_info(),
+        anchor_spl::associated_token::Create {
+            payer: ctx.accounts.payer.to_account_info(),
+            associated_token: ctx.accounts.token_account.to_account_info(),
+            authority: ctx.accounts.payer.to_account_info(),
+            mint: ctx.accounts.nft_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info(),
+        },
+    ))?;
 
-    // STEP 2: Mint exactly one token to the payer's token account
     msg!("Minting one token to the Associated Token Account");
     mint_to(
         CpiContext::new(
@@ -241,16 +218,14 @@ pub fn mint_nft(
             MintTo {
                 mint: ctx.accounts.nft_mint.to_account_info(),
                 to: ctx.accounts.token_account.to_account_info(),
-                authority: ctx.accounts.payer.to_account_info(), // Payer is the mint authority
+                authority: ctx.accounts.payer.to_account_info(),
             },
         ),
         1, // Amount = 1
     )?;
 
-    // STEP 3: Now that we have exactly one token, create the Master Edition
-    // Create master edition using real CPI
     let rent_account_info_for_master = ctx.accounts.rent.to_account_info();
-    
+
     let master_edition_accounts = CreateMasterEditionV3CpiAccounts {
         edition: &ctx.accounts.master_edition.to_account_info(),
         mint: &ctx.accounts.nft_mint.to_account_info(),
@@ -270,15 +245,27 @@ pub fn mint_nft(
     CreateMasterEditionV3Cpi::new(
         &ctx.accounts.token_metadata_program.to_account_info(),
         master_edition_accounts,
-        master_edition_args
-    ).invoke()?;
-    
+        master_edition_args,
+    )
+    .invoke()?;
+
     msg!("NFT minted successfully with Master Edition!");
     msg!("NFT Mint Address: {}", ctx.accounts.nft_mint.key());
     msg!("NFT Token Account: {}", ctx.accounts.token_account.key());
-    msg!("Master Edition Address: {}", ctx.accounts.master_edition.key());
+    msg!(
+        "Master Edition Address: {}",
+        ctx.accounts.master_edition.key()
+    );
+
+    // --- Emit NftMint Event ---
+    emit!(NftMint {
+        minter: ctx.accounts.payer.key(),
+        nft_mint: ctx.accounts.nft_mint.key(),
+        pool: ctx.accounts.pool.key(),
+        mint_price: price,
+        protocol_fee: protocol_fee,
+        timestamp: Clock::get()?.unix_timestamp,
+    });
 
     Ok(())
 }
-
-
