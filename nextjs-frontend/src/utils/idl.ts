@@ -1,4 +1,4 @@
-export const PROGRAM_ID = 'CicL315F7cub91uKYFoCjBcVFKB267BMFXmFtDdNrvGX';
+export const PROGRAM_ID = 'FCpT1hnh9JKPmCR8s1rPA2ab5mETT9TFUcbDdnXhLPdu';
 
 export const IDL = {
   "version": "0.1.0",
@@ -549,7 +549,7 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "CicL315F7cub91uKYFoCjBcVFKB267BMFXmFtDdNrvGX"
+    "address": "FCpT1hnh9JKPmCR8s1rPA2ab5mETT9TFUcbDdnXhLPdu"
   }
 };
 
