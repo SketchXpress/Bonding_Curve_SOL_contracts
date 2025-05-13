@@ -13,3 +13,5 @@ logs/
 /home/ubuntu/.config/solana/id.json
 script.sh
 deploy.js
+yarn.lock
+settings.json
