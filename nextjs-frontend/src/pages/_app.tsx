@@ -6,12 +6,13 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl } from "@solana/web3.js";
 import { useMemo, useEffect } from "react";
+import GlobalPatcher from "@/components/GlobalPatcher"; // Import GlobalPatcher
 
-// Import BN polyfill patches
-import "../utils/compiled/bn-polyfill";
-import "../utils/compiled/bn-polyfill-client";
-import "../utils/bn-polyfill-direct";
-import "../utils/error-handler";
+// Import BN polyfill patches - these are likely handled by GlobalPatcher now or bn-polyfill-client
+// import "../utils/compiled/bn-polyfill";
+// import "../utils/compiled/bn-polyfill-client"; // This is called by GlobalPatcher
+// import "../utils/bn-polyfill-direct";
+// import "../utils/error-handler";
 
 // BN type is imported in global.d.ts
 
@@ -27,35 +28,23 @@ export default function App({ Component, pageProps }: AppProps) {
 
   const wallets = useMemo(
     () => [
-      /**
-       * Wallets that implement either of these standards will be available automatically.
-       *
-       *   - Solana Mobile Stack Mobile Wallet Adapter Protocol
-       *     (https://github.com/solana-mobile/mobile-wallet-adapter)
-       *   - Solana Wallet Standard
-       *     (https://github.com/solana-labs/wallet-standard)
-       *
-       * If you wish to support a wallet that supports neither of those standards,
-       * instantiate its legacy wallet adapter here. Common legacy adapters can be found
-       * in the npm package `@solana/wallet-adapter-wallets`.
-       */
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [network]
   );
 
-  // Apply additional BN patches when component mounts
+  // The existing useEffect for BN patching might be redundant if GlobalPatcher and bn-polyfill-client cover these cases.
+  // It's recommended to review and potentially remove or merge this logic into bn-polyfill-client.ts for centralization.
   useEffect(() => {
     // Ensure BN.prototype has _bn property
     if (typeof window !== 'undefined') {
       try {
-        console.log("Applying additional BN patches in _app.tsx");
+        console.log("Verifying BN patches in _app.tsx (GlobalPatcher should handle this)");
         
-        // Patch global BN if available
         if (window.BN) {
           if (!window.BN.prototype._bn) {
+            console.warn("_app.tsx: window.BN.prototype._bn still missing after GlobalPatcher, attempting to patch here.");
             Object.defineProperty(window.BN.prototype, '_bn', {
               get: function() { 
                 if (this._bnValue === undefined) {
@@ -70,21 +59,15 @@ export default function App({ Component, pageProps }: AppProps) {
           }
         }
         
-        // Add emergency error handler for _bn property
         const originalError = console.error;
         console.error = function(...args) {
-          // Check if error is related to _bn property
           const errorString = args.join(' ');
           if (errorString.includes('_bn') && errorString.includes('cannot read properties')) {
-            console.warn('Caught _bn error, applying emergency fix');
-            
-            // Apply emergency fix to global objects
+            console.warn('_app.tsx: Caught _bn error, attempting emergency fix (consider centralizing this logic)');
             if (window.solana) {
               try {
                 const patchObject = (obj: Record<string, unknown>): void => {
                   if (!obj || typeof obj !== 'object') return;
-                  
-                  // If object has toBN method but no _bn property
                   if (typeof obj.toBN === 'function' && obj._bn === undefined) {
                     Object.defineProperty(obj, '_bn', {
                       value: obj,
@@ -92,8 +75,6 @@ export default function App({ Component, pageProps }: AppProps) {
                       enumerable: false
                     });
                   }
-                  
-                  // If object is a BN instance but no _bn property
                   if (obj.constructor && obj.constructor.name === 'BN' && obj._bn === undefined) {
                     Object.defineProperty(obj, '_bn', {
                       value: obj,
@@ -102,23 +83,15 @@ export default function App({ Component, pageProps }: AppProps) {
                     });
                   }
                 };
-                
-                // Patch solana objects
                 patchObject(window.solana);
-                
-                // Don't show the original error
                 return;
-              } catch {
-                // If patching fails, show original error
-              }
+              } catch {}
             }
           }
-          
-          // Call original error function
           originalError.apply(console, args);
         };
       } catch (error) {
-        console.warn("Error applying additional BN patches:", error);
+        console.warn("_app.tsx: Error in additional BN patch verification:", error);
       }
     }
   }, []);
@@ -127,9 +100,11 @@ export default function App({ Component, pageProps }: AppProps) {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
+          <GlobalPatcher /> {/* Add GlobalPatcher here */}
           <Component {...pageProps} />
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );
 }
+
