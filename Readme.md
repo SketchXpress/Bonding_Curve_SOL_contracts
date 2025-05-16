@@ -2,6 +2,20 @@
 
 A Solana blockchain project implementing an **NFT-Only Bonding Curve AMM** with **Token-Owned Escrow (TOE)**, dynamic pricing, and Tensor marketplace integration.
 
+## Related Repositories
+
+This smart contract repository is part of the broader SketchXpress ecosystem, working together with:
+
+- **Frontend Application**: [SketchXpress/app](https://github.com/SketchXpress/app)
+  - Provides the user interface for interacting with the bonding curve contracts
+  - Handles NFT minting, selling, and TOE balance visualization
+  - Integrates with Solana wallets for transaction signing
+
+- **Backend Services**: [SketchXpress/backend](https://github.com/SketchXpress/backend)
+  - Provides AI-powered sketch-to-image generation using Stable Diffusion and ControlNet models
+  - Offers FastAPI endpoints for submitting generation jobs and tracking their status
+  - Implements asynchronous processing architecture with Redis and Celery for optimal performance
+
 ---
 
 ## Overview
