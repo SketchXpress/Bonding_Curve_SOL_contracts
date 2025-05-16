@@ -8,7 +8,7 @@ This smart contract repository is part of the broader SketchXpress ecosystem, wo
 
 - **Frontend Application**: [SketchXpress/app](https://github.com/SketchXpress/app)
   - Provides the user interface for interacting with the bonding curve contracts
-  - Handles NFT minting, selling, and TOE balance visualization
+  - Handles NFT minting, selling, and TOE balance / Bonding Curve  visualization
   - Integrates with Solana wallets for transaction signing
 
 - **Backend Services**: [SketchXpress/backend](https://github.com/SketchXpress/backend)
