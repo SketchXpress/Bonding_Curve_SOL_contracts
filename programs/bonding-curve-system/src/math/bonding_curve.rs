@@ -1,332 +1,381 @@
 use anchor_lang::prelude::*;
-use crate::constants::*;
+use crate::errors::ErrorCode;
 
-// Exponential bonding curve implementation
-pub struct BondingCurve {
-    pub base_price: u64,
-    pub growth_factor: u64,
+/// Bonding curve mathematical operations
+pub struct BondingCurve;
+
+impl BondingCurve {
+    /// Calculate the price for a specific NFT position in the bonding curve
+    /// 
+    /// Formula: price = base_price * (growth_factor / 10000) ^ supply
+    /// 
+    /// # Arguments
+    /// * `base_price` - The base price for the first NFT (in lamports)
+    /// * `growth_factor` - Growth factor in basis points (e.g., 1100 = 10% growth)
+    /// * `supply` - Current supply (0-indexed, so 0 = first NFT)
+    /// 
+    /// # Returns
+    /// * `Result<u64>` - The price in lamports
+    pub fn calculate_price(
+        base_price: u64,
+        growth_factor: u16,
+        supply: u32,
+    ) -> Result<u64> {
+        require!(base_price > 0, ErrorCode::InvalidAmount);
+        require!(growth_factor > 0, ErrorCode::InvalidAmount);
+
+        if supply == 0 {
+            return Ok(base_price);
+        }
+
+        // Convert growth factor from basis points to decimal
+        let growth_decimal = growth_factor as f64 / 10000.0;
+        
+        // Calculate: base_price * growth_factor^supply
+        let price_f64 = (base_price as f64) * growth_decimal.powi(supply as i32);
+        
+        // Check for overflow
+        if price_f64 > u64::MAX as f64 {
+            return Err(ErrorCode::MathOverflow.into());
+        }
+        
+        Ok(price_f64 as u64)
+    }
+
+    /// Calculate the total market cap for a given supply
+    /// 
+    /// This sums up all individual NFT prices from 0 to supply-1
+    /// 
+    /// # Arguments
+    /// * `base_price` - The base price for the first NFT
+    /// * `growth_factor` - Growth factor in basis points
+    /// * `supply` - Total supply to calculate market cap for
+    /// 
+    /// # Returns
+    /// * `Result<u64>` - Total market cap in lamports
+    pub fn calculate_market_cap(
+        base_price: u64,
+        growth_factor: u16,
+        supply: u32,
+    ) -> Result<u64> {
+        if supply == 0 {
+            return Ok(0);
+        }
+
+        let mut total_value = 0u64;
+        
+        for i in 0..supply {
+            let price = Self::calculate_price(base_price, growth_factor, i)?;
+            total_value = total_value
+                .checked_add(price)
+                .ok_or(ErrorCode::MathOverflow)?;
+        }
+
+        Ok(total_value)
+    }
+
+    /// Calculate the price difference between two supply levels
+    /// 
+    /// Useful for calculating how much the price increases when minting multiple NFTs
+    /// 
+    /// # Arguments
+    /// * `base_price` - The base price for the first NFT
+    /// * `growth_factor` - Growth factor in basis points
+    /// * `from_supply` - Starting supply
+    /// * `to_supply` - Ending supply
+    /// 
+    /// # Returns
+    /// * `Result<u64>` - Price difference in lamports
+    pub fn calculate_price_difference(
+        base_price: u64,
+        growth_factor: u16,
+        from_supply: u32,
+        to_supply: u32,
+    ) -> Result<u64> {
+        require!(to_supply >= from_supply, ErrorCode::InvalidAmount);
+
+        if from_supply == to_supply {
+            return Ok(0);
+        }
+
+        let from_price = Self::calculate_price(base_price, growth_factor, from_supply)?;
+        let to_price = Self::calculate_price(base_price, growth_factor, to_supply)?;
+
+        to_price
+            .checked_sub(from_price)
+            .ok_or(ErrorCode::MathUnderflow.into())
+    }
+
+    /// Calculate the supply level needed to reach a target market cap
+    /// 
+    /// Uses binary search to find the supply that gets closest to target market cap
+    /// 
+    /// # Arguments
+    /// * `base_price` - The base price for the first NFT
+    /// * `growth_factor` - Growth factor in basis points
+    /// * `target_market_cap` - Target market cap in lamports
+    /// * `max_supply` - Maximum supply to search up to
+    /// 
+    /// # Returns
+    /// * `Result<u32>` - Supply level that reaches target market cap
+    pub fn calculate_supply_for_market_cap(
+        base_price: u64,
+        growth_factor: u16,
+        target_market_cap: u64,
+        max_supply: u32,
+    ) -> Result<u32> {
+        if target_market_cap == 0 {
+            return Ok(0);
+        }
+
+        let mut low = 0u32;
+        let mut high = max_supply;
+        let mut result = 0u32;
+
+        while low <= high {
+            let mid = low + (high - low) / 2;
+            let market_cap = Self::calculate_market_cap(base_price, growth_factor, mid)?;
+
+            if market_cap <= target_market_cap {
+                result = mid;
+                low = mid + 1;
+            } else {
+                if mid == 0 {
+                    break;
+                }
+                high = mid - 1;
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Calculate the burn price for an NFT (typically 99% of mint price)
+    /// 
+    /// # Arguments
+    /// * `mint_price` - The price the NFT was minted at
+    /// * `burn_fee_percentage` - Fee percentage in basis points (e.g., 100 = 1%)
+    /// 
+    /// # Returns
+    /// * `Result<u64>` - Burn price in lamports
+    pub fn calculate_burn_price(
+        mint_price: u64,
+        burn_fee_percentage: u16,
+    ) -> Result<u64> {
+        require!(burn_fee_percentage <= 10000, ErrorCode::InvalidAmount);
+
+        let fee_amount = (mint_price as u128)
+            .checked_mul(burn_fee_percentage as u128)
+            .and_then(|x| x.checked_div(10000))
+            .and_then(|x| u64::try_from(x).ok())
+            .ok_or(ErrorCode::MathOverflow)?;
+
+        mint_price
+            .checked_sub(fee_amount)
+            .ok_or(ErrorCode::MathUnderflow.into())
+    }
+
+    /// Calculate the growth rate between two price points
+    /// 
+    /// # Arguments
+    /// * `price1` - First price
+    /// * `price2` - Second price
+    /// 
+    /// # Returns
+    /// * `Result<u16>` - Growth rate in basis points
+    pub fn calculate_growth_rate(price1: u64, price2: u64) -> Result<u16> {
+        require!(price1 > 0, ErrorCode::InvalidAmount);
+        require!(price2 >= price1, ErrorCode::InvalidAmount);
+
+        if price1 == price2 {
+            return Ok(10000); // 100% (no growth)
+        }
+
+        let growth = ((price2 as f64 / price1 as f64) * 10000.0) as u16;
+        Ok(growth)
+    }
+
+    /// Validate bonding curve parameters
+    /// 
+    /// # Arguments
+    /// * `base_price` - Base price to validate
+    /// * `growth_factor` - Growth factor to validate
+    /// * `max_supply` - Maximum supply to validate
+    /// 
+    /// # Returns
+    /// * `Result<()>` - Success or error
+    pub fn validate_parameters(
+        base_price: u64,
+        growth_factor: u16,
+        max_supply: u32,
+    ) -> Result<()> {
+        // Validate base price
+        require!(base_price > 0, ErrorCode::InvalidAmount);
+        require!(
+            base_price >= 1_000_000, // Minimum 0.001 SOL
+            ErrorCode::InvalidAmount
+        );
+        require!(
+            base_price <= 1_000_000_000_000, // Maximum 1000 SOL
+            ErrorCode::InvalidAmount
+        );
+
+        // Validate growth factor
+        require!(growth_factor > 0, ErrorCode::InvalidAmount);
+        require!(
+            growth_factor >= 10000, // Minimum 100% (no decay)
+            ErrorCode::InvalidAmount
+        );
+        require!(
+            growth_factor <= 50000, // Maximum 500% growth
+            ErrorCode::InvalidAmount
+        );
+
+        // Validate max supply
+        require!(max_supply > 0, ErrorCode::InvalidAmount);
+        require!(
+            max_supply <= 100000, // Maximum 100k NFTs
+            ErrorCode::InvalidAmount
+        );
+
+        // Validate that the curve doesn't overflow at max supply
+        let max_price = Self::calculate_price(base_price, growth_factor, max_supply - 1)?;
+        require!(
+            max_price <= 1_000_000_000_000_000, // Maximum 1M SOL per NFT
+            ErrorCode::MathOverflow
+        );
+
+        Ok(())
+    }
+}
+
+/// Bonding curve analysis results
+#[derive(Debug, Clone)]
+pub struct CurveAnalysis {
+    pub current_price: u64,
+    pub next_price: u64,
+    pub price_increase: u64,
+    pub price_increase_percentage: u64,
+    pub market_cap: u64,
+    pub average_price: u64,
 }
 
 impl BondingCurve {
-    // Calculate price based on current market cap
-    pub fn calculate_price(&self, current_market_cap: u64) -> Result<u64> {
-        // Base price for empty market
-        if current_market_cap == 0 {
-            return Ok(self.base_price);
-        }
+    /// Perform comprehensive analysis of the bonding curve at current supply
+    /// 
+    /// # Arguments
+    /// * `base_price` - Base price
+    /// * `growth_factor` - Growth factor
+    /// * `current_supply` - Current supply level
+    /// 
+    /// # Returns
+    /// * `Result<CurveAnalysis>` - Comprehensive analysis
+    pub fn analyze_curve(
+        base_price: u64,
+        growth_factor: u16,
+        current_supply: u32,
+    ) -> Result<CurveAnalysis> {
+        let current_price = Self::calculate_price(base_price, growth_factor, current_supply)?;
+        let next_price = Self::calculate_price(base_price, growth_factor, current_supply + 1)?;
+        let price_increase = next_price.saturating_sub(current_price);
         
-        // Validate inputs to prevent overflow
-        if self.base_price > u64::MAX / 1_000_000 {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
+        let price_increase_percentage = if current_price > 0 {
+            price_increase
+                .checked_mul(10000)
+                .and_then(|x| x.checked_div(current_price))
+                .unwrap_or(0)
+        } else {
+            0
+        };
+
+        let market_cap = Self::calculate_market_cap(base_price, growth_factor, current_supply)?;
         
-        // Calculate e^(growth_factor * current_market_cap)
-        // Using Taylor series approximation for efficiency
-        let exponent = self.calculate_exponent(current_market_cap)?;
-        
-        // Calculate final price: base_price * e^(growth_factor * current_market_cap)
-        self.base_price
-            .checked_mul(exponent)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(1_000_000) // Scaling factor for fixed-point math
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate total cost to buy a specific amount of tokens
-    pub fn calculate_buy_cost(&self, current_market_cap: u64, amount: u64) -> Result<u64> {
-        // Validate inputs
-        if amount == 0 {
-            return Err(error!(crate::errors::ErrorCode::InvalidAmount));
-        }
-        
-        let current_price = self.calculate_price(current_market_cap)?;
-        
-        // Check for potential overflow before adding
-        if current_market_cap > u64::MAX - amount {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        let new_market_cap = current_market_cap
-            .checked_add(amount)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-            
-        let new_price = self.calculate_price(new_market_cap)?;
-        
-        // Average price during the purchase
-        let avg_price = current_price
-            .checked_add(new_price)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(2)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-        
-        // Check for potential overflow before multiplying
-        if avg_price > u64::MAX / amount {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        // Total cost = average price * amount
-        avg_price
-            .checked_mul(amount)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate amount received when selling tokens
-    pub fn calculate_sell_amount(&self, current_market_cap: u64, amount: u64) -> Result<u64> {
-        // Validate inputs
-        if amount == 0 {
-            return Err(error!(crate::errors::ErrorCode::InvalidAmount));
-        }
-        
-        if amount > current_market_cap {
-            return Err(error!(crate::errors::ErrorCode::InsufficientFunds));
-        }
-        
-        let current_price = self.calculate_price(current_market_cap)?;
-        
-        let new_market_cap = current_market_cap
-            .checked_sub(amount)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-            
-        let new_price = self.calculate_price(new_market_cap)?;
-        
-        // Average price during the sale
-        let avg_price = current_price
-            .checked_add(new_price)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(2)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-        
-        // Check for potential overflow before multiplying
-        if avg_price > u64::MAX / amount {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        // Total amount = average price * amount
-        avg_price
-            .checked_mul(amount)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate mint fee (1% of total cost)
-    pub fn calculate_mint_fee(&self, total_cost: u64) -> Result<u64> {
-        // Check for potential overflow before multiplying
-        if total_cost > u64::MAX / MINT_FEE_PERCENTAGE {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        total_cost
-            .checked_mul(MINT_FEE_PERCENTAGE)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(100)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate creator royalty (5% of total cost)
-    pub fn calculate_creator_royalty(&self, total_cost: u64) -> Result<u64> {
-        // Check for potential overflow before multiplying
-        if total_cost > u64::MAX / CREATOR_ROYALTY_PERCENTAGE {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        total_cost
-            .checked_mul(CREATOR_ROYALTY_PERCENTAGE)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(100)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate secondary sale burn amount (1.5% of total cost)
-    pub fn calculate_secondary_burn(&self, total_cost: u64) -> Result<u64> {
-        // Check for potential overflow before multiplying
-        if total_cost > u64::MAX / SECONDARY_BURN_PERCENTAGE {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        total_cost
-            .checked_mul(SECONDARY_BURN_PERCENTAGE)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate secondary sale distribution amount (1.5% of total cost)
-    pub fn calculate_secondary_distribute(&self, total_cost: u64) -> Result<u64> {
-        // Check for potential overflow before multiplying
-        if total_cost > u64::MAX / SECONDARY_DISTRIBUTE_PERCENTAGE {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        total_cost
-            .checked_mul(SECONDARY_DISTRIBUTE_PERCENTAGE)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate buyback burn amount (2.5% of total cost)
-    pub fn calculate_buyback_burn(&self, total_cost: u64) -> Result<u64> {
-        // Check for potential overflow before multiplying
-        if total_cost > u64::MAX / BUYBACK_BURN_PERCENTAGE {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        total_cost
-            .checked_mul(BUYBACK_BURN_PERCENTAGE)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate buyback distribution amount (2.5% of total cost)
-    pub fn calculate_buyback_distribute(&self, total_cost: u64) -> Result<u64> {
-        // Check for potential overflow before multiplying
-        if total_cost > u64::MAX / BUYBACK_DISTRIBUTE_PERCENTAGE {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        total_cost
-            .checked_mul(BUYBACK_DISTRIBUTE_PERCENTAGE)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(1000) // Divide by 1000 since percentage is scaled by 10
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Calculate net cost after fees (for backward compatibility)
-    pub fn calculate_net_cost(&self, total_cost: u64) -> Result<u64> {
-        let mint_fee = self.calculate_mint_fee(total_cost)?;
-        
-        total_cost
-            .checked_sub(mint_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))
-    }
-    
-    // Check if market cap has crossed the $69k threshold
-    pub fn is_past_threshold(&self, current_market_cap: u64) -> bool {
-        current_market_cap >= THRESHOLD_MARKET_CAP
-    }
-    
-    // Calculate exponent using Taylor series approximation
-    // e^x ≈ 1 + x + x²/2! + x³/3! + x⁴/4! + ...
-    fn calculate_exponent(&self, current_market_cap: u64) -> Result<u64> {
-        // Scale down for fixed-point math (6 decimal places)
-        let scaling_factor = 1_000_000;
-        
-        // Validate inputs to prevent overflow
-        if self.growth_factor > u64::MAX / current_market_cap {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        // Calculate x = growth_factor * current_market_cap / scaling_factor
-        let x = self.growth_factor
-            .checked_mul(current_market_cap)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(scaling_factor)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-        
-        // Limit x to prevent excessive calculations and potential overflows
-        if x > 100 * scaling_factor {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        // First term: 1 * scaling_factor
-        let mut result = scaling_factor;
-        
-        // Second term: x * scaling_factor
-        let term1 = x;
-        
-        // Check for potential overflow before adding
-        if result > u64::MAX - term1 {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        result = result
-            .checked_add(term1)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-        
-        // Check if x is small enough to avoid unnecessary calculations
-        if x < 1 {
-            return Ok(result);
-        }
-        
-        // Third term: (x²/2!) * scaling_factor
-        // Check for potential overflow before multiplying
-        if x > u64::MAX / x {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        let term2 = x
-            .checked_mul(x)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(2)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-            
-        // Check for potential overflow before adding
-        if result > u64::MAX - term2 {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        result = result
-            .checked_add(term2)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-        
-        // Check if x is small enough to avoid unnecessary calculations
-        if x < 5 {
-            return Ok(result);
-        }
-        
-        // Fourth term: (x³/3!) * scaling_factor
-        // Check for potential overflow before multiplying
-        if x > u64::MAX / (x * x) {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        let term3 = x
-            .checked_mul(x)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_mul(x)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(6) // 3! = 6
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-            
-        // Check for potential overflow before adding
-        if result > u64::MAX - term3 {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        result = result
-            .checked_add(term3)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-        
-        // Check if x is small enough to avoid unnecessary calculations
-        if x < 10 {
-            return Ok(result);
-        }
-        
-        // Fifth term: (x⁴/4!) * scaling_factor
-        // Check for potential overflow before multiplying
-        if x > u64::MAX / (x * x * x) {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        let term4 = x
-            .checked_mul(x)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_mul(x)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_mul(x)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?
-            .checked_div(24) // 4! = 24
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-            
-        // Check for potential overflow before adding
-        if result > u64::MAX - term4 {
-            return Err(error!(crate::errors::ErrorCode::MathOverflow));
-        }
-        
-        result = result
-            .checked_add(term4)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
-        
-        Ok(result)
+        let average_price = if current_supply > 0 {
+            market_cap / current_supply as u64
+        } else {
+            0
+        };
+
+        Ok(CurveAnalysis {
+            current_price,
+            next_price,
+            price_increase,
+            price_increase_percentage,
+            market_cap,
+            average_price,
+        })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_price() {
+        let base_price = 100_000_000; // 0.1 SOL
+        let growth_factor = 1100; // 10% growth
+        
+        // First NFT should be base price
+        assert_eq!(BondingCurve::calculate_price(base_price, growth_factor, 0).unwrap(), base_price);
+        
+        // Second NFT should be base_price * 1.1
+        let second_price = BondingCurve::calculate_price(base_price, growth_factor, 1).unwrap();
+        assert_eq!(second_price, 110_000_000); // 0.11 SOL
+    }
+
+    #[test]
+    fn test_calculate_market_cap() {
+        let base_price = 100_000_000; // 0.1 SOL
+        let growth_factor = 1100; // 10% growth
+        
+        // Market cap for 0 supply should be 0
+        assert_eq!(BondingCurve::calculate_market_cap(base_price, growth_factor, 0).unwrap(), 0);
+        
+        // Market cap for 1 NFT should be base price
+        assert_eq!(BondingCurve::calculate_market_cap(base_price, growth_factor, 1).unwrap(), base_price);
+        
+        // Market cap for 2 NFTs should be base_price + base_price * 1.1
+        let expected = base_price + 110_000_000;
+        assert_eq!(BondingCurve::calculate_market_cap(base_price, growth_factor, 2).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_validate_parameters() {
+        // Valid parameters
+        assert!(BondingCurve::validate_parameters(100_000_000, 11000, 1000).is_ok());
+        
+        // Invalid base price (too low)
+        assert!(BondingCurve::validate_parameters(100, 11000, 1000).is_err());
+        
+        // Invalid growth factor (too low)
+        assert!(BondingCurve::validate_parameters(100_000_000, 5000, 1000).is_err());
+        
+        // Invalid max supply (zero)
+        assert!(BondingCurve::validate_parameters(100_000_000, 11000, 0).is_err());
+    }
+
+    #[test]
+    fn test_calculate_burn_price() {
+        let mint_price = 1_000_000_000; // 1 SOL
+        let burn_fee = 100; // 1%
+        
+        let burn_price = BondingCurve::calculate_burn_price(mint_price, burn_fee).unwrap();
+        assert_eq!(burn_price, 990_000_000); // 0.99 SOL
+    }
+
+    #[test]
+    fn test_curve_analysis() {
+        let base_price = 100_000_000; // 0.1 SOL
+        let growth_factor = 11000; // 10% growth
+        let supply = 5;
+        
+        let analysis = BondingCurve::analyze_curve(base_price, growth_factor, supply).unwrap();
+        
+        assert!(analysis.current_price > 0);
+        assert!(analysis.next_price > analysis.current_price);
+        assert!(analysis.market_cap > 0);
+        assert!(analysis.average_price > 0);
+    }
+}
+

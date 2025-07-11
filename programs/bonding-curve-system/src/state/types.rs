@@ -40,77 +40,192 @@ impl Default for BidStatus {
     }
 }
 
-/// Revenue distribution percentages
-pub struct RevenueDistribution;
+/// Revenue distribution configuration for the bidding system
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct RevenueDistribution {
+    /// Percentage to original minter (basis points, e.g., 9500 = 95%)
+    pub minter_percentage: u16,
+    /// Percentage to platform (basis points, e.g., 400 = 4%)
+    pub platform_percentage: u16,
+    /// Percentage to collection holders (basis points, e.g., 100 = 1%)
+    pub collection_percentage: u16,
+}
+
+impl Default for RevenueDistribution {
+    fn default() -> Self {
+        Self {
+            minter_percentage: 9500, // 95%
+            platform_percentage: 400, // 4%
+            collection_percentage: 100, // 1%
+        }
+    }
+}
 
 impl RevenueDistribution {
-    /// Percentage that goes to the original minter (95%)
-    pub const MINTER_PERCENTAGE: u64 = 95;
-    
-    /// Percentage that goes to the platform (4%)
-    pub const PLATFORM_PERCENTAGE: u64 = 4;
-    
-    /// Percentage that goes to collection holders (1%)
-    pub const COLLECTION_PERCENTAGE: u64 = 1;
-    
-    /// Calculate revenue shares from a total amount
-    pub fn calculate_shares(total_amount: u64) -> Result<(u64, u64, u64)> {
-        let minter_share = total_amount
-            .checked_mul(Self::MINTER_PERCENTAGE)
-            .and_then(|x| x.checked_div(100))
+    /// Validate that percentages add up to 100%
+    pub fn validate(&self) -> Result<()> {
+        let total = self.minter_percentage + self.platform_percentage + self.collection_percentage;
+        require_eq!(total, 10000, crate::errors::ErrorCode::InvalidRevenueSplit);
+        Ok(())
+    }
+
+    /// Calculate revenue shares from total amount
+    pub fn calculate_shares(&self, total_amount: u64) -> Result<(u64, u64, u64)> {
+        self.validate()?;
+
+        let minter_share = (total_amount as u128)
+            .checked_mul(self.minter_percentage as u128)
+            .and_then(|x| x.checked_div(10000))
+            .and_then(|x| u64::try_from(x).ok())
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
 
-        let platform_share = total_amount
-            .checked_mul(Self::PLATFORM_PERCENTAGE)
-            .and_then(|x| x.checked_div(100))
+        let platform_share = (total_amount as u128)
+            .checked_mul(self.platform_percentage as u128)
+            .and_then(|x| x.checked_div(10000))
+            .and_then(|x| u64::try_from(x).ok())
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
 
-        let collection_share = total_amount
-            .checked_mul(Self::COLLECTION_PERCENTAGE)
-            .and_then(|x| x.checked_div(100))
+        let collection_share = (total_amount as u128)
+            .checked_mul(self.collection_percentage as u128)
+            .and_then(|x| x.checked_div(10000))
+            .and_then(|x| u64::try_from(x).ok())
             .ok_or(crate::errors::ErrorCode::MathOverflow)?;
-
-        // Verify total doesn't exceed original amount
-        let total_distributed = minter_share
-            .checked_add(platform_share)
-            .and_then(|x| x.checked_add(collection_share))
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
-
-        if total_distributed > total_amount {
-            return Err(crate::errors::ErrorCode::RevenueDistributionFailed.into());
-        }
 
         Ok((minter_share, platform_share, collection_share))
     }
 }
 
-/// Common validation functions
-pub struct Validation;
+/// Dynamic pricing configuration
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct DynamicPricingConfig {
+    /// Minimum premium above bonding curve price (basis points)
+    pub minimum_premium_bp: u16,
+    /// Required increment above current highest bid (basis points)
+    pub bid_increment_bp: u16,
+    /// Maximum bid duration in seconds
+    pub max_bid_duration: i64,
+    /// Minimum bid duration in seconds
+    pub min_bid_duration: i64,
+}
 
-impl Validation {
-    /// Validates that a timestamp is not expired
-    pub fn is_not_expired(expires_at: i64, current_time: i64) -> bool {
-        expires_at == 0 || current_time < expires_at
-    }
-    
-    /// Validates that an amount is greater than zero
-    pub fn is_positive_amount(amount: u64) -> bool {
-        amount > 0
-    }
-    
-    /// Validates that a bid amount meets minimum requirements
-    pub fn meets_minimum_bid(bid_amount: u64, min_bid: u64, current_highest: u64) -> bool {
-        if current_highest > 0 {
-            // Must be at least 5% higher than current highest bid
-            let min_required = current_highest
-                .checked_mul(105)
-                .and_then(|x| x.checked_div(100))
-                .unwrap_or(u64::MAX);
-            bid_amount >= min_required
-        } else {
-            bid_amount >= min_bid
+impl Default for DynamicPricingConfig {
+    fn default() -> Self {
+        Self {
+            minimum_premium_bp: 1000, // 10%
+            bid_increment_bp: 500,    // 5%
+            max_bid_duration: 604800, // 1 week
+            min_bid_duration: 3600,   // 1 hour
         }
     }
+}
+
+/// Bonding curve parameters
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct BondingCurveParams {
+    /// Base price for the first NFT
+    pub base_price: u64,
+    /// Growth factor (basis points, e.g., 1100 = 10% growth)
+    pub growth_factor: u16,
+    /// Maximum supply before migration
+    pub max_supply: u32,
+    /// Market cap threshold for migration (in lamports)
+    pub migration_threshold: u64,
+}
+
+impl Default for BondingCurveParams {
+    fn default() -> Self {
+        Self {
+            base_price: 100_000_000, // 0.1 SOL
+            growth_factor: 1100,     // 10% growth
+            max_supply: 1000,        // 1000 NFTs max
+            migration_threshold: 690_000_000_000, // 690 SOL
+        }
+    }
+}
+
+/// Collection metadata for fee distribution
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct CollectionMetadata {
+    /// Collection name
+    pub name: String,
+    /// Collection symbol
+    pub symbol: String,
+    /// Collection description
+    pub description: String,
+    /// Collection image URI
+    pub image: String,
+    /// External URL
+    pub external_url: Option<String>,
+    /// Collection creator
+    pub creator: Pubkey,
+    /// Royalty percentage (basis points)
+    pub royalty_bp: u16,
+}
+
+/// Bid validation result
+#[derive(Debug, Clone)]
+pub struct BidValidationResult {
+    pub is_valid: bool,
+    pub required_amount: u64,
+    pub bonding_curve_price: u64,
+    pub premium_percentage: u64,
+    pub error_message: Option<String>,
+}
+
+/// Price analysis for a bid
+#[derive(Debug, Clone)]
+pub struct BidPriceAnalysis {
+    pub bid_amount: u64,
+    pub bonding_curve_price: u64,
+    pub premium_amount: u64,
+    pub premium_percentage: u64,
+    pub is_profitable: bool,
+    pub market_position: MarketPosition,
+}
+
+/// Market position relative to bonding curve
+#[derive(Debug, Clone, PartialEq)]
+pub enum MarketPosition {
+    BelowCurve,
+    AtCurve,
+    AboveCurve,
+}
+
+/// Transaction fee breakdown
+#[derive(Debug, Clone)]
+pub struct FeeBreakdown {
+    pub total_amount: u64,
+    pub minter_fee: u64,
+    pub platform_fee: u64,
+    pub collection_fee: u64,
+    pub gas_estimate: u64,
+}
+
+/// Constants for the protocol
+pub mod constants {
+    /// Maximum number of active bids per NFT
+    pub const MAX_BIDS_PER_NFT: u32 = 100;
+    
+    /// Maximum listing duration (1 week)
+    pub const MAX_LISTING_DURATION: i64 = 604800;
+    
+    /// Minimum listing duration (1 hour)
+    pub const MIN_LISTING_DURATION: i64 = 3600;
+    
+    /// Default bid increment (5%)
+    pub const DEFAULT_BID_INCREMENT_BP: u16 = 500;
+    
+    /// Default minimum premium (10%)
+    pub const DEFAULT_MINIMUM_PREMIUM_BP: u16 = 1000;
+    
+    /// Maximum premium allowed (1000%)
+    pub const MAX_PREMIUM_BP: u16 = 100000;
+    
+    /// Basis points denominator
+    pub const BASIS_POINTS: u64 = 10000;
+    
+    /// Lamports per SOL
+    pub const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
 }
 
 #[cfg(test)]
@@ -118,9 +233,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_revenue_distribution() {
+    fn test_revenue_distribution_calculation() {
+        let distribution = RevenueDistribution::default();
         let total = 1_000_000_000; // 1 SOL
-        let (minter, platform, collection) = RevenueDistribution::calculate_shares(total).unwrap();
+        
+        let (minter, platform, collection) = distribution.calculate_shares(total).unwrap();
         
         assert_eq!(minter, 950_000_000); // 0.95 SOL
         assert_eq!(platform, 40_000_000); // 0.04 SOL
@@ -129,19 +246,19 @@ mod tests {
     }
 
     #[test]
-    fn test_bid_validation() {
-        assert!(Validation::meets_minimum_bid(100, 50, 0)); // First bid above minimum
-        assert!(!Validation::meets_minimum_bid(40, 50, 0)); // First bid below minimum
-        assert!(Validation::meets_minimum_bid(105, 50, 100)); // 5% higher than current
-        assert!(!Validation::meets_minimum_bid(104, 50, 100)); // Less than 5% higher
+    fn test_revenue_distribution_validation() {
+        let mut distribution = RevenueDistribution::default();
+        assert!(distribution.validate().is_ok());
+        
+        distribution.minter_percentage = 9000; // Total would be 9500, not 10000
+        assert!(distribution.validate().is_err());
     }
 
     #[test]
-    fn test_expiry_validation() {
-        let current_time = 1000;
-        assert!(Validation::is_not_expired(0, current_time)); // No expiry
-        assert!(Validation::is_not_expired(1001, current_time)); // Future expiry
-        assert!(!Validation::is_not_expired(999, current_time)); // Past expiry
+    fn test_dynamic_pricing_config() {
+        let config = DynamicPricingConfig::default();
+        assert_eq!(config.minimum_premium_bp, 1000); // 10%
+        assert_eq!(config.bid_increment_bp, 500); // 5%
     }
 }
 
