@@ -1,291 +1,283 @@
 use anchor_lang::prelude::*;
-use crate::state::types::{BondingCurveParams, DynamicPricingConfig};
 
-/// Main bonding curve pool account
+/// Bonding curve pool state - simplified and focused
 #[account]
 pub struct BondingCurvePool {
-    /// Collection mint that this pool manages
+    /// Collection this pool belongs to
     pub collection: Pubkey,
     
-    /// Bonding curve parameters
-    pub curve_params: BondingCurveParams,
+    /// Pool configuration
+    pub config: PoolConfig,
     
-    /// Dynamic pricing configuration
-    pub pricing_config: DynamicPricingConfig,
+    /// Current pool state
+    pub state: PoolState,
     
-    /// Current supply of NFTs minted
-    pub current_supply: u32,
+    /// Pool statistics
+    pub stats: PoolStats,
     
-    /// Total SOL escrowed across all NFTs
-    pub total_escrowed: u64,
-    
-    /// Total platform fees collected
-    pub total_platform_fees: u64,
-    
-    /// Pool creator (has admin privileges)
-    pub creator: Pubkey,
-    
-    /// Whether the pool is active
-    pub is_active: bool,
-    
-    /// Whether the pool has been migrated to Tensor
-    pub is_migrated: bool,
-    
-    /// Timestamp when pool was created
-    pub created_at: i64,
-    
-    /// Timestamp when pool was migrated (if applicable)
-    pub migrated_at: Option<i64>,
-    
-    /// PDA bump seed
+    /// PDA bump
     pub bump: u8,
 }
 
 impl BondingCurvePool {
-    pub const LEN: usize = 8 + // discriminator
+    pub const SIZE: usize = 8 + // discriminator
         32 + // collection
-        (8 + 2 + 4 + 8) + // curve_params (BondingCurveParams)
-        (2 + 2 + 8 + 8) + // pricing_config (DynamicPricingConfig)
-        4 + // current_supply
-        8 + // total_escrowed
-        8 + // total_platform_fees
-        32 + // creator
-        1 + // is_active
-        1 + // is_migrated
-        8 + // created_at
-        9 + // migrated_at (Option<i64>)
-        1 + // bump
-        64; // padding for future fields
+        PoolConfig::SIZE +
+        PoolState::SIZE +
+        PoolStats::SIZE +
+        1; // bump
 
-    /// Calculate the current price for the next NFT to be minted
-    pub fn calculate_current_price(&self) -> Result<u64> {
-        crate::math::bonding_curve::BondingCurve::calculate_price(
-            self.curve_params.base_price,
-            self.curve_params.growth_factor,
-            self.current_supply,
+    /// Check if pool is active and can mint
+    pub fn can_mint(&self) -> bool {
+        self.state.is_active && 
+        self.state.current_supply < self.config.max_supply &&
+        !self.state.is_migrated
+    }
+
+    /// Check if pool should migrate to Tensor
+    pub fn should_migrate(&self) -> bool {
+        self.stats.market_cap >= self.config.migration_threshold
+    }
+
+    /// Get current mint price
+    pub fn current_price(&self) -> Result<u64> {
+        crate::math::calculate_bonding_curve_price(
+            self.config.base_price,
+            self.config.growth_factor,
+            self.state.current_supply,
         )
-    }
-
-    /// Calculate the total market cap of the collection
-    pub fn calculate_market_cap(&self) -> Result<u64> {
-        if self.current_supply == 0 {
-            return Ok(0);
-        }
-
-        let mut total_value = 0u64;
-        for i in 0..self.current_supply {
-            let price = crate::math::bonding_curve::BondingCurve::calculate_price(
-                self.curve_params.base_price,
-                self.curve_params.growth_factor,
-                i,
-            )?;
-            total_value = total_value
-                .checked_add(price)
-                .ok_or(crate::errors::ErrorCode::MathOverflow)?;
-        }
-
-        Ok(total_value)
-    }
-
-    /// Check if the pool has reached migration threshold
-    pub fn should_migrate(&self) -> Result<bool> {
-        if self.is_migrated {
-            return Ok(false);
-        }
-
-        let market_cap = self.calculate_market_cap()?;
-        Ok(market_cap >= self.curve_params.migration_threshold)
-    }
-
-    /// Calculate minimum bid for dynamic pricing
-    pub fn calculate_minimum_bid(&self) -> Result<u64> {
-        let current_price = self.calculate_current_price()?;
-        let premium = (current_price as u128)
-            .checked_mul(self.pricing_config.minimum_premium_bp as u128)
-            .and_then(|x| x.checked_div(10000))
-            .and_then(|x| u64::try_from(x).ok())
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
-
-        current_price
-            .checked_add(premium)
-            .ok_or(crate::errors::ErrorCode::MathOverflow.into())
-    }
-
-    /// Increment supply and update total escrowed
-    pub fn mint_nft(&mut self, price: u64, escrow_amount: u64) -> Result<()> {
-        require!(!self.is_migrated, crate::errors::ErrorCode::AlreadyMigrated);
-        require!(self.is_active, crate::errors::ErrorCode::PoolInactive);
-
-        self.current_supply = self.current_supply
-            .checked_add(1)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
-
-        self.total_escrowed = self.total_escrowed
-            .checked_add(escrow_amount)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
-
-        Ok(())
-    }
-
-    /// Decrement supply and update total escrowed (for burns)
-    pub fn burn_nft(&mut self, escrow_amount: u64) -> Result<()> {
-        require!(!self.is_migrated, crate::errors::ErrorCode::AlreadyMigrated);
-        require!(self.current_supply > 0, crate::errors::ErrorCode::InvalidAmount);
-
-        self.current_supply = self.current_supply
-            .checked_sub(1)
-            .ok_or(crate::errors::ErrorCode::MathUnderflow)?;
-
-        self.total_escrowed = self.total_escrowed
-            .checked_sub(escrow_amount)
-            .ok_or(crate::errors::ErrorCode::MathUnderflow)?;
-
-        Ok(())
-    }
-
-    /// Add platform fees
-    pub fn add_platform_fees(&mut self, amount: u64) -> Result<()> {
-        self.total_platform_fees = self.total_platform_fees
-            .checked_add(amount)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
-        Ok(())
-    }
-
-    /// Mark pool as migrated
-    pub fn migrate(&mut self, timestamp: i64) -> Result<()> {
-        require!(!self.is_migrated, crate::errors::ErrorCode::AlreadyMigrated);
-        require!(self.should_migrate()?, crate::errors::ErrorCode::ThresholdNotMet);
-
-        self.is_migrated = true;
-        self.migrated_at = Some(timestamp);
-        Ok(())
-    }
-
-    /// Deactivate the pool
-    pub fn deactivate(&mut self) -> Result<()> {
-        self.is_active = false;
-        Ok(())
-    }
-
-    /// Reactivate the pool
-    pub fn reactivate(&mut self) -> Result<()> {
-        require!(!self.is_migrated, crate::errors::ErrorCode::AlreadyMigrated);
-        self.is_active = true;
-        Ok(())
-    }
-
-    /// Update pricing configuration (admin only)
-    pub fn update_pricing_config(&mut self, new_config: DynamicPricingConfig) -> Result<()> {
-        // Validate the new configuration
-        require!(
-            new_config.minimum_premium_bp <= 10000, // Max 100%
-            crate::errors::ErrorCode::InvalidPricingConfig
-        );
-        require!(
-            new_config.bid_increment_bp <= 5000, // Max 50%
-            crate::errors::ErrorCode::InvalidPricingConfig
-        );
-        require!(
-            new_config.max_bid_duration >= new_config.min_bid_duration,
-            crate::errors::ErrorCode::InvalidPricingConfig
-        );
-
-        self.pricing_config = new_config;
-        Ok(())
-    }
-
-    /// Get pool statistics
-    pub fn get_stats(&self) -> Result<PoolStats> {
-        let current_price = self.calculate_current_price()?;
-        let market_cap = self.calculate_market_cap()?;
-        let minimum_bid = self.calculate_minimum_bid()?;
-
-        Ok(PoolStats {
-            current_supply: self.current_supply,
-            current_price,
-            market_cap,
-            total_escrowed: self.total_escrowed,
-            total_platform_fees: self.total_platform_fees,
-            minimum_bid,
-            is_active: self.is_active,
-            is_migrated: self.is_migrated,
-            should_migrate: self.should_migrate()?,
-        })
     }
 }
 
-/// Pool statistics for frontend display
-#[derive(Debug, Clone)]
-pub struct PoolStats {
-    pub current_supply: u32,
-    pub current_price: u64,
-    pub market_cap: u64,
-    pub total_escrowed: u64,
-    pub total_platform_fees: u64,
-    pub minimum_bid: u64,
+/// Pool configuration - immutable settings
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PoolConfig {
+    /// Starting price in lamports
+    pub base_price: u64,
+    
+    /// Growth factor (basis points)
+    pub growth_factor: u16,
+    
+    /// Maximum supply
+    pub max_supply: u32,
+    
+    /// Market cap threshold for migration
+    pub migration_threshold: u64,
+    
+    /// Creator of the pool
+    pub creator: Pubkey,
+}
+
+impl PoolConfig {
+    pub const SIZE: usize = 
+        8 + // base_price
+        2 + // growth_factor
+        4 + // max_supply
+        8 + // migration_threshold
+        32; // creator
+
+    /// Validate configuration parameters
+    pub fn validate(&self) -> Result<()> {
+        require!(self.base_price > 0, crate::errors::ErrorCode::InvalidAmount);
+        require!(self.growth_factor > 10000, crate::errors::ErrorCode::InvalidAmount); // Must be > 100%
+        require!(self.max_supply > 0, crate::errors::ErrorCode::InvalidAmount);
+        require!(self.migration_threshold > 0, crate::errors::ErrorCode::InvalidAmount);
+        Ok(())
+    }
+}
+
+/// Pool state - mutable state
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PoolState {
+    /// Whether pool is active
     pub is_active: bool,
+    
+    /// Current supply of NFTs
+    pub current_supply: u32,
+    
+    /// Whether migrated to Tensor
     pub is_migrated: bool,
-    pub should_migrate: bool,
+    
+    /// Migration timestamp
+    pub migrated_at: Option<i64>,
+    
+    /// Pool creation timestamp
+    pub created_at: i64,
+}
+
+impl PoolState {
+    pub const SIZE: usize = 
+        1 + // is_active
+        4 + // current_supply
+        1 + // is_migrated
+        9 + // migrated_at (Option<i64>)
+        8; // created_at
+
+    /// Initialize new pool state
+    pub fn new() -> Self {
+        Self {
+            is_active: true,
+            current_supply: 0,
+            is_migrated: false,
+            migrated_at: None,
+            created_at: Clock::get().map(|c| c.unix_timestamp).unwrap_or(0),
+        }
+    }
+
+    /// Increment supply after mint
+    pub fn increment_supply(&mut self) -> Result<()> {
+        self.current_supply = self.current_supply
+            .checked_add(1)
+            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+        Ok(())
+    }
+
+    /// Mark as migrated
+    pub fn migrate(&mut self) -> Result<()> {
+        self.is_migrated = true;
+        self.migrated_at = Some(Clock::get()?.unix_timestamp);
+        Ok(())
+    }
+}
+
+/// Pool statistics - tracking metrics
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PoolStats {
+    /// Total SOL escrowed
+    pub total_escrowed: u64,
+    
+    /// Total volume traded
+    pub total_volume: u64,
+    
+    /// Current market cap
+    pub market_cap: u64,
+    
+    /// Total number of trades
+    pub total_trades: u32,
+    
+    /// Last trade timestamp
+    pub last_trade_at: Option<i64>,
+}
+
+impl PoolStats {
+    pub const SIZE: usize = 
+        8 + // total_escrowed
+        8 + // total_volume
+        8 + // market_cap
+        4 + // total_trades
+        9; // last_trade_at (Option<i64>)
+
+    /// Initialize new pool stats
+    pub fn new() -> Self {
+        Self {
+            total_escrowed: 0,
+            total_volume: 0,
+            market_cap: 0,
+            total_trades: 0,
+            last_trade_at: None,
+        }
+    }
+
+    /// Update stats after mint
+    pub fn record_mint(&mut self, price: u64, escrow_amount: u64) -> Result<()> {
+        self.total_escrowed = self.total_escrowed
+            .checked_add(escrow_amount)
+            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+        
+        self.total_volume = self.total_volume
+            .checked_add(price)
+            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+        
+        self.total_trades = self.total_trades
+            .checked_add(1)
+            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+        
+        self.last_trade_at = Some(Clock::get()?.unix_timestamp);
+        
+        // Update market cap (simplified calculation)
+        self.market_cap = self.total_volume;
+        
+        Ok(())
+    }
+
+    /// Update stats after trade
+    pub fn record_trade(&mut self, amount: u64) -> Result<()> {
+        self.total_volume = self.total_volume
+            .checked_add(amount)
+            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+        
+        self.total_trades = self.total_trades
+            .checked_add(1)
+            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+        
+        self.last_trade_at = Some(Clock::get()?.unix_timestamp);
+        
+        // Update market cap
+        self.market_cap = self.total_volume;
+        
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn create_test_pool() -> BondingCurvePool {
-        BondingCurvePool {
-            collection: Pubkey::default(),
-            curve_params: BondingCurveParams::default(),
-            pricing_config: DynamicPricingConfig::default(),
-            current_supply: 0,
-            total_escrowed: 0,
-            total_platform_fees: 0,
+    #[test]
+    fn test_pool_config_validation() {
+        let valid_config = PoolConfig {
+            base_price: 100_000_000, // 0.1 SOL
+            growth_factor: 11000, // 110% (10% growth)
+            max_supply: 1000,
+            migration_threshold: 690_000_000_000, // 690 SOL
             creator: Pubkey::default(),
-            is_active: true,
-            is_migrated: false,
-            created_at: 0,
-            migrated_at: None,
-            bump: 255,
-        }
+        };
+        
+        assert!(valid_config.validate().is_ok());
+        
+        let invalid_config = PoolConfig {
+            base_price: 0, // Invalid
+            growth_factor: 5000, // Too low
+            max_supply: 0, // Invalid
+            migration_threshold: 0, // Invalid
+            creator: Pubkey::default(),
+        };
+        
+        assert!(invalid_config.validate().is_err());
     }
 
     #[test]
-    fn test_pool_mint_nft() {
-        let mut pool = create_test_pool();
-        assert_eq!(pool.current_supply, 0);
-
-        pool.mint_nft(100_000_000, 99_000_000).unwrap();
-        assert_eq!(pool.current_supply, 1);
-        assert_eq!(pool.total_escrowed, 99_000_000);
+    fn test_pool_state_operations() {
+        let mut state = PoolState::new();
+        
+        assert!(state.is_active);
+        assert_eq!(state.current_supply, 0);
+        assert!(!state.is_migrated);
+        
+        // Test increment
+        assert!(state.increment_supply().is_ok());
+        assert_eq!(state.current_supply, 1);
+        
+        // Test migration
+        assert!(state.migrate().is_ok());
+        assert!(state.is_migrated);
+        assert!(state.migrated_at.is_some());
     }
 
     #[test]
-    fn test_pool_burn_nft() {
-        let mut pool = create_test_pool();
-        pool.mint_nft(100_000_000, 99_000_000).unwrap();
+    fn test_pool_stats_operations() {
+        let mut stats = PoolStats::new();
         
-        pool.burn_nft(99_000_000).unwrap();
-        assert_eq!(pool.current_supply, 0);
-        assert_eq!(pool.total_escrowed, 0);
-    }
-
-    #[test]
-    fn test_pool_migration() {
-        let mut pool = create_test_pool();
-        pool.curve_params.migration_threshold = 100; // Low threshold for testing
+        // Test mint recording
+        assert!(stats.record_mint(100_000_000, 99_000_000).is_ok());
+        assert_eq!(stats.total_escrowed, 99_000_000);
+        assert_eq!(stats.total_volume, 100_000_000);
+        assert_eq!(stats.total_trades, 1);
         
-        // Should not migrate initially
-        assert!(!pool.should_migrate().unwrap());
-        
-        // After minting enough to reach threshold
-        pool.total_escrowed = 200;
-        pool.current_supply = 10;
-        
-        if pool.should_migrate().unwrap() {
-            pool.migrate(1000).unwrap();
-            assert!(pool.is_migrated);
-            assert_eq!(pool.migrated_at, Some(1000));
-        }
+        // Test trade recording
+        assert!(stats.record_trade(200_000_000).is_ok());
+        assert_eq!(stats.total_volume, 300_000_000);
+        assert_eq!(stats.total_trades, 2);
     }
 }
 

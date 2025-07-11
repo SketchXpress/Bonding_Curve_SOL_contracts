@@ -1,309 +1,334 @@
-// Updated mint_nft.rs - Added MinterTracker and CollectionDistribution initialization
-
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{mint_to, Mint, MintTo, Token};
-use mpl_token_metadata::instructions::{
-    CreateMasterEditionV3Cpi, CreateMasterEditionV3CpiAccounts,
-    CreateMasterEditionV3InstructionArgs, CreateMetadataAccountV3Cpi,
-    CreateMetadataAccountV3CpiAccounts, CreateMetadataAccountV3InstructionArgs,
-};
-use mpl_token_metadata::types::{Collection, Creator, DataV2};
+use anchor_spl::token::{Token, TokenAccount, Mint};
+use mpl_token_metadata::accounts::Metadata;
 
 use crate::{
+    constants::*,
     errors::ErrorCode,
-    math::price_calculation::calculate_mint_price,
-    state::{BondingCurvePool, NftEscrow, MinterTracker, CollectionDistribution},
+    state::*,
+    utils::*,
+    debug_log,
 };
 
-#[event]
-pub struct NftMint {
-    pub minter: Pubkey,
-    pub nft_mint: Pubkey,
-    pub pool: Pubkey,
-    pub mint_price: u64,
-    pub protocol_fee: u64,
-    pub timestamp: i64,
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct MintNftArgs {
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
 }
 
 #[derive(Accounts)]
-pub struct MintNFT<'info> {
+#[instruction(args: MintNftArgs)]
+pub struct MintNft<'info> {
     #[account(mut)]
-    pub payer: Signer<'info>,
+    pub minter: Signer<'info>,
+
+    #[account(mut)]
+    pub bonding_curve_pool: Account<'info, BondingCurvePool>,
 
     #[account(
         init,
-        payer = payer,
+        payer = minter,
         mint::decimals = 0,
-        mint::authority = payer.key(),
-        mint::freeze_authority = payer.key()
+        mint::authority = minter,
+        mint::freeze_authority = minter,
     )]
     pub nft_mint: Account<'info, Mint>,
 
     #[account(
         init,
-        payer = payer,
-        seeds = [b"nft-escrow", nft_mint.key().as_ref()],
-        bump,
-        space = NftEscrow::SPACE,
+        payer = minter,
+        associated_token::mint = nft_mint,
+        associated_token::authority = minter,
     )]
-    pub escrow: Account<'info, NftEscrow>,
+    pub minter_token_account: Account<'info, TokenAccount>,
 
     #[account(
         init,
-        payer = payer,
-        seeds = [b"minter-tracker", nft_mint.key().as_ref()],
-        bump,
-        space = MinterTracker::SPACE,
+        payer = minter,
+        space = 8 + std::mem::size_of::<NftEscrow>(),
+        seeds = [b"escrow", nft_mint.key().as_ref()],
+        bump
+    )]
+    pub nft_escrow: Account<'info, NftEscrow>,
+
+    #[account(
+        init,
+        payer = minter,
+        space = 8 + std::mem::size_of::<MinterTracker>(),
+        seeds = [b"minter", nft_mint.key().as_ref()],
+        bump
     )]
     pub minter_tracker: Account<'info, MinterTracker>,
 
-    #[account(
-        init_if_needed,
-        payer = payer,
-        seeds = [b"collection-distribution", collection_mint.key().as_ref()],
-        bump,
-        space = CollectionDistribution::SPACE,
-    )]
-    pub collection_distribution: Account<'info, CollectionDistribution>,
-
+    /// CHECK: Metadata account
     #[account(mut)]
-    pub pool: Account<'info, BondingCurvePool>,
-
-    /// CHECK: Token account for the payer/minter
-    #[account(mut)]
-    pub token_account: UncheckedAccount<'info>,
-
-    /// CHECK: Token metadata program
-    pub token_metadata_program: UncheckedAccount<'info>,
-
-    /// CHECK: Metadata account that will be created
-    #[account(mut)]
-    pub metadata_account: UncheckedAccount<'info>,
-
-    /// CHECK: Master edition account that will be created
-    #[account(mut)]
-    pub master_edition: UncheckedAccount<'info>,
-
-    /// CHECK: Collection mint
-    pub collection_mint: UncheckedAccount<'info>,
-
-    /// CHECK: Collection metadata account
-    #[account(mut)]
-    pub collection_metadata: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-
-    /// CHECK: Creator account from the pool
-    #[account(mut, address = pool.creator)]
-    pub creator: UncheckedAccount<'info>,
-
+    pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
+    pub token_metadata_program: Program<'info, mpl_token_metadata::ID>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
 
-pub fn mint_nft(
-    ctx: Context<MintNFT>,
-    name: String,
-    symbol: String,
-    uri: String,
-    seller_fee_basis_points: u16,
-) -> Result<()> {
-    let current_timestamp = Clock::get()?.unix_timestamp;
+pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
+    let mut debug_ctx = DebugContext::new("mint_nft");
+    debug_log!(debug_ctx, LogLevel::Info, "Starting NFT mint");
 
-    // Calculate pricing
-    let price = calculate_mint_price(
-        ctx.accounts.pool.base_price,
-        ctx.accounts.pool.growth_factor,
-        ctx.accounts.pool.current_supply,
-    )?;
-    require!(ctx.accounts.pool.is_active, ErrorCode::PoolInactive);
-    let protocol_fee = price.checked_div(100).ok_or(ErrorCode::MathOverflow)?;
-    let net_price = price
-        .checked_sub(protocol_fee)
-        .ok_or(ErrorCode::MathOverflow)?;
+    // Step 1: Validate inputs
+    validate_mint_inputs(&args, &mut debug_ctx)?;
 
-    // Transfer SOL to escrow
-    let transfer_to_escrow = anchor_lang::solana_program::system_instruction::transfer(
-        &ctx.accounts.payer.key(),
-        &ctx.accounts.escrow.key(),
-        net_price,
-    );
-    anchor_lang::solana_program::program::invoke(
-        &transfer_to_escrow,
-        &[
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.escrow.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-        ],
-    )?;
+    // Step 2: Calculate price and validate payment
+    let mint_price = calculate_mint_price(&ctx.accounts.bonding_curve_pool, &mut debug_ctx)?;
+    validate_payment(&ctx.accounts.minter, mint_price, &mut debug_ctx)?;
 
-    // Transfer protocol fee to pool creator
-    let transfer_to_creator = anchor_lang::solana_program::system_instruction::transfer(
-        &ctx.accounts.payer.key(),
-        &ctx.accounts.pool.creator,
-        protocol_fee,
-    );
-    anchor_lang::solana_program::program::invoke(
-        &transfer_to_creator,
-        &[
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.creator.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-        ],
-    )?;
+    // Step 3: Process payment and fees
+    process_mint_payment(&ctx, mint_price, &mut debug_ctx)?;
 
-    // Initialize escrow
-    ctx.accounts.escrow.nft_mint = ctx.accounts.nft_mint.key();
-    ctx.accounts.escrow.lamports = net_price;
-    ctx.accounts.escrow.last_price = price;
-    ctx.accounts.escrow.bump = ctx.bumps.escrow;
+    // Step 4: Create NFT and metadata
+    create_nft_and_metadata(&ctx, &args, &mut debug_ctx)?;
 
-    // Initialize minter tracker
-    ctx.accounts.minter_tracker.nft_mint = ctx.accounts.nft_mint.key();
-    ctx.accounts.minter_tracker.original_minter = ctx.accounts.payer.key();
-    ctx.accounts.minter_tracker.minted_at = current_timestamp;
-    ctx.accounts.minter_tracker.collection = ctx.accounts.collection_mint.key();
-    ctx.accounts.minter_tracker.total_revenue_earned = 0;
-    ctx.accounts.minter_tracker.sale_count = 0;
-    ctx.accounts.minter_tracker.bump = ctx.bumps.minter_tracker;
+    // Step 5: Initialize escrow
+    initialize_nft_escrow(&ctx, mint_price, &mut debug_ctx)?;
 
-    // Initialize or update collection distribution
-    if ctx.accounts.collection_distribution.collection == Pubkey::default() {
-        // First time initialization
-        ctx.accounts.collection_distribution.collection = ctx.accounts.collection_mint.key();
-        ctx.accounts.collection_distribution.total_nfts = 1;
-        ctx.accounts.collection_distribution.accumulated_fees = 0;
-        ctx.accounts.collection_distribution.last_distribution = current_timestamp;
-        ctx.accounts.collection_distribution.total_distributed = 0;
-        ctx.accounts.collection_distribution.distribution_count = 0;
-        ctx.accounts.collection_distribution.bump = ctx.bumps.collection_distribution;
-    } else {
-        // Increment NFT count for existing collection
-        ctx.accounts.collection_distribution.increment_nft_count();
+    // Step 6: Track original minter
+    initialize_minter_tracker(&ctx, &mut debug_ctx)?;
+
+    // Step 7: Update pool state
+    update_pool_state(&ctx, mint_price, &mut debug_ctx)?;
+
+    debug_log!(debug_ctx, LogLevel::Info, "NFT mint completed successfully");
+    Ok(())
+}
+
+// === HELPER FUNCTIONS ===
+
+fn validate_mint_inputs(args: &MintNftArgs, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("input_validation");
+    
+    if args.name.is_empty() || args.name.len() > 32 {
+        debug_log!(debug_ctx, LogLevel::Error, "Invalid name length: {}", args.name.len());
+        return Err(ErrorCode::InvalidAmount.into());
     }
 
-    // Update pool
-    ctx.accounts.pool.current_supply = ctx
-        .accounts
-        .pool
-        .current_supply
-        .checked_add(1)
-        .ok_or(ErrorCode::MathOverflow)?;
-    ctx.accounts.pool.total_escrowed = ctx
-        .accounts
-        .pool
-        .total_escrowed
-        .checked_add(net_price)
-        .ok_or(ErrorCode::MathOverflow)?;
+    if args.symbol.is_empty() || args.symbol.len() > 10 {
+        debug_log!(debug_ctx, LogLevel::Error, "Invalid symbol length: {}", args.symbol.len());
+        return Err(ErrorCode::InvalidAmount.into());
+    }
 
-    // Create NFT metadata
-    let creator_pda = vec![Creator {
-        address: ctx.accounts.pool.creator,
-        verified: false,
-        share: 100,
-    }];
+    if args.uri.is_empty() || args.uri.len() > 200 {
+        debug_log!(debug_ctx, LogLevel::Error, "Invalid URI length: {}", args.uri.len());
+        return Err(ErrorCode::InvalidAmount.into());
+    }
 
-    let metadata_accounts = CreateMetadataAccountV3CpiAccounts {
-        metadata: &ctx.accounts.metadata_account.to_account_info(),
-        mint: &ctx.accounts.nft_mint.to_account_info(),
-        mint_authority: &ctx.accounts.payer.to_account_info(),
-        payer: &ctx.accounts.payer.to_account_info(),
-        update_authority: (&ctx.accounts.payer.to_account_info(), true),
-        system_program: &ctx.accounts.system_program.to_account_info(),
-        rent: Some(&ctx.accounts.rent.to_account_info()),
-    };
+    debug_log!(debug_ctx, LogLevel::Debug, "Input validation passed");
+    Ok(())
+}
 
-    let metadata_args = CreateMetadataAccountV3InstructionArgs {
-        data: DataV2 {
-            name,
-            symbol,
-            uri,
-            seller_fee_basis_points,
-            creators: Some(creator_pda),
-            collection: Some(Collection {
-                verified: false,
-                key: ctx.accounts.collection_mint.key(),
-            }),
-            uses: None,
-        },
-        is_mutable: true,
-        collection_details: None,
-    };
+fn calculate_mint_price(pool: &BondingCurvePool, debug_ctx: &mut DebugContext) -> Result<u64> {
+    debug_ctx.step("price_calculation");
+    
+    if !pool.is_active {
+        debug_log!(debug_ctx, LogLevel::Error, "Pool is inactive");
+        return Err(ErrorCode::PoolInactive.into());
+    }
 
-    CreateMetadataAccountV3Cpi::new(
-        &ctx.accounts.token_metadata_program.to_account_info(),
-        metadata_accounts,
-        metadata_args,
-    )
-    .invoke()?;
+    if pool.current_supply >= pool.max_supply {
+        debug_log!(debug_ctx, LogLevel::Error, "Max supply reached");
+        return Err(ErrorCode::MaxSupplyReached.into());
+    }
 
-    // Create associated token account
-    anchor_spl::associated_token::create(CpiContext::new(
-        ctx.accounts.associated_token_program.to_account_info(),
-        anchor_spl::associated_token::Create {
-            payer: ctx.accounts.payer.to_account_info(),
-            associated_token: ctx.accounts.token_account.to_account_info(),
-            authority: ctx.accounts.payer.to_account_info(),
-            mint: ctx.accounts.nft_mint.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
-            token_program: ctx.accounts.token_program.to_account_info(),
-        },
-    ))?;
-
-    // Mint token
-    mint_to(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            MintTo {
-                mint: ctx.accounts.nft_mint.to_account_info(),
-                to: ctx.accounts.token_account.to_account_info(),
-                authority: ctx.accounts.payer.to_account_info(),
-            },
-        ),
-        1,
+    let price = calculate_bonding_curve_price(
+        pool.base_price,
+        pool.growth_factor,
+        pool.current_supply,
     )?;
 
-    // Create master edition
-    let master_edition_accounts = CreateMasterEditionV3CpiAccounts {
-        edition: &ctx.accounts.master_edition.to_account_info(),
-        mint: &ctx.accounts.nft_mint.to_account_info(),
-        update_authority: &ctx.accounts.payer.to_account_info(),
-        mint_authority: &ctx.accounts.payer.to_account_info(),
-        payer: &ctx.accounts.payer.to_account_info(),
-        metadata: &ctx.accounts.metadata_account.to_account_info(),
-        token_program: &ctx.accounts.token_program.to_account_info(),
-        system_program: &ctx.accounts.system_program.to_account_info(),
-        rent: Some(&ctx.accounts.rent.to_account_info()),
+    debug_log!(debug_ctx, LogLevel::Debug, "Calculated mint price: {}", price);
+    Ok(price)
+}
+
+fn validate_payment(minter: &Signer, required_amount: u64, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("payment_validation");
+    
+    if minter.lamports() < required_amount {
+        debug_log!(
+            debug_ctx, 
+            LogLevel::Error, 
+            "Insufficient balance: has {}, needs {}", 
+            minter.lamports(), 
+            required_amount
+        );
+        return Err(ErrorCode::InsufficientBalance.into());
+    }
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Payment validation passed");
+    Ok(())
+}
+
+fn process_mint_payment(ctx: &Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("payment_processing");
+    
+    // Calculate fees
+    let platform_fee = calculate_platform_fee(mint_price)?;
+    let escrow_amount = mint_price.checked_sub(platform_fee).ok_or(ErrorCode::MathUnderflow)?;
+
+    debug_log!(
+        debug_ctx, 
+        LogLevel::Debug, 
+        "Payment breakdown - Total: {}, Platform: {}, Escrow: {}", 
+        mint_price, 
+        platform_fee, 
+        escrow_amount
+    );
+
+    // Transfer platform fee
+    if platform_fee > 0 {
+        transfer_lamports(
+            &ctx.accounts.minter.to_account_info(),
+            &ctx.accounts.bonding_curve_pool.to_account_info(),
+            platform_fee,
+        )?;
+    }
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Payment processing completed");
+    Ok(())
+}
+
+fn create_nft_and_metadata(ctx: &Context<MintNft>, args: &MintNftArgs, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("nft_creation");
+    
+    // Mint NFT to minter
+    let cpi_accounts = anchor_spl::token::MintTo {
+        mint: ctx.accounts.nft_mint.to_account_info(),
+        to: ctx.accounts.minter_token_account.to_account_info(),
+        authority: ctx.accounts.minter.to_account_info(),
     };
+    let cpi_program = ctx.accounts.token_program.to_account_info();
+    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+    anchor_spl::token::mint_to(cpi_ctx, 1)?;
 
-    let master_edition_args = CreateMasterEditionV3InstructionArgs {
-        max_supply: Some(0),
-    };
+    debug_log!(debug_ctx, LogLevel::Debug, "NFT minted successfully");
 
-    CreateMasterEditionV3Cpi::new(
-        &ctx.accounts.token_metadata_program.to_account_info(),
-        master_edition_accounts,
-        master_edition_args,
-    )
-    .invoke()?;
-
-    // Emit event
-    emit!(NftMint {
-        minter: ctx.accounts.payer.key(),
-        nft_mint: ctx.accounts.nft_mint.key(),
-        pool: ctx.accounts.pool.key(),
-        mint_price: price,
-        protocol_fee: protocol_fee,
-        timestamp: current_timestamp,
-    });
-
-    msg!("NFT minted successfully with minter tracking!");
-    msg!("Original Minter: {}", ctx.accounts.payer.key());
-    msg!("NFT Mint: {}", ctx.accounts.nft_mint.key());
-    msg!("Collection: {}", ctx.accounts.collection_mint.key());
+    // Create metadata
+    create_metadata_account(ctx, args, debug_ctx)?;
 
     Ok(())
+}
+
+fn create_metadata_account(ctx: &Context<MintNft>, args: &MintNftArgs, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("metadata_creation");
+    
+    let metadata_seeds = &[
+        b"metadata",
+        mpl_token_metadata::ID.as_ref(),
+        ctx.accounts.nft_mint.key().as_ref(),
+    ];
+    let (metadata_pda, _) = Pubkey::find_program_address(metadata_seeds, &mpl_token_metadata::ID);
+
+    if metadata_pda != ctx.accounts.metadata.key() {
+        debug_log!(debug_ctx, LogLevel::Error, "Invalid metadata PDA");
+        return Err(ErrorCode::InvalidAccount.into());
+    }
+
+    // Create metadata instruction
+    let create_metadata_ix = mpl_token_metadata::instructions::CreateMetadataAccountV3 {
+        metadata: ctx.accounts.metadata.key(),
+        mint: ctx.accounts.nft_mint.key(),
+        mint_authority: ctx.accounts.minter.key(),
+        payer: ctx.accounts.minter.key(),
+        update_authority: (ctx.accounts.minter.key(), true),
+        system_program: ctx.accounts.system_program.key(),
+        rent: Some(ctx.accounts.rent.key()),
+    };
+
+    let metadata_data = mpl_token_metadata::types::DataV2 {
+        name: args.name.clone(),
+        symbol: args.symbol.clone(),
+        uri: args.uri.clone(),
+        seller_fee_basis_points: 0,
+        creators: None,
+        collection: None,
+        uses: None,
+    };
+
+    // Execute metadata creation
+    anchor_lang::solana_program::program::invoke(
+        &create_metadata_ix.instruction(mpl_token_metadata::instructions::CreateMetadataAccountV3InstructionArgs {
+            data: metadata_data,
+            is_mutable: true,
+            collection_details: None,
+        }),
+        &[
+            ctx.accounts.metadata.to_account_info(),
+            ctx.accounts.nft_mint.to_account_info(),
+            ctx.accounts.minter.to_account_info(),
+            ctx.accounts.minter.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.rent.to_account_info(),
+        ],
+    )?;
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Metadata created successfully");
+    Ok(())
+}
+
+fn initialize_nft_escrow(ctx: &Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("escrow_initialization");
+    
+    let platform_fee = calculate_platform_fee(mint_price)?;
+    let escrow_amount = mint_price.checked_sub(platform_fee).ok_or(ErrorCode::MathUnderflow)?;
+
+    let escrow = &mut ctx.accounts.nft_escrow;
+    escrow.nft_mint = ctx.accounts.nft_mint.key();
+    escrow.lamports = escrow_amount;
+    escrow.last_price = mint_price;
+    escrow.bump = ctx.bumps.nft_escrow;
+
+    debug_log!(debug_ctx, LogLevel::Debug, "NFT escrow initialized with {} lamports", escrow_amount);
+    Ok(())
+}
+
+fn initialize_minter_tracker(ctx: &Context<MintNft>, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("minter_tracking");
+    
+    let tracker = &mut ctx.accounts.minter_tracker;
+    tracker.nft_mint = ctx.accounts.nft_mint.key();
+    tracker.original_minter = ctx.accounts.minter.key();
+    tracker.mint_timestamp = Clock::get()?.unix_timestamp;
+    tracker.bump = ctx.bumps.minter_tracker;
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Minter tracker initialized");
+    Ok(())
+}
+
+fn update_pool_state(ctx: &Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
+    debug_ctx.step("pool_update");
+    
+    let pool = &mut ctx.accounts.bonding_curve_pool;
+    pool.current_supply = pool.current_supply.checked_add(1).ok_or(ErrorCode::MathOverflow)?;
+    
+    let platform_fee = calculate_platform_fee(mint_price)?;
+    let escrow_amount = mint_price.checked_sub(platform_fee).ok_or(ErrorCode::MathUnderflow)?;
+    
+    pool.total_escrowed = pool.total_escrowed.checked_add(escrow_amount).ok_or(ErrorCode::MathOverflow)?;
+
+    debug_log!(
+        debug_ctx, 
+        LogLevel::Debug, 
+        "Pool updated - Supply: {}, Total Escrowed: {}", 
+        pool.current_supply, 
+        pool.total_escrowed
+    );
+    Ok(())
+}
+
+fn calculate_platform_fee(amount: u64) -> Result<u64> {
+    amount
+        .checked_mul(MINT_FEE_PERCENTAGE as u64)
+        .ok_or(ErrorCode::MathOverflow)?
+        .checked_div(10000)
+        .ok_or(ErrorCode::MathUnderflow.into())
 }
 

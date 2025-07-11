@@ -1,179 +1,283 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount, Transfer, transfer};
+use anchor_spl::token::{Token, TokenAccount, Transfer};
 
-/// SOL transfer utilities
-pub struct SolTransfer;
+use crate::{
+    errors::ErrorCode,
+    utils::debug::*,
+    debug_log,
+};
 
-impl SolTransfer {
-    /// Transfer SOL from one account to another
-    pub fn transfer_sol(
-        from: &AccountInfo,
-        to: &AccountInfo,
-        amount: u64,
-    ) -> Result<()> {
-        // Check sufficient balance
-        require!(
-            from.lamports() >= amount,
-            crate::errors::ErrorCode::InsufficientFunds
-        );
+/// Simple SOL transfer with debug logging
+pub fn transfer_sol(
+    from: &AccountInfo,
+    to: &AccountInfo,
+    amount: u64,
+    debug_ctx: &mut DebugContext,
+) -> Result<()> {
+    debug_ctx.step("sol_transfer");
+    debug_log!(debug_ctx, LogLevel::Debug, "Transferring {} lamports", amount);
 
-        // Perform transfer
-        **from.try_borrow_mut_lamports()? -= amount;
-        **to.try_borrow_mut_lamports()? += amount;
+    // Validate accounts
+    validate_transfer_accounts(from, to, amount, debug_ctx)?;
 
-        Ok(())
-    }
+    // Execute transfer
+    **from.try_borrow_mut_lamports()? = from.lamports()
+        .checked_sub(amount)
+        .ok_or(ErrorCode::InsufficientBalance)?;
 
-    /// Transfer SOL with system program (for non-PDA accounts)
-    pub fn transfer_sol_with_system(
-        from: &AccountInfo,
-        to: &AccountInfo,
-        amount: u64,
-        system_program: &AccountInfo,
-    ) -> Result<()> {
-        let transfer_instruction = anchor_lang::system_program::Transfer {
-            from: from.clone(),
-            to: to.clone(),
-        };
+    **to.try_borrow_mut_lamports()? = to.lamports()
+        .checked_add(amount)
+        .ok_or(ErrorCode::MathOverflow)?;
 
-        anchor_lang::system_program::transfer(
-            CpiContext::new(system_program.clone(), transfer_instruction),
-            amount,
-        )
-    }
-
-    /// Distribute revenue according to the 95%/4%/1% model
-    pub fn distribute_revenue(
-        payer: &AccountInfo,
-        minter: &AccountInfo,
-        platform: &AccountInfo,
-        collection_distribution: &mut Account<crate::state::CollectionDistribution>,
-        total_amount: u64,
-    ) -> Result<(u64, u64, u64)> {
-        let (minter_share, platform_share, collection_share) = 
-            crate::state::types::RevenueDistribution::calculate_shares(total_amount)?;
-
-        // Transfer to minter (95%)
-        Self::transfer_sol(payer, minter, minter_share)?;
-
-        // Transfer to platform (4%)
-        Self::transfer_sol(payer, platform, platform_share)?;
-
-        // Add to collection distribution pool (1%)
-        collection_distribution.add_fees(collection_share);
-
-        Ok((minter_share, platform_share, collection_share))
-    }
+    debug_log!(debug_ctx, LogLevel::Debug, "SOL transfer completed");
+    Ok(())
 }
 
-/// Token transfer utilities
-pub struct TokenTransfer;
+/// Simple token transfer with debug logging
+pub fn transfer_tokens(
+    from: &Account<TokenAccount>,
+    to: &Account<TokenAccount>,
+    authority: &AccountInfo,
+    token_program: &Program<Token>,
+    amount: u64,
+    debug_ctx: &mut DebugContext,
+) -> Result<()> {
+    debug_ctx.step("token_transfer");
+    debug_log!(debug_ctx, LogLevel::Debug, "Transferring {} tokens", amount);
 
-impl TokenTransfer {
-    /// Transfer NFT from one account to another
-    pub fn transfer_nft(
-        from_account: &Account<TokenAccount>,
-        to_account: &Account<TokenAccount>,
-        authority: &AccountInfo,
-        token_program: &Program<Token>,
-    ) -> Result<()> {
-        // Verify NFT ownership
-        require!(
-            from_account.amount == 1,
-            crate::errors::ErrorCode::InsufficientNftBalance
-        );
+    // Validate token accounts
+    validate_token_transfer(from, to, amount, debug_ctx)?;
 
-        let transfer_instruction = Transfer {
-            from: from_account.to_account_info(),
-            to: to_account.to_account_info(),
-            authority: authority.clone(),
-        };
+    // Execute CPI transfer
+    let cpi_accounts = Transfer {
+        from: from.to_account_info(),
+        to: to.to_account_info(),
+        authority: authority.clone(),
+    };
+    let cpi_program = token_program.to_account_info();
+    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+    
+    anchor_spl::token::transfer(cpi_ctx, amount)?;
 
-        transfer(
-            CpiContext::new(
-                token_program.to_account_info(),
-                transfer_instruction,
-            ),
-            1, // Transfer 1 NFT
-        )
-    }
-
-    /// Transfer NFT with PDA authority
-    pub fn transfer_nft_with_pda(
-        from_account: &Account<TokenAccount>,
-        to_account: &Account<TokenAccount>,
-        authority: &AccountInfo,
-        token_program: &Program<Token>,
-        signer_seeds: &[&[&[u8]]],
-    ) -> Result<()> {
-        // Verify NFT ownership
-        require!(
-            from_account.amount == 1,
-            crate::errors::ErrorCode::InsufficientNftBalance
-        );
-
-        let transfer_instruction = Transfer {
-            from: from_account.to_account_info(),
-            to: to_account.to_account_info(),
-            authority: authority.clone(),
-        };
-
-        transfer(
-            CpiContext::new_with_signer(
-                token_program.to_account_info(),
-                transfer_instruction,
-                signer_seeds,
-            ),
-            1, // Transfer 1 NFT
-        )
-    }
+    debug_log!(debug_ctx, LogLevel::Debug, "Token transfer completed");
+    Ok(())
 }
 
-/// Escrow management utilities
-pub struct EscrowManager;
+/// Transfer tokens with PDA authority
+pub fn transfer_tokens_with_signer(
+    from: &Account<TokenAccount>,
+    to: &Account<TokenAccount>,
+    authority: &AccountInfo,
+    token_program: &Program<Token>,
+    amount: u64,
+    signer_seeds: &[&[&[u8]]],
+    debug_ctx: &mut DebugContext,
+) -> Result<()> {
+    debug_ctx.step("token_transfer_with_signer");
+    debug_log!(debug_ctx, LogLevel::Debug, "Transferring {} tokens with PDA signer", amount);
 
-impl EscrowManager {
-    /// Create escrow for a bid
-    pub fn create_bid_escrow(
-        bidder: &AccountInfo,
-        escrow: &AccountInfo,
-        amount: u64,
-        system_program: &AccountInfo,
-    ) -> Result<()> {
-        // Transfer SOL to escrow
-        SolTransfer::transfer_sol_with_system(
-            bidder,
-            escrow,
-            amount,
-            system_program,
-        )
+    // Validate token accounts
+    validate_token_transfer(from, to, amount, debug_ctx)?;
+
+    // Execute CPI transfer with signer
+    let cpi_accounts = Transfer {
+        from: from.to_account_info(),
+        to: to.to_account_info(),
+        authority: authority.clone(),
+    };
+    let cpi_program = token_program.to_account_info();
+    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
+    
+    anchor_spl::token::transfer(cpi_ctx, amount)?;
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Token transfer with signer completed");
+    Ok(())
+}
+
+/// Transfer SOL to escrow account
+pub fn transfer_sol_to_escrow(
+    from_token_account: &Account<TokenAccount>,
+    to_escrow: &Account<TokenAccount>,
+    authority: &Signer,
+    token_program: &Program<Token>,
+    amount: u64,
+) -> Result<()> {
+    let mut debug_ctx = DebugContext::new("transfer_sol_to_escrow");
+    debug_log!(debug_ctx, LogLevel::Debug, "Transferring {} SOL to escrow", amount);
+
+    // Validate escrow transfer
+    if from_token_account.amount < amount {
+        debug_log!(debug_ctx, LogLevel::Error, "Insufficient balance for escrow");
+        return Err(ErrorCode::InsufficientBalance.into());
     }
 
-    /// Release escrow back to bidder (for cancelled bids)
-    pub fn release_bid_escrow(
-        escrow: &AccountInfo,
-        bidder: &AccountInfo,
-        amount: u64,
-    ) -> Result<()> {
-        SolTransfer::transfer_sol(escrow, bidder, amount)
+    // Execute transfer
+    transfer_tokens(
+        from_token_account,
+        to_escrow,
+        &authority.to_account_info(),
+        token_program,
+        amount,
+        &mut debug_ctx,
+    )?;
+
+    debug_log!(debug_ctx, LogLevel::Debug, "SOL escrow transfer completed");
+    Ok(())
+}
+
+/// Refund SOL from escrow
+pub fn refund_sol_from_escrow(
+    from_escrow: &Account<TokenAccount>,
+    to_token_account: &Account<TokenAccount>,
+    escrow_authority: &AccountInfo,
+    token_program: &Program<Token>,
+    amount: u64,
+    signer_seeds: &[&[&[u8]]],
+) -> Result<()> {
+    let mut debug_ctx = DebugContext::new("refund_sol_from_escrow");
+    debug_log!(debug_ctx, LogLevel::Debug, "Refunding {} SOL from escrow", amount);
+
+    // Validate refund
+    if from_escrow.amount < amount {
+        debug_log!(debug_ctx, LogLevel::Error, "Insufficient escrow balance for refund");
+        return Err(ErrorCode::InsufficientBalance.into());
     }
 
-    /// Transfer escrow to recipients (for accepted bids)
-    pub fn transfer_escrow_to_recipients(
-        escrow: &AccountInfo,
-        minter: &AccountInfo,
-        platform: &AccountInfo,
-        collection_distribution: &mut Account<crate::state::CollectionDistribution>,
-        total_amount: u64,
-    ) -> Result<(u64, u64, u64)> {
-        SolTransfer::distribute_revenue(
-            escrow,
-            minter,
-            platform,
-            collection_distribution,
-            total_amount,
-        )
+    // Execute refund
+    transfer_tokens_with_signer(
+        from_escrow,
+        to_token_account,
+        escrow_authority,
+        token_program,
+        amount,
+        signer_seeds,
+        &mut debug_ctx,
+    )?;
+
+    debug_log!(debug_ctx, LogLevel::Debug, "SOL escrow refund completed");
+    Ok(())
+}
+
+// === VALIDATION HELPERS ===
+
+fn validate_transfer_accounts(
+    from: &AccountInfo,
+    to: &AccountInfo,
+    amount: u64,
+    debug_ctx: &mut DebugContext,
+) -> Result<()> {
+    debug_ctx.step("transfer_validation");
+
+    // Check amount
+    if amount == 0 {
+        debug_log!(debug_ctx, LogLevel::Error, "Transfer amount cannot be zero");
+        return Err(ErrorCode::InvalidAmount.into());
     }
+
+    // Check from balance
+    if from.lamports() < amount {
+        debug_log!(
+            debug_ctx,
+            LogLevel::Error,
+            "Insufficient balance: has {}, needs {}",
+            from.lamports(),
+            amount
+        );
+        return Err(ErrorCode::InsufficientBalance.into());
+    }
+
+    // Check accounts are different
+    if from.key() == to.key() {
+        debug_log!(debug_ctx, LogLevel::Error, "Cannot transfer to same account");
+        return Err(ErrorCode::InvalidAccount.into());
+    }
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Transfer validation passed");
+    Ok(())
+}
+
+fn validate_token_transfer(
+    from: &Account<TokenAccount>,
+    to: &Account<TokenAccount>,
+    amount: u64,
+    debug_ctx: &mut DebugContext,
+) -> Result<()> {
+    debug_ctx.step("token_transfer_validation");
+
+    // Check amount
+    if amount == 0 {
+        debug_log!(debug_ctx, LogLevel::Error, "Transfer amount cannot be zero");
+        return Err(ErrorCode::InvalidAmount.into());
+    }
+
+    // Check from balance
+    if from.amount < amount {
+        debug_log!(
+            debug_ctx,
+            LogLevel::Error,
+            "Insufficient token balance: has {}, needs {}",
+            from.amount,
+            amount
+        );
+        return Err(ErrorCode::InsufficientBalance.into());
+    }
+
+    // Check same mint
+    if from.mint != to.mint {
+        debug_log!(debug_ctx, LogLevel::Error, "Token accounts have different mints");
+        return Err(ErrorCode::InvalidAccount.into());
+    }
+
+    // Check accounts are different
+    if from.key() == to.key() {
+        debug_log!(debug_ctx, LogLevel::Error, "Cannot transfer to same token account");
+        return Err(ErrorCode::InvalidAccount.into());
+    }
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Token transfer validation passed");
+    Ok(())
+}
+
+// === UTILITY FUNCTIONS ===
+
+/// Calculate transfer fee (if any)
+pub fn calculate_transfer_fee(amount: u64, fee_bp: u16) -> Result<u64> {
+    amount
+        .checked_mul(fee_bp as u64)
+        .ok_or(ErrorCode::MathOverflow)?
+        .checked_div(10000)
+        .ok_or(ErrorCode::MathUnderflow.into())
+}
+
+/// Split amount into multiple parts
+pub fn split_amount(total: u64, percentages: &[u16]) -> Result<Vec<u64>> {
+    let mut amounts = Vec::new();
+    let mut remaining = total;
+
+    // Validate percentages sum to 100%
+    let sum: u16 = percentages.iter().sum();
+    if sum != 10000 {
+        return Err(ErrorCode::InvalidAmount.into());
+    }
+
+    // Calculate each amount
+    for (i, &percentage) in percentages.iter().enumerate() {
+        let amount = if i == percentages.len() - 1 {
+            // Last amount gets remaining to avoid rounding errors
+            remaining
+        } else {
+            total
+                .checked_mul(percentage as u64)
+                .ok_or(ErrorCode::MathOverflow)?
+                .checked_div(10000)
+                .ok_or(ErrorCode::MathUnderflow)?
+        };
+
+        amounts.push(amount);
+        remaining = remaining.checked_sub(amount).ok_or(ErrorCode::MathUnderflow)?;
+    }
+
+    Ok(amounts)
 }
 
 #[cfg(test)]
@@ -181,14 +285,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_revenue_calculation() {
-        let total = 1_000_000_000; // 1 SOL
-        let (minter, platform, collection) = 
-            crate::state::types::RevenueDistribution::calculate_shares(total).unwrap();
-        
-        assert_eq!(minter, 950_000_000); // 0.95 SOL
-        assert_eq!(platform, 40_000_000); // 0.04 SOL
-        assert_eq!(collection, 10_000_000); // 0.01 SOL
+    fn test_calculate_transfer_fee() {
+        // Test 1% fee on 1 SOL
+        let fee = calculate_transfer_fee(1_000_000_000, 100).unwrap();
+        assert_eq!(fee, 10_000_000); // 0.01 SOL
+
+        // Test 0.5% fee on 2 SOL
+        let fee = calculate_transfer_fee(2_000_000_000, 50).unwrap();
+        assert_eq!(fee, 10_000_000); // 0.01 SOL
+    }
+
+    #[test]
+    fn test_split_amount() {
+        // Test 95%/4%/1% split
+        let amounts = split_amount(1_000_000_000, &[9500, 400, 100]).unwrap();
+        assert_eq!(amounts.len(), 3);
+        assert_eq!(amounts[0], 950_000_000); // 95%
+        assert_eq!(amounts[1], 40_000_000);  // 4%
+        assert_eq!(amounts[2], 10_000_000);  // 1%
+
+        // Verify total
+        let total: u64 = amounts.iter().sum();
+        assert_eq!(total, 1_000_000_000);
+    }
+
+    #[test]
+    fn test_split_amount_invalid_percentages() {
+        // Test invalid percentage sum
+        let result = split_amount(1_000_000_000, &[5000, 3000]); // Only 80%
+        assert!(result.is_err());
+
+        let result = split_amount(1_000_000_000, &[6000, 5000]); // 110%
+        assert!(result.is_err());
     }
 }
 
