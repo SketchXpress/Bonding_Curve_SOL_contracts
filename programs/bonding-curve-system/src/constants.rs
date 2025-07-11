@@ -12,3 +12,17 @@ pub const SECONDARY_BURN_PERCENTAGE: u64 = 15; // 1.5% burn for secondary sales 
 pub const SECONDARY_DISTRIBUTE_PERCENTAGE: u64 = 15; // 1.5% distribute to holders for secondary sales (scaled by 10)
 pub const BUYBACK_BURN_PERCENTAGE: u64 = 25; // 2.5% burn for buybacks (scaled by 10)
 pub const BUYBACK_DISTRIBUTE_PERCENTAGE: u64 = 25; // 2.5% distribute to holders for buybacks (scaled by 10)
+
+// Bidding system constants
+pub const MINTER_REVENUE_PERCENTAGE: u64 = 95; // 95% goes to original minter
+pub const PLATFORM_REVENUE_PERCENTAGE: u64 = 4; // 4% goes to platform
+pub const COLLECTION_REVENUE_PERCENTAGE: u64 = 1; // 1% goes to collection holders
+
+// Bidding time limits
+pub const MAX_BID_DURATION_HOURS: u32 = 168; // 7 days maximum
+pub const MIN_BID_DURATION_HOURS: u32 = 1; // 1 hour minimum
+pub const DEFAULT_BID_DURATION_HOURS: u32 = 24; // 24 hours default
+
+// Minimum bid increments
+pub const MIN_BID_INCREMENT_PERCENTAGE: u64 = 5; // 5% minimum increase over previous bid
+pub const MIN_BID_AMOUNT: u64 = 1_000_000; // 0.001 SOL minimum bid (1M lamports)
