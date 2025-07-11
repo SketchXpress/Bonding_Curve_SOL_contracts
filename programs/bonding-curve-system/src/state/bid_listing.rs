@@ -1,60 +1,110 @@
 use anchor_lang::prelude::*;
+use crate::state::types::BidListingStatus;
 
+/// Account for managing NFT bid listings with dynamic pricing
 #[account]
 pub struct BidListing {
     /// The NFT mint being listed for bids
     pub nft_mint: Pubkey,
-    /// The current owner of the NFT (who listed it)
+    
+    /// The owner who listed the NFT
     pub lister: Pubkey,
-    /// The original minter of the NFT (who will receive 95% of proceeds)
-    pub original_minter: Pubkey,
-    /// Minimum bid amount in lamports
+    
+    /// Minimum bid amount (dynamically updated based on bonding curve)
     pub min_bid: u64,
+    
     /// Current highest bid amount
     pub highest_bid: u64,
-    /// Current highest bidder
+    
+    /// Pubkey of the highest bidder
     pub highest_bidder: Option<Pubkey>,
-    /// Status of the listing
+    
+    /// Total number of bids placed
+    pub total_bids: u32,
+    
+    /// Current status of the listing
     pub status: BidListingStatus,
+    
     /// Timestamp when listing was created
     pub created_at: i64,
+    
     /// Timestamp when listing expires (0 = no expiry)
     pub expires_at: i64,
-    /// Bump seed for PDA
+    
+    /// Last time the minimum bid was updated based on bonding curve
+    pub last_price_update: i64,
+    
+    /// Bonding curve price when the listing was created
+    pub bonding_curve_price_at_listing: u64,
+    
+    /// PDA bump seed
     pub bump: u8,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum BidListingStatus {
-    Active,
-    Accepted,
-    Cancelled,
-    Expired,
-}
-
 impl BidListing {
-    pub const SPACE: usize = 8 + // discriminator
+    pub const LEN: usize = 8 + // discriminator
         32 + // nft_mint
         32 + // lister
-        32 + // original_minter
         8 +  // min_bid
         8 +  // highest_bid
         33 + // highest_bidder (Option<Pubkey>)
+        4 +  // total_bids
         1 +  // status
         8 +  // created_at
         8 +  // expires_at
-        1;   // bump
+        8 +  // last_price_update
+        8 +  // bonding_curve_price_at_listing
+        1 +  // bump
+        32;  // padding for future fields
 
-    pub fn is_active(&self) -> bool {
-        self.status == BidListingStatus::Active
+    /// Check if the listing is still active and not expired
+    pub fn is_active(&self, current_time: i64) -> bool {
+        self.status == BidListingStatus::Active && 
+        (self.expires_at == 0 || current_time < self.expires_at)
     }
 
-    pub fn is_expired(&self, current_timestamp: i64) -> bool {
-        self.expires_at > 0 && current_timestamp > self.expires_at
+    /// Check if the listing has expired
+    pub fn is_expired(&self, current_time: i64) -> bool {
+        self.expires_at > 0 && current_time >= self.expires_at
     }
 
-    pub fn can_accept_bid(&self, current_timestamp: i64) -> bool {
-        self.is_active() && !self.is_expired(current_timestamp) && self.highest_bidder.is_some()
+    /// Get the current minimum bid required (considering bonding curve)
+    pub fn get_effective_minimum_bid(&self, current_highest: u64) -> u64 {
+        if current_highest > 0 {
+            // If there's a highest bid, new bids must be 5% higher
+            current_highest
+                .checked_mul(105)
+                .and_then(|x| x.checked_div(100))
+                .unwrap_or(self.min_bid)
+        } else {
+            self.min_bid
+        }
+    }
+
+    /// Calculate the premium percentage over bonding curve price
+    pub fn calculate_premium_percentage(&self, bid_amount: u64) -> u64 {
+        if self.bonding_curve_price_at_listing > 0 {
+            bid_amount
+                .saturating_sub(self.bonding_curve_price_at_listing)
+                .checked_mul(100)
+                .and_then(|x| x.checked_div(self.bonding_curve_price_at_listing))
+                .unwrap_or(0)
+        } else {
+            0
+        }
+    }
+
+    /// Update the minimum bid based on current bonding curve price
+    pub fn update_minimum_bid(&mut self, new_bonding_curve_price: u64, premium_percentage: u64, current_time: i64) {
+        let new_minimum = new_bonding_curve_price
+            .checked_mul(100 + premium_percentage)
+            .and_then(|x| x.checked_div(100))
+            .unwrap_or(self.min_bid);
+
+        if new_minimum > self.min_bid {
+            self.min_bid = new_minimum;
+            self.last_price_update = current_time;
+        }
     }
 }
 
