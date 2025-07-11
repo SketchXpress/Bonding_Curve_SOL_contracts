@@ -1,13 +1,23 @@
-pub mod create_pool;
-pub mod buy_nft;
 pub mod mint_nft;
-pub mod migrate_to_tensor;
+pub mod buy_nft;
 pub mod sell_nft;
+pub mod create_pool;
 pub mod create_collection_nft;
-
-// New bidding system instructions
+pub mod migrate_to_tensor;
 pub mod list_for_bids;
 pub mod place_bid;
-pub mod cancel_bid;
 pub mod accept_bid;
+pub mod cancel_bid;
 pub mod distribute_collection_fees;
+
+pub use mint_nft::*;
+pub use buy_nft::*;
+pub use sell_nft::*;
+pub use create_pool::*;
+pub use create_collection_nft::*;
+pub use migrate_to_tensor::*;
+pub use list_for_bids::*;
+pub use place_bid::*;
+pub use accept_bid::*;
+pub use cancel_bid::*;
+pub use distribute_collection_fees::*;
