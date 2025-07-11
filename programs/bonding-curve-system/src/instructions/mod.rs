@@ -9,3 +9,5 @@ pub mod create_collection_nft;
 pub mod list_for_bids;
 pub mod place_bid;
 pub mod cancel_bid;
+pub mod accept_bid;
+pub mod distribute_collection_fees;
