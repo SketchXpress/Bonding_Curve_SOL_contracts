@@ -146,7 +146,6 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
         nft_mint_key.as_ref(),
         &[escrow_bump],
     ];
-    let signer_seeds = &[&seeds[..]];
 
     let escrow_account_info_for_zeroing = ctx.accounts.escrow.to_account_info();
     let mut escrow_data = escrow_account_info_for_zeroing.try_borrow_mut_data()?;
