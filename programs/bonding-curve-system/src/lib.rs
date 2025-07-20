@@ -13,6 +13,16 @@ pub mod utils;
 
 // === IMPORTS ===
 use instructions::*;
+pub use errors::*;
+
+#[macro_use]
+pub mod macros {
+    #[macro_export]
+    macro_rules! error_ctx {
+        ($error:expr, $ctx:expr) => {{
+            ErrorContext::new($error, $ctx)
+        }};
+    }
 
 /// SketchXpress Bonding Curve System
 /// Revolutionary NFT marketplace with dynamic pricing

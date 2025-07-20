@@ -181,7 +181,7 @@ impl BidOutcome {
 
     /// Mark bid as accepted
     pub fn accept(&mut self) -> Result<()> {
-        require!(self.status == BidStatus::Active, crate::errors::ErrorCode::InvalidAccount);
+        require!(self.status == BidStatus::Active, ErrorCode::InvalidAccount);
         
         self.status = BidStatus::Accepted;
         self.accepted_at = Some(Clock::get()?.unix_timestamp);

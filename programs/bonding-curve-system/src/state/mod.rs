@@ -6,7 +6,13 @@ pub mod minter_tracker;
 pub mod collection_distribution;
 pub mod types;
 
-pub use pool::*;
+// Explicit re-exports for better visibility
+pub use pool::BondingCurvePool;
+pub use pool::config::PoolConfig;
+pub use pool::state::PoolState;
+pub use pool::stats::PoolStats;
+
+// General re-exports
 pub use bid::*;
 pub use bid_listing::*;
 pub use nft_escrow::*;

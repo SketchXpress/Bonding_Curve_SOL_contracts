@@ -128,9 +128,9 @@ impl AccountInspector {
     }
 
     /// Log all accounts in a context
-    pub fn log_all_accounts<T>(ctx: &Context<T>, debug_ctx: &mut DebugContext) 
+    pub fn log_all_accounts<'info, T>(ctx: &Context<T>, debug_ctx: &mut DebugContext) 
     where
-        T: Accounts,
+        T: Accounts<'info>,
     {
         debug_ctx.step("account_inspection");
         

@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::state::types::{BidListingStatus, DynamicPricingConfig};
+use crate::ErrorCode;
 
 /// Account for managing NFT bid listings with dynamic pricing
 #[account]
@@ -82,11 +83,11 @@ impl BidListing {
             .checked_mul(pricing_config.minimum_premium_bp as u128)
             .and_then(|x| x.checked_div(10000))
             .and_then(|x| u64::try_from(x).ok())
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+            .ok_or(ErrorCode::MathOverflow)?;
 
         let dynamic_minimum = bonding_curve_price
             .checked_add(premium)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+            .ok_or(ErrorCode::MathOverflow)?;
 
         // Use the higher of user's minimum or dynamic minimum
         let effective_min_bid = std::cmp::max(user_min_bid, dynamic_minimum);
@@ -94,7 +95,7 @@ impl BidListing {
         // Validate that minimum bid exceeds bonding curve price
         require!(
             effective_min_bid >= bonding_curve_price,
-            crate::errors::ErrorCode::BidMustExceedBondingCurve
+            ErrorCode::BidMustExceedBondingCurve
         );
 
         // Set expiry
