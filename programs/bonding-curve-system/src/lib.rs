@@ -23,6 +23,7 @@ pub mod macros {
             ErrorContext::new($error, $ctx)
         }};
     }
+}
 
 /// SketchXpress Bonding Curve System
 /// Revolutionary NFT marketplace with dynamic pricing
