@@ -1,31 +1,7 @@
-use anchor_lang::prelude::*;
-
-/// Bonding curve pool state - simplified and focused
-#[account]
-pub struct BondingCurvePool {
-    /// Collection this pool belongs to
-    pub collection: Pubkey,
-    
-    /// Pool configuration
-    pub config: PoolConfig,
-    
-    /// Current pool state
-    pub state: PoolState,
-    
-    /// Pool statistics
-    pub stats: PoolStats,
-    
-    /// PDA bump
-    pub bump: u8,
-}
-
-impl BondingCurvePool {
-    pub const SIZE: usize = 8 + // discriminator
-        32 + // collection
-        PoolConfig::SIZE +
-        PoolState::SIZE +
-        PoolStats::SIZE +
-        1; // bump
+pub use crate::state::pool::BondingCurvePool;
+pub use crate::state::pool::config::*;
+pub use crate::state::pool::state::*;
+pub use crate::state::pool::stats::*;
 
     /// Check if pool is active and can mint
     pub fn can_mint(&self) -> bool {

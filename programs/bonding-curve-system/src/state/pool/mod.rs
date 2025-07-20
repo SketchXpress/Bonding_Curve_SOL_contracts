@@ -2,9 +2,9 @@ pub mod config;
 pub mod state;
 pub mod stats;
 
-pub use config::*;
-pub use state::*;
-pub use stats::*;
+pub use self::config::*;
+pub use self::state::*;
+pub use self::stats::*;
 
 use anchor_lang::prelude::*;
 

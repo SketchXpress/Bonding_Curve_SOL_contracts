@@ -62,6 +62,10 @@ pub enum ErrorCode {
     #[msg("Insufficient premium")]
     InsufficientPremium = 6054,
 
+    // === PRICE ERRORS (6060-6069) ===
+    #[msg("Price exceeds maximum allowed")]
+    PriceExceedsMaximum = 6060,
+
     // === LISTING ERRORS (6070-6079) ===
     #[msg("Listing expired")]
     ListingExpired = 6070,
@@ -88,6 +92,7 @@ impl ErrorCode {
             ErrorCode::ListingExpired => "This listing has expired",
             ErrorCode::MaxSupplyReached => "Maximum supply reached",
             ErrorCode::Unauthorized => "You are not authorized",
+            ErrorCode::PriceExceedsMaximum => "The NFT price exceeds your specified maximum",
             _ => "An error occurred",
         }
     }
