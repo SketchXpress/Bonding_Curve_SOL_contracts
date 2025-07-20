@@ -17,6 +17,7 @@ pub const BUYBACK_DISTRIBUTE_PERCENTAGE: u64 = 25; // 2.5% distribute to holders
 pub const MINTER_REVENUE_PERCENTAGE: u64 = 95; // 95% goes to original minter
 pub const PLATFORM_REVENUE_PERCENTAGE: u64 = 4; // 4% goes to platform
 pub const COLLECTION_REVENUE_PERCENTAGE: u64 = 1; // 1% goes to collection holders
+pub const MINIMUM_BID_PREMIUM_BP: u16 = 100; // 1% minimum bid premium in basis points
 
 // Bidding time limits
 pub const MAX_BID_DURATION_HOURS: u32 = 168; // 7 days maximum

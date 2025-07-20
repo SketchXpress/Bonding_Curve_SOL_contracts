@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::ErrorCode;
 
 /// Individual bid state - clean and focused
 #[account]
@@ -92,9 +93,9 @@ impl BidDetails {
 
     /// Validate bid details
     pub fn validate(&self) -> Result<()> {
-        require!(self.amount > 0, crate::errors::ErrorCode::InvalidAmount);
-        require!(self.nft_mint != Pubkey::default(), crate::errors::ErrorCode::InvalidNftMint);
-        require!(self.bidder != Pubkey::default(), crate::errors::ErrorCode::InvalidAccount);
+        require!(self.amount > 0, ErrorCode::InvalidAmount);
+        require!(self.nft_mint != Pubkey::default(), ErrorCode::InvalidNftMint);
+        require!(self.bidder != Pubkey::default(), ErrorCode::InvalidAccount);
         Ok(())
     }
 }
@@ -122,7 +123,7 @@ impl BidTiming {
     pub fn new(duration: i64) -> Result<Self> {
         let created_at = Clock::get()?.unix_timestamp;
         let expires_at = created_at.checked_add(duration)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+            .ok_or(ErrorCode::MathOverflow)?;
 
         Ok(Self {
             created_at,
@@ -133,8 +134,8 @@ impl BidTiming {
 
     /// Check if timing is valid
     pub fn validate(&self) -> Result<()> {
-        require!(self.duration > 0, crate::errors::ErrorCode::InvalidDuration);
-        require!(self.expires_at > self.created_at, crate::errors::ErrorCode::InvalidDuration);
+        require!(self.duration > 0, ErrorCode::InvalidDuration);
+        require!(self.expires_at > self.created_at, ErrorCode::InvalidDuration);
         Ok(())
     }
 
