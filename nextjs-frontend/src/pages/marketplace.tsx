@@ -1,60 +1,54 @@
+/**
+ * marketplace.tsx
+ * Main marketplace component for NFT trading with bidding functionality
+ * 
+ * This component provides three main views:
+ * 1. Browse - Shows all listed NFTs available for bidding
+ * 2. My NFTs - Displays user's owned NFTs that can be listed
+ * 3. My Activity - Shows user's active bids and listings
+ */
+
 import React, { useState, useEffect } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+// Wallet integration hooks and components
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
-import { BidListingCard } from '../components/BidListingCard';
-import { BidPlacementCard } from '../components/BidPlacementCard';
-import { BidManagementCard } from '../components/BidManagementCard';
-import { useBidListing } from '../hooks/useBidListing';
-import { useBidPlacement } from '../hooks/useBidPlacement';
 
-interface NFTData {
-  mint: PublicKey;
-  name: string;
-  image: string;
-  owner: PublicKey;
-  isListed: boolean;
-  listingPubkey?: PublicKey;
-}
+// NFT utility functions for fetching token data
+import { getTokensByOwner, getAllListedNFTs } from '../utils/nft';
 
+// Component imports for different marketplace features
+import { BidListingCard } from '../components/BidListingCard';      // For creating new listings
+import { BidPlacementCard } from '../components/BidPlacementCard';  // For placing bids on NFTs
+import { BidManagementCard } from '../components/BidManagementCard'; // For managing bids/listings
+
+// Custom hooks for bid and listing management
+import { useBidListing } from '../hooks/useBidListing';     // Handles listing creation and management
+import { useBidPlacement } from '../hooks/useBidPlacement'; // Handles bid placement and management
+
+// Type definitions for marketplace entities
+import { NFTMetadata, Listing, BidData } from '../types/marketplace';
+
+/**
+ * MarketplacePage Component
+ * Main component for the NFT marketplace interface
+ */
 const MarketplacePage: React.FC = () => {
-  const { publicKey } = useWallet();
-  const { getUserListings } = useBidListing();
-  const { getUserBids } = useBidPlacement();
+  // Wallet connection state
+  const { publicKey } = useWallet();  // Current user's wallet public key
+  const { connection } = useConnection(); // Solana connection object
   
-  const [activeTab, setActiveTab] = useState<'browse' | 'my-nfts' | 'my-activity'>('browse');
-  const [userNFTs, setUserNFTs] = useState<NFTData[]>([]);
-  const [listedNFTs, setListedNFTs] = useState<NFTData[]>([]);
-  const [userBids, setUserBids] = useState<any[]>([]);
-  const [userListings, setUserListings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Mock NFT data - in a real app, you'd fetch this from your program
-  const mockNFTs: NFTData[] = [
-    {
-      mint: new PublicKey('11111111111111111111111111111111'),
-      name: 'SketchXpress #001',
-      image: 'https://via.placeholder.com/300x300?text=NFT+1',
-      owner: new PublicKey('11111111111111111111111111111111'),
-      isListed: false,
-    },
-    {
-      mint: new PublicKey('22222222222222222222222222222222'),
-      name: 'SketchXpress #002',
-      image: 'https://via.placeholder.com/300x300?text=NFT+2',
-      owner: new PublicKey('22222222222222222222222222222222'),
-      isListed: true,
-      listingPubkey: new PublicKey('33333333333333333333333333333333'),
-    },
-    {
-      mint: new PublicKey('44444444444444444444444444444444'),
-      name: 'SketchXpress #003',
-      image: 'https://via.placeholder.com/300x300?text=NFT+3',
-      owner: new PublicKey('44444444444444444444444444444444'),
-      isListed: true,
-      listingPubkey: new PublicKey('55555555555555555555555555555555'),
-    },
-  ];
+  // Custom hooks for managing bids and listings
+  const { getUserListings } = useBidListing();   // Fetch user's active listings
+  const { getUserBids } = useBidPlacement();     // Fetch user's active bids
+  
+  // Component state management
+  const [activeTab, setActiveTab] = useState<'browse' | 'my-nfts' | 'my-activity'>('browse'); // Current view tab
+  const [userNFTs, setUserNFTs] = useState<NFTMetadata[]>([]); // User's owned NFTs
+  const [listedNFTs, setListedNFTs] = useState<NFTMetadata[]>([]); // All NFTs listed in marketplace
+  const [userBids, setUserBids] = useState<BidData[]>([]); // User's active bids
+  const [userListings, setUserListings] = useState<Listing[]>([]); // User's active listings
+  const [loading, setLoading] = useState(false); // Loading state for data fetching
 
   useEffect(() => {
     if (publicKey) {
@@ -63,50 +57,91 @@ const MarketplacePage: React.FC = () => {
   }, [publicKey]);
 
   const fetchUserData = async () => {
-    if (!publicKey) return;
+    if (!publicKey || !connection) return;
 
     setLoading(true);
     try {
-      // Fetch user's NFTs (mock data for now)
-      const ownedNFTs = mockNFTs.filter(nft => nft.owner.equals(publicKey));
-      setUserNFTs(ownedNFTs);
+      // Fetch data in parallel for better performance
+      const [ownedNFTs, bids, listings, allListedNFTs]: [NFTMetadata[], BidData[], Listing[], NFTMetadata[]] = await Promise.all([
+        getTokensByOwner(connection, publicKey).catch(err => {
+          console.error('Error fetching owned NFTs:', err);
+          return [];
+        }),
+        getUserBids(publicKey).catch(err => {
+          console.error('Error fetching user bids:', err);
+          return [];
+        }),
+        getUserListings(publicKey).catch(err => {
+          console.error('Error fetching user listings:', err);
+          return [];
+        }),
+        getAllListedNFTs(connection).catch(err => {
+          console.error('Error fetching listed NFTs:', err);
+          return [];
+        })
+      ]);
 
-      // Fetch user's bids
-      const bids = await getUserBids(publicKey);
+      // Update states with fetched data
       setUserBids(bids);
-
-      // Fetch user's listings
-      const listings = await getUserListings(publicKey);
       setUserListings(listings);
+      setListedNFTs(allListedNFTs);
 
-      // Set listed NFTs (all active listings)
-      const listed = mockNFTs.filter(nft => nft.isListed);
-      setListedNFTs(listed);
+      // Update NFT listing status based on user's listings
+      const nftsWithListingStatus = ownedNFTs.map(nft => {
+        const listing = listings.find(l => l.nftMint.toBase58() === nft.mint.toBase58());
+        return {
+          ...nft,
+          isListed: !!listing,
+          listingPubkey: listing?.pubkey,
+        };
+      });
+      setUserNFTs(nftsWithListingStatus);
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error in fetchUserData:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Event Handlers for Marketplace Actions
+   * Each handler logs the action and refreshes the marketplace data
+   */
+
+  /**
+   * Handles the creation of a new NFT listing
+   * @param listingPubkey - Public key of the newly created listing
+   */
   const handleListingCreated = (listingPubkey: PublicKey) => {
     console.log('New listing created:', listingPubkey.toString());
-    fetchUserData(); // Refresh data
+    fetchUserData(); // Refresh all marketplace data
   };
 
+  /**
+   * Handles when a new bid is placed on an NFT
+   * @param bidPubkey - Public key of the newly placed bid
+   */
   const handleBidPlaced = (bidPubkey: PublicKey) => {
     console.log('New bid placed:', bidPubkey.toString());
-    fetchUserData(); // Refresh data
+    fetchUserData(); // Refresh all marketplace data
   };
 
+  /**
+   * Handles the cancellation of a bid
+   * @param bidId - ID of the cancelled bid
+   */
   const handleBidCancelled = (bidId: number) => {
     console.log('Bid cancelled:', bidId);
-    fetchUserData(); // Refresh data
+    fetchUserData(); // Refresh all marketplace data
   };
 
+  /**
+   * Handles when a bid is accepted by the NFT owner
+   * @param bidId - ID of the accepted bid
+   */
   const handleBidAccepted = (bidId: number) => {
     console.log('Bid accepted:', bidId);
-    fetchUserData(); // Refresh data
+    fetchUserData(); // Refresh all marketplace data
   };
 
   return (
