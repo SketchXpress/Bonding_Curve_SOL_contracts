@@ -75,9 +75,9 @@ pub fn place_bid(ctx: Context<PlaceBid>, args: PlaceBidArgs) -> Result<()> {
     let min_bid = calculate_minimum_bid(&ctx.accounts.bonding_curve_pool, &ctx.accounts.bid_listing)?;
     
     if args.amount < min_bid {
-        let error_ctx = error_ctx!(ErrorCode::InvalidBid, "place_bid");            ErrorCode::BidTooLow, 
-            "place_bid", 
-            &format!("Amount: {}, Required: {}", args.amount, min_bid)
+        let error_ctx = error_ctx!(
+            ErrorCode::BidTooLow,
+            format!("Bid amount {} is below minimum required {}", args.amount, min_bid)
         );
         error_ctx.log();
         return Err(ErrorCode::BidTooLow.into());

@@ -5,7 +5,10 @@ declare_id!("11111111111111111111111111111112");
 
 // === MODULES ===
 pub mod constants;
-pub mod errors;
+pub mod errors {
+    pub use crate::errors::codes::*;
+    pub use crate::errors::context::*;
+}
 pub mod instructions;
 pub mod math;
 pub mod state;
