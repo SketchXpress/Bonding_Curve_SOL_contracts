@@ -6,7 +6,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use mpl_token_metadata::instructions::{BurnNftCpi, BurnNftCpiAccounts};
 
 use crate::{
-    errors::ErrorCode,
+    ErrorCode,
     math::price_calculation::calculate_sell_price,
     state::{BondingCurvePool, NftEscrow},
 };

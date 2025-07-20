@@ -3,11 +3,11 @@ use anchor_spl::token::{Token, TokenAccount};
 
 use crate::{
     constants::*,
-    errors::{ErrorCode, ErrorContext},
-    state::*,
-    utils::*,
-    debug_log,
+    state::{BidListing, BondingCurvePool, ListingStatus},
+    utils::pricing::calculate_minimum_bid,
+    ErrorCode,
     error_ctx,
+    debug_log,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -47,11 +47,13 @@ pub struct PlaceBid<'info> {
     )]
     pub bidder_token_account: Account<'info, TokenAccount>,
 
+    /// The native token (SOL) escrow account for this bid
     #[account(
-        init_if_needed,
+        init,
         payer = bidder,
-        associated_token::mint = anchor_spl::token::spl_token::native_mint::id(),
-        associated_token::authority = bid
+        token::mint = anchor_spl::token::spl_token::native_mint::id(),
+        token::authority = bid,
+        space = TokenAccount::LEN
     )]
     pub bid_escrow: Account<'info, TokenAccount>,
 
@@ -73,8 +75,7 @@ pub fn place_bid(ctx: Context<PlaceBid>, args: PlaceBidArgs) -> Result<()> {
     let min_bid = calculate_minimum_bid(&ctx.accounts.bonding_curve_pool, &ctx.accounts.bid_listing)?;
     
     if args.amount < min_bid {
-        let error_ctx = error_ctx!(
-            ErrorCode::BidTooLow, 
+        let error_ctx = error_ctx!(ErrorCode::InvalidBid, "place_bid");            ErrorCode::BidTooLow, 
             "place_bid", 
             &format!("Amount: {}, Required: {}", args.amount, min_bid)
         );

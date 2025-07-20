@@ -28,6 +28,7 @@ pub struct BondingCurvePool {
 }
 
 impl BondingCurvePool {
+    /// Account size for allocation
     pub const SIZE: usize = 8 + // discriminator
         32 + // collection
         PoolConfig::SIZE +
@@ -35,19 +36,24 @@ impl BondingCurvePool {
         PoolStats::SIZE +
         1; // bump
 
-    /// Check if pool is active and can mint
+    /// Check if pool is active and can mint new NFTs
+    /// Returns true if:
+    /// - Pool is active
+    /// - Supply hasn't reached max
+    /// - Not migrated to Tensor
     pub fn can_mint(&self) -> bool {
         self.state.is_active && 
         self.state.current_supply < self.config.max_supply &&
         !self.state.is_migrated
     }
 
-    /// Check if pool should migrate to Tensor
+    /// Check if pool has reached migration threshold
+    /// Returns true if market cap exceeds migration threshold
     pub fn should_migrate(&self) -> bool {
         self.stats.market_cap >= self.config.migration_threshold
     }
 
-    /// Get current mint price
+    /// Calculate current mint price based on bonding curve
     pub fn current_price(&self) -> Result<u64> {
         crate::math::calculate_bonding_curve_price(
             self.config.base_price,

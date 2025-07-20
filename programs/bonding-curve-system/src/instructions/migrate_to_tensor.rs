@@ -1,4 +1,4 @@
-use crate::errors::ErrorCode;
+use crate::ErrorCode;
 use crate::state::BondingCurvePool;
 use anchor_lang::prelude::*;
 
