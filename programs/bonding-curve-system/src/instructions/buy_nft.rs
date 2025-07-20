@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
-use crate::state::BondingCurvePool;
+use crate::state::{BondingCurvePool, NFTData};
+use crate::ErrorCode;
 
 #[derive(Accounts)]
 pub struct BuyNft<'info> {
@@ -50,7 +51,7 @@ pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
     // Check if buyer has enough funds
     require!(
         ctx.accounts.buyer.lamports() >= price,
-        crate::errors::ErrorCode::InsufficientFunds
+        ErrorCode::InsufficientFunds
     );
     
     // Transfer SOL from buyer to seller
@@ -102,7 +103,7 @@ pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
         // Update total distributed
         ctx.accounts.pool.total_distributed = ctx.accounts.pool.total_distributed
             .checked_add(fee)
-            .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+            .ok_or(ErrorCode::MathOverflow)?;
         
         msg!("NFT sold with fee distribution of {} lamports", fee);
     } else {
@@ -119,7 +120,7 @@ pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
 }
 
 // Helper function to calculate NFT price
-fn calculate_nft_price(nft_data: &crate::state::NFTData, pool: &BondingCurvePool) -> Result<u64> {
+fn calculate_nft_price(nft_data: &NFTData, pool: &BondingCurvePool) -> Result<u64> {
     // Start with the last price as base
     let base_price = if nft_data.last_price > 0 {
         nft_data.last_price
@@ -132,7 +133,7 @@ fn calculate_nft_price(nft_data: &crate::state::NFTData, pool: &BondingCurvePool
     let growth_factor = pool.growth_factor.checked_div(1_000_000).unwrap_or(1);
     
     let price = base_price.checked_mul(growth_factor)
-        .ok_or(crate::errors::ErrorCode::MathOverflow)?;
+        .ok_or(ErrorCode::MathOverflow)?;
     
     // Cap the price at a reasonable maximum
     let max_price = 1_000_000_000; // 1 SOL in lamports
