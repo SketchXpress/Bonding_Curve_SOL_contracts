@@ -1,7 +1,13 @@
 use anchor_lang::prelude::*;
 
-use crate::{
-    errors::ErrorCode,
+use cra    /// The bid account to be cancelled
+    #[account(
+        mut,
+        seeds = [b"bid", nft_mint.key().as_ref(), args.bid_id.to_le_bytes().as_ref()],
+        bump = bid.bump,
+        constraint = bid.details.bidder == bidder.key() @ ErrorCode::UnauthorizedBidCancellation,
+    )]
+    pub bid: Account<'info, Bid>,   errors::ErrorCode,
     state::{Bid, BidListing},
     state::types::{BidListingStatus, BidStatus},
 };
@@ -74,10 +80,10 @@ pub fn cancel_bid(
     );
 
     // Store bid amount for refund
-    let refund_amount = bid.amount;
+    let refund_amount = bid.details.amount;
 
     // Update bid status
-    bid.status = BidStatus::Cancelled;
+    bid.outcome.status = BidStatus::Cancelled;
 
     // Refund the bidder
     **ctx.accounts.bid_escrow.to_account_info().try_borrow_mut_lamports()? -= refund_amount;
@@ -85,7 +91,7 @@ pub fn cancel_bid(
 
     // If this was the highest bid, update the bid listing
     if bid_listing.highest_bidder == Some(ctx.accounts.bidder.key()) && 
-       bid_listing.highest_bid == bid.amount {
+              bid_listing.highest_bid == bid.details.amount {
         
         // Reset to no highest bid (would need to find next highest in a real implementation)
         bid_listing.highest_bid = 0;

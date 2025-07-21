@@ -1,4 +1,6 @@
-// programs/bonding-curve-system/src/instructions/sell_nft.rs
+// programs/bonding-curve-system/src/i    /// CHECK: This is safe because the address is constrained to `pool.creator`
+    #[account(mut, address = pool.config.creator)]
+    pub creator: UncheckedAccount<'info>,ructions/sell_nft.rs
 // Refined to include pool and timestamp in NftSale event
 
 use anchor_lang::prelude::*;
@@ -77,12 +79,12 @@ pub struct SellNFT<'info> {
 pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
     let pool_account = &ctx.accounts.pool;
     let price = calculate_sell_price(
-        pool_account.base_price,
-        pool_account.growth_factor,
-        pool_account.current_supply,
+        pool_account.config.base_price,
+        pool_account.config.growth_factor,
+        pool_account.state.current_supply,
     )?;
 
-    require!(pool_account.is_active, ErrorCode::PoolInactive);
+    require!(pool_account.state.is_active, ErrorCode::PoolInactive);
 
     let collection_metadata_info = ctx.accounts.collection_metadata.to_account_info();
 
@@ -171,16 +173,16 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
         return err!(ErrorCode::EscrowNotEmpty);
     }
 
-    ctx.accounts.pool.current_supply = ctx
+        ctx.accounts.pool.state.current_supply = ctx
         .accounts
         .pool
-        .current_supply
+        .state.current_supply
         .checked_sub(1)
         .ok_or(ErrorCode::MathOverflow)?;
-    ctx.accounts.pool.total_escrowed = ctx
+    ctx.accounts.pool.stats.total_escrowed = ctx
         .accounts
         .pool
-        .total_escrowed
+        .stats.total_escrowed
         .checked_sub(price)
         .ok_or(ErrorCode::MathOverflow)?;
 

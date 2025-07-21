@@ -17,6 +17,9 @@ pub struct PoolConfig {
     
     /// Creator of the pool
     pub creator: Pubkey,
+    
+    /// Protocol fee in basis points
+    pub protocol_fee: u16,
 }
 
 impl PoolConfig {
@@ -25,7 +28,8 @@ impl PoolConfig {
         2 + // growth_factor
         4 + // max_supply
         8 + // migration_threshold
-        32; // creator
+        32 + // creator
+        2; // protocol_fee
 
     /// Create new pool configuration
     pub fn new(

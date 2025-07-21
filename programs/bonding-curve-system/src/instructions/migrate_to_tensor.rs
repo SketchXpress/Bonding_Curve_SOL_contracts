@@ -16,7 +16,7 @@ pub struct MigrateToTensor<'info> {
         mut,
         seeds = [b"bonding-curve-pool", collection_mint.key().as_ref()],
         bump = pool.bump,
-        constraint = pool.creator == authority.key() @ ErrorCode::InvalidAuthority
+                constraint = pool.config.creator == authority.key() @ ErrorCode::InvalidAuthority
     )]
     pub pool: Account<'info, BondingCurvePool>,
 
@@ -32,25 +32,25 @@ pub fn migrate_to_tensor(ctx: Context<MigrateToTensor>) -> Result<()> {
 
     // Verify not already migrated
     require!(
-        !pool.is_migrated_to_tensor,
+                !pool.state.is_migrated_to_tensor,
         ErrorCode::AlreadyMigrated // Use existing error code if applicable
     );
 
     // Check liquidity threshold (690 SOL = 69,0 * 1,000,000,000 lamports)
     const MIGRATION_THRESHOLD: u64 = 690_000_000_000;
     require!(
-        pool.total_escrowed >= MIGRATION_THRESHOLD,
+        pool.stats.total_escrowed >= MIGRATION_THRESHOLD,
         ErrorCode::ThresholdNotMet
     );
 
     // Freeze pool
-    pool.is_active = false;
+        pool.state.is_active = false;
 
     // Set migration flag
-    pool.is_migrated_to_tensor = true;
+        pool.state.is_migrated_to_tensor = true;
 
     // Set migration timestamp
-    pool.tensor_migration_timestamp = Clock::get()?.unix_timestamp;
+        pool.state.tensor_migration_timestamp = Some(Clock::get()?.unix_timestamp);
 
     // TODO: Implement actual Tensor pool initialization CPI
     // This requires the Tensor program interface (ABI/IDL) and program ID.

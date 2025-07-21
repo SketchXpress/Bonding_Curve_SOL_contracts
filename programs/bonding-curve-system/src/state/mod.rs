@@ -5,6 +5,8 @@ pub mod nft_escrow;
 pub mod minter_tracker;
 pub mod collection_distribution;
 pub mod types;
+pub mod nft;
+pub mod user_account;
 
 // Explicit re-exports for better visibility
 pub use pool::BondingCurvePool;
@@ -19,6 +21,8 @@ pub use bid_listing::BidListing;
 pub use nft_escrow::NftEscrow;
 pub use minter_tracker::MinterTracker;
 pub use collection_distribution::CollectionDistribution;
+pub use nft::NFTData;
+pub use user_account::UserAccount;
 pub use types::{
     BidStatus as BidStateStatus,
     BidListingStatus,

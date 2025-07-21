@@ -17,6 +17,12 @@ pub struct PoolState {
     
     /// Pool creation timestamp
     pub created_at: i64,
+    
+    /// Whether specifically migrated to Tensor
+    pub is_migrated_to_tensor: bool,
+    
+    /// Tensor migration timestamp
+    pub tensor_migration_timestamp: Option<i64>,
 }
 
 impl PoolState {
@@ -25,7 +31,9 @@ impl PoolState {
         4 + // current_supply
         1 + // is_migrated
         9 + // migrated_at (Option<i64>)
-        8; // created_at
+        8 + // created_at
+        1 + // is_migrated_to_tensor
+        9; // tensor_migration_timestamp (Option<i64>)
 
     /// Initialize new pool state
     pub fn new() -> Self {

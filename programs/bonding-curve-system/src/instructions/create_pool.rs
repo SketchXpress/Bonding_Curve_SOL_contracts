@@ -41,25 +41,25 @@ pub fn create_pool(
     pool.collection = ctx.accounts.collection_mint.key();
     
     // Set the base price (in lamports)
-    pool.base_price = base_price;
+    pool.config.base_price = base_price;
     
     // Set the growth factor (fixed-point representation)
-    pool.growth_factor = growth_factor;
+    pool.config.growth_factor = growth_factor;
     
     // Initialize current supply to 0
-    pool.current_supply = 0;
+    pool.state.current_supply = 0;
     
     // Set protocol fee to 1% (10000 = 1%)
-    pool.protocol_fee = 10000;
+    pool.config.protocol_fee = 10000;
     
     // Set the creator
-    pool.creator = ctx.accounts.creator.key();
+    pool.config.creator = ctx.accounts.creator.key();
     
     // Initialize total escrowed to 0
-    pool.total_escrowed = 0;
+    pool.stats.total_escrowed = 0;
     
     // Set pool as active
-    pool.is_active = true;
+        pool.state.is_active = true;
     
     // Store the bump
     pool.bump = ctx.bumps.pool;
