@@ -1,19 +1,7 @@
 use anchor_lang::prelude::*;
 
-/// Clean, focused error codes for SketchXp    #[msg("Invalid amount")]
-    BidTooLowSecond = 6060,
-    
-    #[msg("Bid expired")]
-    BidExpiredSecond = 6061,
-    
-    #[msg("Cannot bid on own NFT")]
-    CannotBidOnOwnNftSecond = 6062,
-    
-    #[msg("Bid below bonding curve")]
-    BidBelowBondingCurveSecond = 6063,
-    
-    #[msg("Insufficient premium")]
-    InsufficientPremiumSecond = 6064,ode]
+/// Clean, focused error codes for SketchXpress bonding curve system
+#[error_code]
 pub enum ErrorCode {
     // === GENERAL ERRORS (6000-6019) ===
     #[msg("Invalid amount")]
@@ -41,10 +29,10 @@ pub enum ErrorCode {
     MathError = 6007,
     
     #[msg("Value too low")]
-    ValueTooLow = 6007,
+    ValueTooLow = 6008,
     
     #[msg("Value too high")]
-    ValueTooHigh = 6008,
+    ValueTooHigh = 6009,
 
     // === MATH ERRORS (6020-6029) ===
     #[msg("Math overflow")]
@@ -145,35 +133,23 @@ pub enum ErrorCode {
     InsufficientAccountSpace = 6111,
     
     // === BID ERRORS (6120-6129) ===
-    #[msg("Bid too low")]
-    BidTooLowAlt = 6120,
-    
-    #[msg("Bid expired")]
-    BidExpiredAlt = 6121,
-    
-    #[msg("Cannot bid on own NFT")]
-    CannotBidOnOwnNftAlt = 6122,
-    
-    #[msg("Bid below bonding curve price")]
-    BidBelowBondingCurveAlt = 6123,
-    
-    #[msg("Insufficient premium")]
-    InsufficientPremiumAlt = 6124,
+    #[msg("Advanced bid validation")]
+    AdvancedBidValidation = 6120,
 
-    // === PRICE ERRORS (6060-6069) ===
+    // === PRICE ERRORS (6130-6139) ===
     #[msg("Price exceeds maximum allowed")]
-    PriceExceedsMaximum = 6060,
+    PriceExceedsMaximum = 6130,
 
-    // === LISTING ERRORS (6070-6079) ===
+    // === LISTING ERRORS (6140-6149) ===
     #[msg("Invalid listing status")]
-    InvalidListingStatus = 6071,
+    InvalidListingStatus = 6140,
 
-    // === TIME ERRORS (6080-6089) ===
+    // === TIME ERRORS (6150-6159) ===
     #[msg("Invalid duration")]
-    InvalidDuration = 6080,
+    InvalidDuration = 6150,
     
     #[msg("Expired")]
-    Expired = 6081,
+    Expired = 6151,
 }
 
 impl ErrorCode {
