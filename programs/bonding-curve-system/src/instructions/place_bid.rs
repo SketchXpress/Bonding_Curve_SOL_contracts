@@ -7,6 +7,7 @@ use crate::{
     state::types::{BidListingStatus, BidStatus},
     utils::{debug::*, pricing::calculate_bonding_curve_price},
     errors::ErrorCode,
+    errors::ErrorContext,
     error_ctx,
     debug_log,
 };
@@ -14,12 +15,6 @@ use crate::{
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlaceBidArgs {
     pub amount: u64,
-}
-
-// Define the bumps struct for the PlaceBid context
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct PlaceBidBumps {
-    pub bid: u8,
 }
 
 #[derive(Accounts)]

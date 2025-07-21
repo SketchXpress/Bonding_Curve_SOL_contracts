@@ -2,6 +2,12 @@ use anchor_lang::prelude::*;
 
 use crate::state::BondingCurvePool;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CreatePoolArgs {
+    pub base_price: u64,
+    pub growth_factor: u64,
+}
+
 #[derive(Accounts)]
 pub struct CreatePool<'info> {
     #[account(mut)]
@@ -24,9 +30,10 @@ pub struct CreatePool<'info> {
 
 pub fn create_pool(
     ctx: Context<CreatePool>,
-    base_price: u64,
-    growth_factor: u64,
+    args: CreatePoolArgs,
 ) -> Result<()> {
+    let base_price = args.base_price;
+    let growth_factor = args.growth_factor;
     // Initialize the pool
     let pool = &mut ctx.accounts.pool;
     

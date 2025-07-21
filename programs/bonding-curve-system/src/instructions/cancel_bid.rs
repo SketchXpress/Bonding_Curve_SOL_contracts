@@ -2,8 +2,14 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{Bid, BidListing, BidListingStatus, BidStatus},
+    state::{Bid, BidListing},
+    state::types::{BidListingStatus, BidStatus},
 };
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CancelBidArgs {
+    pub bid_id: u64,
+}
 
 #[event]
 pub struct BidCancelled {
@@ -15,7 +21,7 @@ pub struct BidCancelled {
 }
 
 #[derive(Accounts)]
-#[instruction(bid_id: u64)]
+#[instruction(args: CancelBidArgs)]
 pub struct CancelBid<'info> {
     #[account(mut)]
     pub bidder: Signer<'info>,
@@ -54,8 +60,9 @@ pub struct CancelBid<'info> {
 
 pub fn cancel_bid(
     ctx: Context<CancelBid>,
-    bid_id: u64,
+    args: CancelBidArgs,
 ) -> Result<()> {
+    let bid_id = args.bid_id;
     let current_timestamp = Clock::get()?.unix_timestamp;
     let bid = &mut ctx.accounts.bid;
     let bid_listing = &mut ctx.accounts.bid_listing;

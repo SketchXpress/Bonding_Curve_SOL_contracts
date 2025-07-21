@@ -59,7 +59,8 @@ pub struct MintNft<'info> {
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
-    pub token_metadata_program: Program<'info, mpl_token_metadata::ID>,
+    /// CHECK: This is the MPL Token Metadata program
+    pub token_metadata_program: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }

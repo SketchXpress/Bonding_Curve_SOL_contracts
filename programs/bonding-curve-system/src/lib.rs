@@ -33,7 +33,7 @@ pub mod bonding_curve_system {
 
     // === NFT LIFECYCLE ===
     pub fn create_collection_nft(ctx: Context<CreateCollectionNft>, args: CreateCollectionNftArgs) -> Result<()> {
-        instructions::create_collection_nft::create_collection_nft(ctx, args)
+                instructions::create_collection_nft::create_collection_nft(ctx, args)
     }
 
     pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
@@ -44,8 +44,8 @@ pub mod bonding_curve_system {
         instructions::buy_nft::buy_nft(ctx, args)
     }
 
-    pub fn sell_nft(ctx: Context<SellNft>, args: SellNftArgs) -> Result<()> {
-        instructions::sell_nft::sell_nft(ctx, args)
+    pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
+        instructions::sell_nft::sell_nft(ctx)
     }
 
     // === BIDDING SYSTEM ===
@@ -66,13 +66,13 @@ pub mod bonding_curve_system {
     }
 
     // === COLLECTION FEES ===
-    pub fn distribute_collection_fees(ctx: Context<DistributeCollectionFees>, args: DistributeCollectionFeesArgs) -> Result<()> {
-        instructions::distribute_collection_fees::distribute_collection_fees(ctx, args)
+    pub fn distribute_collection_fees(ctx: Context<DistributeCollectionFees>) -> Result<()> {
+        instructions::distribute_collection_fees::distribute_collection_fees(ctx)
     }
 
     // === MIGRATION ===
-    pub fn migrate_to_tensor(ctx: Context<MigrateToTensor>, args: MigrateToTensorArgs) -> Result<()> {
-        instructions::migrate_to_tensor::migrate_to_tensor(ctx, args)
+    pub fn migrate_to_tensor(ctx: Context<MigrateToTensor>) -> Result<()> {
+        instructions::migrate_to_tensor::migrate_to_tensor(ctx)
     }
 }
 

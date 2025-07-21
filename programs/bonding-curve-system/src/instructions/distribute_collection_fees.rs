@@ -6,6 +6,11 @@ use crate::{
     state::{CollectionDistribution, MinterTracker},
 };
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DistributeCollectionFeesArgs {
+    // Empty struct - no parameters needed
+}
+
 #[event]
 pub struct CollectionFeesDistributed {
     pub collection: Pubkey,

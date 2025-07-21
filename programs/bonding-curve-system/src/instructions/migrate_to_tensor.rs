@@ -2,6 +2,11 @@ use crate::ErrorCode;
 use crate::state::BondingCurvePool;
 use anchor_lang::prelude::*;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct MigrateToTensorArgs {
+    // Empty struct - no parameters needed
+}
+
 #[derive(Accounts)]
 pub struct MigrateToTensor<'info> {
     #[account(mut)]

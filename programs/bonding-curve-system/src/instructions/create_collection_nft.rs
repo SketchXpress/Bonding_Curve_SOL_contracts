@@ -13,6 +13,13 @@ use mpl_token_metadata::instructions::{
 };
 use mpl_token_metadata::types::{Creator, DataV2, CollectionDetails};
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CreateCollectionNftArgs {
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+}
+
 #[derive(Accounts)]
 pub struct CreateCollectionNft<
     'info
@@ -83,10 +90,11 @@ pub struct CreateCollectionNft<
 
 pub fn create_collection_nft(
     ctx: Context<CreateCollectionNft>,
-    name: String,
-    symbol: String,
-    uri: String,
+    args: CreateCollectionNftArgs,
 ) -> Result<()> {
+    let name = args.name;
+    let symbol = args.symbol;
+    let uri = args.uri;
     // Define the creator for the metadata
     let creator = vec![
         Creator {

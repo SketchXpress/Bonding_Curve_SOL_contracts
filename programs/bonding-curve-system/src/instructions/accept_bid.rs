@@ -5,6 +5,7 @@ use crate::{
     constants::*,
     errors::ErrorCode,
     state::*,
+    state::types::{BidStatus, BidListingStatus},
     utils::*,
     debug_log,
 };
@@ -96,7 +97,7 @@ fn validate_bid_acceptance(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContex
     }
 
     // Check if listing is still active
-    if ctx.accounts.bid_listing.status != ListingStatus::Active {
+    if ctx.accounts.bid_listing.status != BidListingStatus::Active {
         debug_log!(debug_ctx, LogLevel::Error, "Listing is not active");
         return Err(ErrorCode::InvalidListingStatus.into());
     }
@@ -289,7 +290,7 @@ fn update_account_states(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContext)
 
     // Update listing status
     let listing = &mut ctx.accounts.bid_listing;
-    listing.status = ListingStatus::Sold;
+    listing.status = BidListingStatus::Accepted;
     listing.sold_at = Some(Clock::get()?.unix_timestamp);
     listing.final_price = Some(bid.amount);
 
