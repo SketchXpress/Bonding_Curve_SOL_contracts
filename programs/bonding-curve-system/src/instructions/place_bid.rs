@@ -3,9 +3,10 @@ use anchor_spl::token::{Token, TokenAccount};
 
 use crate::{
     constants::*,
-    state::{BidListing, BondingCurvePool, ListingStatus},
-    utils::pricing::calculate_minimum_bid,
-    ErrorCode,
+    state::{BidListing, BondingCurvePool, Bid},
+    state::types::{BidListingStatus, BidStatus},
+    utils::{debug::*, pricing::calculate_bonding_curve_price},
+    errors::ErrorCode,
     error_ctx,
     debug_log,
 };
@@ -13,6 +14,12 @@ use crate::{
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlaceBidArgs {
     pub amount: u64,
+}
+
+// Define the bumps struct for the PlaceBid context
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct PlaceBidBumps {
+    pub bid: u8,
 }
 
 #[derive(Accounts)]
@@ -23,7 +30,7 @@ pub struct PlaceBid<'info> {
 
     #[account(
         mut,
-        constraint = bid_listing.status == ListingStatus::Active @ ErrorCode::InvalidListingStatus
+        constraint = bid_listing.status == BidListingStatus::Active @ ErrorCode::InvalidListingStatus
     )]
     pub bid_listing: Account<'info, BidListing>,
 
@@ -114,7 +121,16 @@ pub fn place_bid(ctx: Context<PlaceBid>, args: PlaceBidArgs) -> Result<()> {
     bid.status = BidStatus::Active;
     bid.created_at = Clock::get()?.unix_timestamp;
     bid.expires_at = ctx.accounts.bid_listing.expires_at;
-    bid.bump = ctx.bumps.bid;
+    // Get the PDA bump using Pubkey::find_program_address instead of ctx.bumps
+    let (_pda, bump) = Pubkey::find_program_address(
+        &[
+            b"bid",
+            ctx.accounts.bid_listing.key().as_ref(),
+            ctx.accounts.bidder.key().as_ref()
+        ],
+        &crate::ID
+    );
+    bid.bump = bump;
 
     debug_log!(debug_ctx, LogLevel::Info, "Bid placed successfully");
     Ok(())

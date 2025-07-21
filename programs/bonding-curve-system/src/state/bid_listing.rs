@@ -206,7 +206,7 @@ impl BidListing {
         current_time: i64,
     ) -> Result<()> {
         // Validate listing is active
-        require!(self.is_active(current_time), crate::errors::ErrorCode::BidListingExpired);
+        require!(self.is_active(current_time), crate::errors::ErrorCode::ListingExpired);
 
         // Validate bid amount
         let required_minimum = self.get_effective_minimum_bid(pricing_config);

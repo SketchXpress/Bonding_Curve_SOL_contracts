@@ -1,7 +1,19 @@
 use anchor_lang::prelude::*;
 
-/// Clean, focused error codes for SketchXpress
-#[error_code]
+/// Clean, focused error codes for SketchXp    #[msg("Invalid amount")]
+    BidTooLowSecond = 6060,
+    
+    #[msg("Bid expired")]
+    BidExpiredSecond = 6061,
+    
+    #[msg("Cannot bid on own NFT")]
+    CannotBidOnOwnNftSecond = 6062,
+    
+    #[msg("Bid below bonding curve")]
+    BidBelowBondingCurveSecond = 6063,
+    
+    #[msg("Insufficient premium")]
+    InsufficientPremiumSecond = 6064,ode]
 pub enum ErrorCode {
     // === GENERAL ERRORS (6000-6019) ===
     #[msg("Invalid amount")]
@@ -24,6 +36,9 @@ pub enum ErrorCode {
 
     #[msg("Invalid authority")]
     InvalidAuthority = 6006,
+    
+    #[msg("Math error")]
+    MathError = 6007,
     
     #[msg("Value too low")]
     ValueTooLow = 6007,
@@ -128,28 +143,28 @@ pub enum ErrorCode {
     
     #[msg("Insufficient account space")]
     InsufficientAccountSpace = 6111,
-    BidTooLow = 6050,
+    
+    // === BID ERRORS (6120-6129) ===
+    #[msg("Bid too low")]
+    BidTooLowAlt = 6120,
     
     #[msg("Bid expired")]
-    BidExpired = 6051,
+    BidExpiredAlt = 6121,
     
     #[msg("Cannot bid on own NFT")]
-    CannotBidOnOwnNft = 6052,
+    CannotBidOnOwnNftAlt = 6122,
     
     #[msg("Bid below bonding curve price")]
-    BidBelowBondingCurve = 6053,
+    BidBelowBondingCurveAlt = 6123,
     
     #[msg("Insufficient premium")]
-    InsufficientPremium = 6054,
+    InsufficientPremiumAlt = 6124,
 
     // === PRICE ERRORS (6060-6069) ===
     #[msg("Price exceeds maximum allowed")]
     PriceExceedsMaximum = 6060,
 
     // === LISTING ERRORS (6070-6079) ===
-    #[msg("Listing expired")]
-    ListingExpired = 6070,
-    
     #[msg("Invalid listing status")]
     InvalidListingStatus = 6071,
 

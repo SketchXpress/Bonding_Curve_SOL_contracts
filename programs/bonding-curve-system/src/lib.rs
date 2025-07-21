@@ -15,14 +15,9 @@ pub mod utils;
 use instructions::*;
 pub use errors::{ErrorCode, ErrorContext};
 
-#[macro_use]
+// Macros are defined in errors/context.rs
 pub mod macros {
-    #[macro_export]
-    macro_rules! error_ctx {
-        ($error:expr, $ctx:expr) => {{
-            ErrorContext::new($error, $ctx)
-        }};
-    }
+    // Keeping module for organizational purposes
 }
 
 /// SketchXpress Bonding Curve System

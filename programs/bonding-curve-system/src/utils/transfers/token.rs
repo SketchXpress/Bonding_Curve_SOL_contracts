@@ -95,9 +95,9 @@ pub fn transfer_tokens_with_signer_and_context<'info>(
 }
 
 /// Validate token transfer parameters
-fn validate_token_transfer(
-    from: &Account<TokenAccount>,
-    to: &Account<TokenAccount>,
+fn validate_token_transfer<'info>(
+    from: &Account<'info, TokenAccount>,
+    to: &Account<'info, TokenAccount>,
     amount: u64,
     debug_ctx: &mut DebugContext,
 ) -> Result<()> {
