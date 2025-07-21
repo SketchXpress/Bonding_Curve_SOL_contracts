@@ -19,11 +19,11 @@ pub fn transfer_tokens(
 }
 
 /// Token transfer with debug context
-pub fn transfer_tokens_with_context(
-    from: &Account<TokenAccount>,
-    to: &Account<TokenAccount>,
-    authority: &AccountInfo,
-    token_program: &Program<Token>,
+pub fn transfer_tokens_with_context<'info>(
+    from: &Account<'info, TokenAccount>,
+    to: &Account<'info, TokenAccount>,
+    authority: &'info AccountInfo<'info>,
+    token_program: &'info Program<'info, Token>,
     amount: u64,
     debug_ctx: &mut DebugContext,
 ) -> Result<()> {

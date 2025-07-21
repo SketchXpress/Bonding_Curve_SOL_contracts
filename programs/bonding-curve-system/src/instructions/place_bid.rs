@@ -52,8 +52,7 @@ pub struct PlaceBid<'info> {
         init,
         payer = bidder,
         token::mint = anchor_spl::token::spl_token::native_mint::id(),
-        token::authority = bid,
-        space = TokenAccount::LEN
+        token::authority = bid
     )]
     pub bid_escrow: Account<'info, TokenAccount>,
 

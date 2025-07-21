@@ -242,7 +242,7 @@ impl BidListing {
     }
 
     /// Cancel the listing
-    pub fn cancel(&mut self, current_time: i64) -> Result<()> {
+    pub fn cancel(&mut self, _current_time: i64) -> Result<()> {
         require!(self.status == BidListingStatus::Active, crate::errors::ErrorCode::InvalidListingStatus);
         self.status = BidListingStatus::Cancelled;
         Ok(())

@@ -41,10 +41,11 @@ fn create_metadata_account(ctx: &Context<MintNft>, args: &MintNftArgs, debug_ctx
     debug_ctx.step("metadata_creation");
     
     // Validate metadata PDA
+    let nft_mint_key = ctx.accounts.nft_mint.key();
     let metadata_seeds = &[
         b"metadata",
         mpl_token_metadata::ID.as_ref(),
-        ctx.accounts.nft_mint.key().as_ref(),
+        nft_mint_key.as_ref(),
     ];
     let (metadata_pda, _) = Pubkey::find_program_address(metadata_seeds, &mpl_token_metadata::ID);
 

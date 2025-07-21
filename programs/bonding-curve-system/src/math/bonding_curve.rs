@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::errors::ErrorCode;
+use crate::ErrorCode;
 
 /// Calculate bonding curve price - simple and debuggable
 pub fn calculate_bonding_curve_price(

@@ -5,10 +5,7 @@ declare_id!("11111111111111111111111111111112");
 
 // === MODULES ===
 pub mod constants;
-pub mod errors {
-    pub use crate::errors::codes::*;
-    pub use crate::errors::context::*;
-}
+pub mod errors;
 pub mod instructions;
 pub mod math;
 pub mod state;
@@ -16,7 +13,7 @@ pub mod utils;
 
 // === IMPORTS ===
 use instructions::*;
-pub use errors::*;
+pub use errors::{ErrorCode, ErrorContext};
 
 #[macro_use]
 pub mod macros {
