@@ -18,6 +18,18 @@ pub enum ErrorCode {
     
     #[msg("Account not initialized")]
     AccountNotInitialized = 6004,
+    
+    #[msg("Invalid account owner")]
+    InvalidAccountOwner = 6005,
+
+    #[msg("Invalid authority")]
+    InvalidAuthority = 6006,
+    
+    #[msg("Value too low")]
+    ValueTooLow = 6007,
+    
+    #[msg("Value too high")]
+    ValueTooHigh = 6008,
 
     // === MATH ERRORS (6020-6029) ===
     #[msg("Math overflow")]
@@ -25,6 +37,9 @@ pub enum ErrorCode {
     
     #[msg("Math underflow")]
     MathUnderflow = 6021,
+    
+    #[msg("Division by zero")]
+    DivisionByZero = 6022,
 
     // === POOL ERRORS (6030-6039) ===
     #[msg("Pool inactive")]
@@ -35,6 +50,9 @@ pub enum ErrorCode {
     
     #[msg("Max supply reached")]
     MaxSupplyReached = 6032,
+    
+    #[msg("Threshold not met")]
+    ThresholdNotMet = 6033,
 
     // === NFT ERRORS (6040-6049) ===
     #[msg("Invalid NFT mint")]
@@ -45,9 +63,71 @@ pub enum ErrorCode {
     
     #[msg("Cannot operate on own NFT")]
     CannotOperateOnOwnNft = 6042,
+    
+    #[msg("NFT already sold")]
+    NFTAlreadySold = 6043,
+    
+    #[msg("Insufficient NFT balance")]
+    InsufficientNftBalance = 6044,
 
     // === BIDDING ERRORS (6050-6069) ===
-    #[msg("Bid too low")]
+    #[msg("Bid too high")]
+    BidTooHigh = 6050,
+    
+    #[msg("Bid must exceed bonding curve")]
+    BidMustExceedBondingCurve = 6051,
+    
+    #[msg("Insufficient bid increment")]
+    InsufficientBidIncrement = 6052,
+    
+    #[msg("Bid listing expired")]
+    ListingExpired = 6053,
+    
+    #[msg("Invalid bid amount")]
+    InvalidBidAmount = 6054,
+    
+    #[msg("Bid not found")]
+    BidNotFound = 6055,
+    
+    #[msg("Unauthorized bid cancellation")]
+    UnauthorizedBidCancellation = 6056,
+    
+    #[msg("Cannot cancel bid")]
+    CannotCancelBid = 6057,
+
+    // === LISTING ERRORS (6070-6089) ===
+    #[msg("Escrow not empty")]
+    EscrowNotEmpty = 6070,
+    
+    #[msg("Insufficient escrow balance")]
+    InsufficientEscrowBalance = 6071,
+    
+    #[msg("Invalid revenue split")]
+    InvalidRevenueSplit = 6072,
+    
+    // === TIME ERRORS (6090-6099) ===
+    #[msg("Duration too short")]
+    DurationTooShort = 6090,
+    
+    #[msg("Duration too long")]
+    DurationTooLong = 6091,
+    
+    #[msg("Invalid timestamp")]
+    InvalidTimestamp = 6092,
+
+    // === STRING ERRORS (6100-6109) ===
+    #[msg("Empty string")]
+    EmptyString = 6100,
+    
+    #[msg("String too long")]
+    StringTooLong = 6101,
+    
+    // === FUNDS ERRORS (6110-6119) ===
+    #[msg("Insufficient funds")]
+    InsufficientFunds = 6110,
+    
+    #[msg("Insufficient account space")]
+    InsufficientAccountSpace = 6111,
     BidTooLow = 6050,
     
     #[msg("Bid expired")]

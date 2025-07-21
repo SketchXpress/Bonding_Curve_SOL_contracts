@@ -7,11 +7,11 @@ use crate::{
 };
 
 /// Simple token transfer
-pub fn transfer_tokens(
-    from: &Account<TokenAccount>,
-    to: &Account<TokenAccount>,
-    authority: &AccountInfo,
-    token_program: &Program<Token>,
+pub fn transfer_tokens<'info>(
+    from: &Account<'info, TokenAccount>,
+    to: &Account<'info, TokenAccount>,
+    authority: &'info AccountInfo<'info>,
+    token_program: &'info Program<'info, Token>,
     amount: u64,
 ) -> Result<()> {
     let mut debug_ctx = DebugContext::new("transfer_tokens");
