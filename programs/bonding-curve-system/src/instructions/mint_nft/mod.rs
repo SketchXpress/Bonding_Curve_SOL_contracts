@@ -39,7 +39,7 @@ pub fn mint_nft(mut ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     initialize_nft_escrow(&mut ctx, mint_price, &mut debug_ctx)?;
 
     // Step 6: Track original minter
-    initialize_minter_tracker(&ctx, &mut debug_ctx)?;
+    initialize_minter_tracker(&mut ctx, &mut debug_ctx)?;
 
     // Step 7: Update pool state
     update_pool_state(&mut ctx, mint_price, &mut debug_ctx)?;
