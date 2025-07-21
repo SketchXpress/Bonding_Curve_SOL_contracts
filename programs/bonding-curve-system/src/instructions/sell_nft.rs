@@ -1,6 +1,4 @@
-// programs/bonding-curve-system/src/i    /// CHECK: This is safe because the address is constrained to `pool.creator`
-    #[account(mut, address = pool.config.creator)]
-    pub creator: UncheckedAccount<'info>,ructions/sell_nft.rs
+// programs/bonding-curve-system/src/instructions/sell_nft.rs
 // Refined to include pool and timestamp in NftSale event
 
 use anchor_lang::prelude::*;

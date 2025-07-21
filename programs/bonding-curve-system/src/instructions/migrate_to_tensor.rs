@@ -58,8 +58,8 @@ pub fn migrate_to_tensor(ctx: Context<MigrateToTensor>) -> Result<()> {
 
     // Log migration
     msg!(
-        "Pool migrated to Tensor at timestamp: {}",
-        pool.tensor_migration_timestamp
+        "Pool migrated to Tensor at timestamp: {:?}",
+        pool.state.tensor_migration_timestamp
     );
 
     Ok(())

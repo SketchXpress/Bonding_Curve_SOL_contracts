@@ -1,15 +1,9 @@
 use anchor_lang::prelude::*;
 
-use cra    /// The bid account to be cancelled
-    #[account(
-        mut,
-        seeds = [b"bid", nft_mint.key().as_ref(), args.bid_id.to_le_bytes().as_ref()],
-        bump = bid.bump,
-        constraint = bid.details.bidder == bidder.key() @ ErrorCode::UnauthorizedBidCancellation,
-    )]
-    pub bid: Account<'info, Bid>,   errors::ErrorCode,
+use crate::{
+    errors::ErrorCode,
     state::{Bid, BidListing},
-    state::types::{BidListingStatus, BidStatus},
+    state::types::{BidStatus},
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
