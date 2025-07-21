@@ -115,6 +115,7 @@ fn validate_bid_acceptance(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContex
 
 #[derive(Debug)]
 struct RevenueDistribution {
+    #[allow(dead_code)]
     total_amount: u64,
     minter_amount: u64,
     platform_amount: u64,

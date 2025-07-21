@@ -232,7 +232,7 @@ impl BidListing {
     }
 
     /// Accept a bid and mark listing as accepted
-    pub fn accept_bid(&mut self, accepted_amount: u64, current_time: i64) -> Result<()> {
+    pub fn accept_bid(&mut self, accepted_amount: u64, _current_time: i64) -> Result<()> {
         require!(self.status == BidListingStatus::Active, crate::errors::ErrorCode::InvalidListingStatus);
         require!(accepted_amount == self.highest_bid, crate::errors::ErrorCode::InvalidBidAmount);
         require!(self.highest_bidder.is_some(), crate::errors::ErrorCode::BidNotFound);

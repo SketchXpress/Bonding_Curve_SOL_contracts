@@ -249,7 +249,7 @@ pub struct StateValidator;
 
 impl StateValidator {
     /// Validate account state consistency
-    pub fn validate_account_state<T>(account: &Account<T>, name: &str, debug_ctx: &mut DebugContext) -> bool 
+    pub fn validate_account_state<T>(_account: &Account<T>, name: &str, debug_ctx: &mut DebugContext) -> bool 
     where
         T: AccountSerialize + AccountDeserialize + Clone,
     {

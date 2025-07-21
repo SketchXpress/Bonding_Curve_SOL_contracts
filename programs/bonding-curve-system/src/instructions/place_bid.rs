@@ -122,7 +122,7 @@ pub fn place_bid(ctx: Context<PlaceBid>, args: PlaceBidArgs) -> Result<()> {
     Ok(())
 }
 
-fn calculate_minimum_bid(pool: &BondingCurvePool, listing: &BidListing) -> Result<u64> {
+fn calculate_minimum_bid(pool: &BondingCurvePool, _listing: &BidListing) -> Result<u64> {
         let current_price = calculate_bonding_curve_price(pool.config.base_price, pool.config.growth_factor, pool.state.current_supply)?;
     let minimum_premium = current_price
         .checked_mul(MINIMUM_BID_PREMIUM_BP as u64)

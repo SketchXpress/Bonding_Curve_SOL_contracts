@@ -141,6 +141,7 @@ fn calculate_nft_price(nft_data: &NFTData, pool: &BondingCurvePool) -> Result<u6
 }
 
 // Helper function to calculate fee
+#[allow(dead_code)]
 fn calculate_fee(price: u64) -> Result<u64> {
     // Example: 2.5% fee
     let fee_numerator = 25;
@@ -155,6 +156,7 @@ fn calculate_fee(price: u64) -> Result<u64> {
 }
 
 // Helper function to determine if we should set past threshold
+#[allow(dead_code)]
 fn should_set_past_threshold(pool: &BondingCurvePool, transaction_amount: u64) -> bool {
     // Example threshold condition based on transaction amount and current state
     let new_market_cap = pool.stats.market_cap.saturating_add(transaction_amount);
