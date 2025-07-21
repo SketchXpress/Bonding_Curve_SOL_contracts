@@ -15,5 +15,5 @@ pub fn calculate_revenue_share(total_amount: u64, share_bps: u16) -> Result<u64>
 pub fn calculate_remaining_after_share(total_amount: u64, share_amount: u64) -> Result<u64> {
     total_amount
         .checked_sub(share_amount)
-        .ok_or(crate::errors::ErrorCode::MathError)
+        .ok_or(crate::errors::ErrorCode::MathError.into())
 }

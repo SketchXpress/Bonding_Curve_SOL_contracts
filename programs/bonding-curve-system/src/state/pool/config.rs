@@ -45,6 +45,7 @@ impl PoolConfig {
             max_supply,
             migration_threshold,
             creator,
+            protocol_fee: 250, // Default to 2.5%
         };
         
         config.validate()?;

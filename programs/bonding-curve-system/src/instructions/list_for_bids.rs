@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 use crate::state::{BidListing, BondingCurvePool, BidListingStatus};
-use crate::utils::{DynamicPricing, AccountValidator, BusinessValidator};
+use crate::utils::{DynamicPricing, BusinessValidator};
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
@@ -75,7 +75,8 @@ pub fn list_for_bids(ctx: Context<ListForBids>, args: ListForBidsArgs) -> Result
     );
 
     // Validate duration
-    let listing_duration = BusinessValidator::validate_duration(args.duration_hours)?;
+    let duration_seconds = args.duration_hours * 3600; // Convert hours to seconds
+    let listing_duration = BusinessValidator::validate_duration_seconds(Some(duration_seconds))?;
     let expires_at = if listing_duration > 0 {
         current_time + listing_duration
     } else {

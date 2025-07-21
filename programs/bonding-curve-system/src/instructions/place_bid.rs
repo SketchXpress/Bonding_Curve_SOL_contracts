@@ -1,10 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount, spl_token};
+use anchor_spl::token::{Token};
 
 use crate::{
     constants::*,
     state::{BidListing, BondingCurvePool, Bid},
-    state::types::{BidListingStatus, BidStatus},
+    state::types::{BidListingStatus},
+    state::bid::{BidStatus},
     utils::{debug::*, pricing::calculate_bonding_curve_price},
     errors::ErrorCode,
     errors::ErrorContext,
@@ -69,11 +70,7 @@ pub fn place_bid(ctx: Context<PlaceBid>, args: PlaceBidArgs) -> Result<()> {
     let min_bid = calculate_minimum_bid(&ctx.accounts.bonding_curve_pool, &ctx.accounts.bid_listing)?;
     
     if args.amount < min_bid {
-        let error_ctx = error_ctx!(
-            ErrorCode::BidTooLow,
-            format!("Bid amount {} is below minimum required {}", args.amount, min_bid)
-        );
-        error_ctx.log();
+        msg!("Bid amount {} is below minimum required {}", args.amount, min_bid);
         return Err(ErrorCode::BidTooLow.into());
     }
 

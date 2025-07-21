@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{Bid, BidListing},
-    state::types::{BidStatus},
+    state::bid::{BidStatus, CancellationReason},
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -40,9 +40,9 @@ pub struct CancelBid<'info> {
     /// The bid account to be cancelled
     #[account(
         mut,
-        seeds = [b"bid", nft_mint.key().as_ref(), bid_id.to_le_bytes().as_ref()],
+        seeds = [b"bid", nft_mint.key().as_ref(), args.bid_id.to_le_bytes().as_ref()],
         bump = bid.bump,
-        constraint = bid.bidder == bidder.key() @ ErrorCode::UnauthorizedBidCancellation,
+        constraint = bid.details.bidder == bidder.key() @ ErrorCode::UnauthorizedBidCancellation,
     )]
     pub bid: Account<'info, Bid>,
 
@@ -69,15 +69,15 @@ pub fn cancel_bid(
 
     // Check if bid can be cancelled
     require!(
-        bid.can_be_cancelled(current_timestamp),
+        bid.can_cancel(&ctx.accounts.bidder.key()),
         ErrorCode::CannotCancelBid
     );
 
     // Store bid amount for refund
     let refund_amount = bid.details.amount;
 
-    // Update bid status
-    bid.outcome.status = BidStatus::Cancelled;
+    // Update bid status using the cancel method
+    bid.outcome.cancel(CancellationReason::UserCancelled)?;
 
     // Refund the bidder
     **ctx.accounts.bid_escrow.to_account_info().try_borrow_mut_lamports()? -= refund_amount;

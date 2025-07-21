@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use crate::state::{BondingCurvePool, BidListing};
-use crate::math::bonding_curve;
 
 // Re-export for convenience
 pub use crate::math::bonding_curve::calculate_bonding_curve_price;
@@ -14,10 +13,10 @@ impl DynamicPricing {
         pool: &Account<BondingCurvePool>,
     ) -> Result<u64> {
         // Get the current price based on supply
-        let current_price = BondingCurve::calculate_price(
-            pool.base_price,
-            pool.growth_factor,
-            pool.current_supply,
+        let current_price = crate::math::price_calculation::calculate_mint_price(
+            pool.config.base_price,
+            pool.config.growth_factor.into(),
+            pool.state.current_supply.into(),
         )?;
 
         Ok(current_price)
@@ -165,9 +164,9 @@ impl DynamicPricing {
     ) -> Result<u64> {
         // Simple estimation based on growth factor
         // In a real implementation, you'd use historical data
-        let base_growth_per_hour = pool.growth_factor
+        let base_growth_per_hour = pool.config.growth_factor
             .checked_div(100)
-            .unwrap_or(1);
+            .unwrap_or(1) as u64;
 
         let estimated_growth = base_growth_per_hour
             .checked_mul(time_horizon_hours as u64)

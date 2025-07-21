@@ -100,33 +100,16 @@ pub fn buy_nft(ctx: Context<BuyNft>, args: BuyNftArgs) -> Result<()> {
     ctx.accounts.nft_data.owner = ctx.accounts.buyer.key();
     ctx.accounts.nft_data.last_price = price;
     
-    // Update buyer account
-    ctx.accounts.buyer_account.owned_nfts.push(ctx.accounts.nft_data.key());
+    // Update buyer account statistics
+    ctx.accounts.buyer_account.total_nfts_bought = ctx.accounts.buyer_account.total_nfts_bought.saturating_add(1);
+    ctx.accounts.buyer_account.total_volume_bought = ctx.accounts.buyer_account.total_volume_bought.saturating_add(price);
     
-    // Update seller account - remove NFT from owned_nfts
-    let nft_key = ctx.accounts.nft_data.key();
-    if let Some(index) = ctx.accounts.seller_account.owned_nfts.iter().position(|x| *x == nft_key) {
-        ctx.accounts.seller_account.owned_nfts.remove(index);
-    }
+    // Update seller account statistics
+    ctx.accounts.seller_account.total_nfts_sold = ctx.accounts.seller_account.total_nfts_sold.saturating_add(1);
+    ctx.accounts.seller_account.total_volume_sold = ctx.accounts.seller_account.total_volume_sold.saturating_add(price);
     
-    // Update pool state if needed based on threshold
-    if ctx.accounts.pool.is_past_threshold() {
-        // If past threshold, update distribution metrics
-        let fee = calculate_fee(price)?;
-        
-        // Update total distributed
-        ctx.accounts.pool.total_distributed = ctx.accounts.pool.total_distributed
-            .checked_add(fee)
-            .ok_or(ErrorCode::MathOverflow)?;
-        
-        msg!("NFT sold with fee distribution of {} lamports", fee);
-    } else {
-        // If not past threshold, check if this transaction should trigger threshold
-        if should_set_past_threshold(&ctx.accounts.pool, price) {
-            ctx.accounts.pool.set_past_threshold(true);
-            msg!("Pool has passed the threshold after NFT sale");
-        }
-    }
+    // Update pool statistics
+    ctx.accounts.pool.stats.record_trade(price)?;
     
     msg!("NFT sold successfully for {} lamports", price);
     
@@ -173,6 +156,6 @@ fn calculate_fee(price: u64) -> Result<u64> {
 // Helper function to determine if we should set past threshold
 fn should_set_past_threshold(pool: &BondingCurvePool, transaction_amount: u64) -> bool {
     // Example threshold condition based on transaction amount and current state
-    let new_market_cap = pool.current_market_cap.saturating_add(transaction_amount);
-    new_market_cap > 1_000_000_000 && pool.total_supply > 1_000_000
+    let new_market_cap = pool.stats.market_cap.saturating_add(transaction_amount);
+    new_market_cap > 1_000_000_000 && pool.state.current_supply > 1_000_000
 }

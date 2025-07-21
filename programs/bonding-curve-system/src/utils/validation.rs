@@ -91,7 +91,7 @@ impl AccountValidator {
     /// # Returns
     /// * `Result<()>` - Success or wrong owner error
     pub fn validate_account_owner(account: &AccountInfo, expected_owner: &Pubkey) -> Result<()> {
-        require_keys_eq!(account.owner, *expected_owner, ErrorCode::InvalidAccountOwner);
+        require_keys_eq!(*account.owner, *expected_owner, ErrorCode::InvalidAccountOwner);
         Ok(())
     }
 

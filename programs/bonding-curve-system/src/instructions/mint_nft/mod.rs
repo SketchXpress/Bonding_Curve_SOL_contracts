@@ -36,13 +36,13 @@ pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     create_nft_and_metadata(&ctx, &args, &mut debug_ctx)?;
 
     // Step 5: Initialize escrow
-    initialize_nft_escrow(&ctx, mint_price, &mut debug_ctx)?;
+    initialize_nft_escrow(&mut ctx, mint_price, &mut debug_ctx)?;
 
     // Step 6: Track original minter
     initialize_minter_tracker(&ctx, &mut debug_ctx)?;
 
     // Step 7: Update pool state
-    update_pool_state(&ctx, mint_price, &mut debug_ctx)?;
+    update_pool_state(&mut ctx, mint_price, &mut debug_ctx)?;
 
     debug_log!(debug_ctx, LogLevel::Info, "NFT mint completed successfully");
     Ok(())

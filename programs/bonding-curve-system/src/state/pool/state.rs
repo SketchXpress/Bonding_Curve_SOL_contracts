@@ -43,6 +43,8 @@ impl PoolState {
             is_migrated: false,
             migrated_at: None,
             created_at: Clock::get().map(|c| c.unix_timestamp).unwrap_or(0),
+            is_migrated_to_tensor: false,
+            tensor_migration_timestamp: None,
         }
     }
 

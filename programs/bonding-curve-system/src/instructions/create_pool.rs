@@ -43,8 +43,8 @@ pub fn create_pool(
     // Set the base price (in lamports)
     pool.config.base_price = base_price;
     
-    // Set the growth factor (fixed-point representation)
-    pool.config.growth_factor = growth_factor;
+    // Set the growth factor (convert to u16, limited to 65535)
+    pool.config.growth_factor = growth_factor.min(65535) as u16;
     
     // Initialize current supply to 0
     pool.state.current_supply = 0;

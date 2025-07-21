@@ -5,12 +5,24 @@ use crate::{
     constants::*,
     errors::ErrorCode,
     state::*,
-    state::types::{BidStatus, BidListingStatus},
+    state::types::{BidListingStatus},
+    state::bid::{BidStatus},
     utils::*,
     debug_log,
 };
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(Anc    debug_ctx.step("state_updates");
+    
+    // Update bid status using the built-in method
+    let bid = &mut ctx.accounts.bid;
+    bid.outcome.accept()?;
+
+    // Update listing status
+    let listing = &mut ctx.accounts.bid_listing;
+    listing.status = BidListingStatus::Accepted;
+
+    debug_log!(debug_ctx, LogLevel::Debug, "Account states updated");
+    Ok()nchorDeserialize, Clone)]
 pub struct AcceptBidArgs {
     pub bid_id: u64,
 }
@@ -30,12 +42,12 @@ pub struct AcceptBid<'info> {
     #[account(
         mut,
         constraint = bid.bid_id == args.bid_id @ ErrorCode::InvalidAccount,
-        constraint = bid.status == BidStatus::Active @ ErrorCode::InvalidAccount
+        constraint = bid.outcome.status == BidStatus::Active @ ErrorCode::InvalidAccount
     )]
     pub bid: Account<'info, Bid>,
 
     #[account(
-        constraint = minter_tracker.nft_mint == bid.nft_mint @ ErrorCode::InvalidNftMint,
+        constraint = minter_tracker.nft_mint == bid.details.nft_mint @ ErrorCode::InvalidNftMint,
         constraint = minter_tracker.original_minter == original_minter.key() @ ErrorCode::Unauthorized
     )]
     pub minter_tracker: Account<'info, MinterTracker>,
@@ -68,7 +80,7 @@ pub fn accept_bid(ctx: Context<AcceptBid>, args: AcceptBidArgs) -> Result<()> {
     validate_bid_acceptance(&ctx, &mut debug_ctx)?;
 
     // Step 2: Calculate revenue distribution
-    let distribution = calculate_revenue_distribution(ctx.accounts.bid.amount, &mut debug_ctx)?;
+    let distribution = calculate_revenue_distribution(ctx.accounts.bid.details.amount, &mut debug_ctx)?;
 
     // Step 3: Execute revenue distribution
     execute_revenue_distribution(&ctx, &distribution, &mut debug_ctx)?;
@@ -91,7 +103,7 @@ fn validate_bid_acceptance(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContex
     let current_time = Clock::get()?.unix_timestamp;
     
     // Check if bid is still valid
-    if ctx.accounts.bid.expires_at < current_time {
+    if ctx.accounts.bid.timing.expires_at < current_time {
         debug_log!(debug_ctx, LogLevel::Error, "Bid has expired");
         return Err(ErrorCode::BidExpired.into());
     }
@@ -103,7 +115,7 @@ fn validate_bid_acceptance(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContex
     }
 
     // Verify bidder is not the minter
-    if ctx.accounts.bid.bidder == ctx.accounts.original_minter.key() {
+    if ctx.accounts.bid.details.bidder == ctx.accounts.original_minter.key() {
         debug_log!(debug_ctx, LogLevel::Error, "Minter cannot accept own bid");
         return Err(ErrorCode::CannotBidOnOwnNft.into());
     }
@@ -214,8 +226,8 @@ fn transfer_from_escrow(
 ) -> Result<()> {
     let seeds = &[
         b"bid",
-        authority.nft_mint.as_ref(),
-        authority.bidder.as_ref(),
+        authority.details.nft_mint.as_ref(),
+        authority.details.bidder.as_ref(),
         &[authority.bump],
     ];
     let signer = &[&seeds[..]];
@@ -242,22 +254,17 @@ fn add_to_collection_pool(
     debug_ctx.step("collection_pool_update");
     
     let collection_dist = &mut ctx.accounts.collection_distribution;
-    collection_dist.pending_distribution = collection_dist
-        .pending_distribution
-        .checked_add(amount)
-        .ok_or(ErrorCode::MathOverflow)?;
-
-    collection_dist.total_sales = collection_dist
-        .total_sales
+    collection_dist.add_fees(amount);
+    collection_dist.distribution_count = collection_dist.distribution_count
         .checked_add(1)
         .ok_or(ErrorCode::MathOverflow)?;
 
     debug_log!(
         debug_ctx,
         LogLevel::Debug,
-        "Collection pool updated - Pending: {}, Total Sales: {}",
-        collection_dist.pending_distribution,
-        collection_dist.total_sales
+        "Collection pool updated - Accumulated fees: {}, Distribution count: {}",
+        collection_dist.accumulated_fees,
+        collection_dist.distribution_count
     );
     Ok(())
 }

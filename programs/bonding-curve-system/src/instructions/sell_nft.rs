@@ -36,8 +36,8 @@ pub struct SellNFT<'info> {
     )]
     pub escrow: Account<'info, NftEscrow>,
 
-    /// CHECK: This is safe because the address is constrained to `pool.creator`
-    #[account(mut, address = pool.creator)]
+    /// CHECK: This is safe because the address is constrained to `pool.config.creator`
+    #[account(mut, address = pool.config.creator)]
     pub creator: UncheckedAccount<'info>,
 
     #[account(mut)]
@@ -78,8 +78,8 @@ pub fn sell_nft(ctx: Context<SellNFT>) -> Result<()> {
     let pool_account = &ctx.accounts.pool;
     let price = calculate_sell_price(
         pool_account.config.base_price,
-        pool_account.config.growth_factor,
-        pool_account.state.current_supply,
+        pool_account.config.growth_factor.into(),
+        pool_account.state.current_supply.into(),
     )?;
 
     require!(pool_account.state.is_active, ErrorCode::PoolInactive);
