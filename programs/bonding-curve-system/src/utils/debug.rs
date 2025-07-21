@@ -132,13 +132,6 @@ impl AccountInspector {
         debug_ctx.step("context_inspection");
         debug_log!(debug_ctx, LogLevel::Debug, "Program ID: {}", program_id);
     }
-
-        // Log remaining accounts
-        for (i, account) in ctx.remaining_accounts.iter().enumerate() {
-            let account_info = Self::inspect_account(account, &format!("remaining_{}", i));
-            debug_log!(debug_ctx, LogLevel::Debug, "{}", account_info);
-        }
-    }
 }
 
 /// Transaction state tracker for debugging
