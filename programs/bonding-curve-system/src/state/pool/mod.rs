@@ -36,6 +36,9 @@ impl BondingCurvePool {
         PoolStats::SIZE +
         1; // bump
 
+    /// Account space for allocation (alias for SIZE)
+    pub const SPACE: usize = Self::SIZE;
+
     /// Check if pool is active and can mint new NFTs
     /// Returns true if:
     /// - Pool is active

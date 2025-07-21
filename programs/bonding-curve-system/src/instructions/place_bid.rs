@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::{Token, TokenAccount, spl_token};
 
 use crate::{
     constants::*,
@@ -47,21 +47,14 @@ pub struct PlaceBid<'info> {
     )]
     pub bid: Account<'info, Bid>,
 
+    /// Escrow account to hold bid funds (system account for SOL)
+    /// CHECK: This is a PDA used for escrow
     #[account(
         mut,
-        constraint = bidder_token_account.owner == bidder.key() @ ErrorCode::Unauthorized,
-        constraint = bidder_token_account.mint == anchor_spl::token::spl_token::native_mint::id()
+        seeds = [b"bid_escrow", bid.key().as_ref()],
+        bump
     )]
-    pub bidder_token_account: Account<'info, TokenAccount>,
-
-    /// The native token (SOL) escrow account for this bid
-    #[account(
-        init,
-        payer = bidder,
-        token::mint = anchor_spl::token::spl_token::native_mint::id(),
-        token::authority = bid
-    )]
-    pub bid_escrow: Account<'info, TokenAccount>,
+    pub bid_escrow: AccountInfo<'info>,
 
     pub bonding_curve_pool: Account<'info, BondingCurvePool>,
 

@@ -98,6 +98,21 @@ pub enum ErrorCode {
     #[msg("Cannot cancel bid")]
     CannotCancelBid = 6057,
 
+    #[msg("Bid too low")]
+    BidTooLow = 6058,
+    
+    #[msg("Bid expired")]
+    BidExpired = 6059,
+    
+    #[msg("Cannot bid on own NFT")]
+    CannotBidOnOwnNft = 6060,
+    
+    #[msg("Bid below bonding curve")]
+    BidBelowBondingCurve = 6061,
+    
+    #[msg("Insufficient premium")]
+    InsufficientPremium = 6062,
+
     // === LISTING ERRORS (6070-6089) ===
     #[msg("Escrow not empty")]
     EscrowNotEmpty = 6070,
@@ -150,6 +165,10 @@ pub enum ErrorCode {
     
     #[msg("Expired")]
     Expired = 6151,
+
+    // === VALIDATION ERRORS (6160-6179) ===
+    #[msg("Invalid percentage")]
+    InvalidPercentage = 6160,
 }
 
 impl ErrorCode {

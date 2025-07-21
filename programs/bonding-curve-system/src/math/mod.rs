@@ -4,8 +4,8 @@ pub mod revenue;
 // Explicit re-exports for better visibility and control
 pub use bonding_curve::{
     calculate_bonding_curve_price,
-    calculate_base_price,
-    calculate_growth_factor,
+    calculate_minimum_bid,
+    calculate_market_cap,
 };
 
 pub use revenue::{

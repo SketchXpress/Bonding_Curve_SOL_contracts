@@ -16,12 +16,12 @@ pub use pool::stats::PoolStats;
 // Explicit re-exports to avoid ambiguity
 pub use bid::{Bid, BidStatus as BidAccountStatus};
 pub use bid_listing::BidListing;
-pub use nft_escrow::NFTEscrow;
+pub use nft_escrow::NftEscrow;
 pub use minter_tracker::MinterTracker;
 pub use collection_distribution::CollectionDistribution;
 pub use types::{
     BidStatus as BidStateStatus,
+    BidListingStatus,
     BondingCurveParams,
-    ListingStatus,
     DynamicPricingConfig,
 };

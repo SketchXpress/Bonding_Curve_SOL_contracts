@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 use crate::state::{BondingCurvePool, BidListing};
-use crate::math::bonding_curve::BondingCurve;
+use crate::math::bonding_curve;
+
+// Re-export for convenience
+pub use crate::math::bonding_curve::calculate_bonding_curve_price;
 
 /// Dynamic pricing utilities for the bidding system
 pub struct DynamicPricing;
