@@ -18,7 +18,7 @@ use anchor_lang::prelude::*;
 use crate::{utils::debug::*, debug_log};
 
 /// Main mint NFT instruction - orchestrates all steps
-pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
+pub fn mint_nft(mut ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     let mut debug_ctx = DebugContext::new("mint_nft");
     debug_log!(debug_ctx, LogLevel::Info, "Starting NFT mint");
 

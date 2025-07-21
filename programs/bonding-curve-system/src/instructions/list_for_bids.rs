@@ -75,7 +75,7 @@ pub fn list_for_bids(ctx: Context<ListForBids>, args: ListForBidsArgs) -> Result
     );
 
     // Validate duration
-    let duration_seconds = args.duration_hours * 3600; // Convert hours to seconds
+    let duration_seconds = args.duration_hours.map(|hours| hours * 3600).unwrap_or(0) as i64; // Convert hours to seconds
     let listing_duration = BusinessValidator::validate_duration_seconds(Some(duration_seconds))?;
     let expires_at = if listing_duration > 0 {
         current_time + listing_duration

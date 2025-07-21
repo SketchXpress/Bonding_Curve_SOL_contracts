@@ -11,18 +11,7 @@ use crate::{
     debug_log,
 };
 
-#[derive(Anc    debug_ctx.step("state_updates");
-    
-    // Update bid status using the built-in method
-    let bid = &mut ctx.accounts.bid;
-    bid.outcome.accept()?;
-
-    // Update listing status
-    let listing = &mut ctx.accounts.bid_listing;
-    listing.status = BidListingStatus::Accepted;
-
-    debug_log!(debug_ctx, LogLevel::Debug, "Account states updated");
-    Ok()nchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AcceptBidArgs {
     pub bid_id: u64,
 }
@@ -71,7 +60,7 @@ pub struct AcceptBid<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn accept_bid(ctx: Context<AcceptBid>, args: AcceptBidArgs) -> Result<()> {
+pub fn accept_bid(mut ctx: Context<AcceptBid>, args: AcceptBidArgs) -> Result<()> {
     let mut debug_ctx = DebugContext::new("accept_bid");
     debug_ctx.add_data("bid_id", &args.bid_id.to_string());
     debug_log!(debug_ctx, LogLevel::Info, "Starting bid acceptance");
@@ -83,13 +72,13 @@ pub fn accept_bid(ctx: Context<AcceptBid>, args: AcceptBidArgs) -> Result<()> {
     let distribution = calculate_revenue_distribution(ctx.accounts.bid.details.amount, &mut debug_ctx)?;
 
     // Step 3: Execute revenue distribution
-    execute_revenue_distribution(&ctx, &distribution, &mut debug_ctx)?;
+    execute_revenue_distribution(&mut ctx, &distribution, &mut debug_ctx)?;
 
     // Step 4: Transfer NFT ownership
     transfer_nft_ownership(&ctx, &mut debug_ctx)?;
 
     // Step 5: Update account states
-    update_account_states(&ctx, &mut debug_ctx)?;
+    update_account_states(&mut ctx, &mut debug_ctx)?;
 
     debug_log!(debug_ctx, LogLevel::Info, "Bid acceptance completed successfully");
     Ok(())
@@ -176,7 +165,7 @@ fn calculate_revenue_distribution(total_amount: u64, debug_ctx: &mut DebugContex
 }
 
 fn execute_revenue_distribution(
-    ctx: &Context<AcceptBid>,
+    ctx: &mut Context<AcceptBid>,
     distribution: &RevenueDistribution,
     debug_ctx: &mut DebugContext,
 ) -> Result<()> {
@@ -206,7 +195,7 @@ fn execute_revenue_distribution(
 
     // Add to collection distribution pool (1%)
     add_to_collection_pool(
-        ctx,
+        &mut *ctx,
         distribution.collection_amount,
         debug_ctx,
     )?;
@@ -215,11 +204,11 @@ fn execute_revenue_distribution(
     Ok(())
 }
 
-fn transfer_from_escrow(
-    from: &Account<TokenAccount>,
-    to: &Account<TokenAccount>,
-    authority: &Account<Bid>,
-    token_program: &Program<Token>,
+fn transfer_from_escrow<'info>(
+    from: &Account<'info, TokenAccount>,
+    to: &Account<'info, TokenAccount>,
+    authority: &Account<'info, Bid>,
+    token_program: &Program<'info, Token>,
     amount: u64,
     transfer_type: &str,
     debug_ctx: &mut DebugContext,
@@ -247,7 +236,7 @@ fn transfer_from_escrow(
 }
 
 fn add_to_collection_pool(
-    ctx: &Context<AcceptBid>,
+    ctx: &mut Context<AcceptBid>,
     amount: u64,
     debug_ctx: &mut DebugContext,
 ) -> Result<()> {
@@ -287,19 +276,16 @@ fn transfer_nft_ownership(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContext
     Ok(())
 }
 
-fn update_account_states(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContext) -> Result<()> {
+fn update_account_states(ctx: &mut Context<AcceptBid>, debug_ctx: &mut DebugContext) -> Result<()> {
     debug_ctx.step("state_updates");
     
-    // Update bid status
+    // Update bid status using the built-in method
     let bid = &mut ctx.accounts.bid;
-    bid.status = BidStatus::Accepted;
-    bid.accepted_at = Some(Clock::get()?.unix_timestamp);
+    bid.outcome.accept()?;
 
     // Update listing status
     let listing = &mut ctx.accounts.bid_listing;
     listing.status = BidListingStatus::Accepted;
-    listing.sold_at = Some(Clock::get()?.unix_timestamp);
-    listing.final_price = Some(bid.amount);
 
     debug_log!(debug_ctx, LogLevel::Debug, "Account states updated");
     Ok(())
