@@ -49,11 +49,11 @@ pub fn transfer_tokens_with_context<'info>(
 }
 
 /// Token transfer with PDA authority
-pub fn transfer_tokens_with_signer(
-    from: &Account<TokenAccount>,
-    to: &Account<TokenAccount>,
-    authority: &AccountInfo,
-    token_program: &Program<Token>,
+pub fn transfer_tokens_with_signer<'info>(
+    from: &Account<'info, TokenAccount>,
+    to: &Account<'info, TokenAccount>,
+    authority: &'info AccountInfo<'info>,
+    token_program: &'info Program<'info, Token>,
     amount: u64,
     signer_seeds: &[&[&[u8]]],
 ) -> Result<()> {
@@ -64,11 +64,11 @@ pub fn transfer_tokens_with_signer(
 }
 
 /// Token transfer with PDA authority and debug context
-pub fn transfer_tokens_with_signer_and_context(
-    from: &Account<TokenAccount>,
-    to: &Account<TokenAccount>,
-    authority: &AccountInfo,
-    token_program: &Program<Token>,
+pub fn transfer_tokens_with_signer_and_context<'info>(
+    from: &Account<'info, TokenAccount>,
+    to: &Account<'info, TokenAccount>,
+    authority: &'info AccountInfo<'info>,
+    token_program: &'info Program<'info, Token>,
     amount: u64,
     signer_seeds: &[&[&[u8]]],
     debug_ctx: &mut DebugContext,
