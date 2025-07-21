@@ -219,7 +219,7 @@ pub mod constants {
     pub const DEFAULT_MINIMUM_PREMIUM_BP: u16 = 1000;
     
     /// Maximum premium allowed (1000%)
-    pub const MAX_PREMIUM_BP: u16 = 100000;
+    pub const MAX_PREMIUM_BP: u32 = 100000;
     
     /// Basis points denominator
     pub const BASIS_POINTS: u64 = 10000;

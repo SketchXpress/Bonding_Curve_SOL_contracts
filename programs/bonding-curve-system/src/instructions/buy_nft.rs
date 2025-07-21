@@ -127,7 +127,8 @@ fn calculate_nft_price(nft_data: &NFTData, pool: &BondingCurvePool) -> Result<u6
     };
     
     // Apply pool growth factor
-    let growth_factor = pool.config.growth_factor.checked_div(1_000_000).unwrap_or(1) as u64;
+    // Convert u16 growth_factor to u64 for calculation 
+    let growth_factor = (pool.config.growth_factor as u64).checked_div(10000).unwrap_or(1);
     
     let price = base_price.checked_mul(growth_factor)
         .ok_or(ErrorCode::MathOverflow)?;
