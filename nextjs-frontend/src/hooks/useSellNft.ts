@@ -12,6 +12,7 @@ import { BondingCurveSystem } from '../types/bonding_curve_system';
 import idl from '../idl/bonding_curve_system.json';
 
 const PROGRAM_ID = new PublicKey('5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf');
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
 
 export interface SellNftParams {
   nftMint: PublicKey;
@@ -78,12 +79,6 @@ export const useSellNft = () => {
         publicKey
       );
 
-      // We need to find the collection mint and pool
-      // This would typically be stored in NFT metadata or we'd need to derive it
-      // For now, let's assume we can get it from the NFT metadata or have it as a parameter
-
-      const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
-
       // Derive metadata account
       const [metadataAccount] = PublicKey.findProgramAddressSync(
         [
@@ -105,19 +100,39 @@ export const useSellNft = () => {
         TOKEN_METADATA_PROGRAM_ID
       );
 
-      // We'll need the collection mint and pool - this should be passed as parameter or derived
-      // For now, let's throw an error indicating we need more information
-      throw new Error('Collection mint and pool address needed for sell operation');
+      // Get the minter tracker to find collection mint and creator
+      const [minterTrackerPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('minter'), params.nftMint.toBuffer()],
+        PROGRAM_ID
+      );
 
-      // The actual transaction would look like this once we have the required addresses:
-      /*
+      const minterTrackerData = await program.account.minterTracker.fetch(minterTrackerPda);
+      const collectionMint = minterTrackerData.collection;
+      const creator = minterTrackerData.originalMinter;
+
+      // Derive pool PDA
+      const [poolPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('pool'), collectionMint.toBuffer()],
+        PROGRAM_ID
+      );
+
+      // Derive collection metadata account
+      const [collectionMetadata] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('metadata'),
+          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+          collectionMint.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+      );
+
       const tx = await program.methods
         .sellNft()
         .accounts({
           seller: publicKey,
-          pool: poolAddress,
+          pool: poolPda,
           escrow: escrowPda,
-          creator: creatorAddress,
+          creator: creator,
           nftMint: params.nftMint,
           sellerNftTokenAccount: sellerTokenAccount,
           tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
@@ -135,7 +150,6 @@ export const useSellNft = () => {
 
       console.log('NFT sold with signature:', signature);
       return signature;
-      */
     } catch (err) {
       console.error('Error selling NFT:', err);
       setError(err instanceof Error ? err.message : 'Failed to sell NFT');

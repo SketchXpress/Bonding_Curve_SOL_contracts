@@ -159,6 +159,12 @@ pub enum ErrorCode {
     #[msg("Invalid listing status")]
     InvalidListingStatus = 6140,
 
+    #[msg("Unauthorized lister")]
+    UnauthorizedLister = 6141,
+
+    #[msg("Cannot cancel listing with active bids")]
+    CannotCancelWithActiveBids = 6142,
+
     // === TIME ERRORS (6150-6159) ===
     #[msg("Invalid duration")]
     InvalidDuration = 6150,

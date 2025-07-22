@@ -8,6 +8,7 @@ pub mod list_for_bids;
 pub mod place_bid;
 pub mod accept_bid;
 pub mod cancel_bid;
+pub mod cancel_listing;
 pub mod distribute_collection_fees;
 
 pub use mint_nft::*;
@@ -20,4 +21,5 @@ pub use list_for_bids::*;
 pub use place_bid::*;
 pub use accept_bid::*;
 pub use cancel_bid::*;
+pub use cancel_listing::*;
 pub use distribute_collection_fees::*;

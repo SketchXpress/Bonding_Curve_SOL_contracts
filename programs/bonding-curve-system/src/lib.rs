@@ -3,7 +3,7 @@
 use anchor_lang::prelude::*;
 
 // Program ID
-declare_id!("5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf");
+declare_id!("2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN");
 
 // === MODULES ===
 pub mod constants;
@@ -65,6 +65,10 @@ pub mod bonding_curve_system {
 
     pub fn cancel_bid(ctx: Context<CancelBid>, args: CancelBidArgs) -> Result<()> {
         instructions::cancel_bid::cancel_bid(ctx, args)
+    }
+
+    pub fn cancel_listing(ctx: Context<CancelListing>) -> Result<()> {
+        instructions::cancel_listing::cancel_listing(ctx)
     }
 
     // === COLLECTION FEES ===

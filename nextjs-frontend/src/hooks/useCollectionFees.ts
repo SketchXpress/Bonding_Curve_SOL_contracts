@@ -125,19 +125,27 @@ export const useCollectionFees = () => {
       const provider = getProvider();
       const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
       
-      const [poolPda] = PublicKey.findProgramAddressSync(
+      // Get collection distribution to check accumulated fees
+      const [collectionDistributionPda] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('pool'),
+          Buffer.from('collection-distribution'),
           collectionMint.toBuffer(),
         ],
         PROGRAM_ID
       );
 
-      const poolAccount = await program.account.bondingCurvePool.fetch(poolPda);
-      
-      // Return pending fees (this would be calculated based on pool stats)
-      // For now, return a placeholder - you'd need to implement the actual calculation
-      return poolAccount.stats.totalVolume.toNumber() * 0.01 / 1e9; // 1% of volume as example
+      try {
+        const collectionDistribution = await program.account.collectionDistribution.fetch(collectionDistributionPda);
+        
+        // Return accumulated fees converted to SOL
+        return collectionDistribution.accumulatedFees.toNumber() / 1e9;
+      } catch (err) {
+        // If collection distribution doesn't exist, return 0
+        if (err instanceof Error && err.message?.includes('Account does not exist')) {
+          return 0;
+        }
+        throw err;
+      }
     } catch (err) {
       console.error('Error getting pending fees:', err);
       return null;

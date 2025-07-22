@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::ErrorCode;
+use super::types::BidStatus;
 
 /// Individual bid state - clean and focused
 #[account]
@@ -200,15 +201,6 @@ impl BidOutcome {
         self.cancellation_reason = Some(reason);
         Ok(())
     }
-}
-
-/// Bid status enumeration
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
-pub enum BidStatus {
-    Active,
-    Accepted,
-    Cancelled,
-    Expired,
 }
 
 /// Cancellation reason enumeration

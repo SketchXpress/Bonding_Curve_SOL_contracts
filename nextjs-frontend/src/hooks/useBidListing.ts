@@ -50,16 +50,15 @@ export const useBidListing = () => {
         PROGRAM_ID
       );
 
-      // We need to get the collection mint from the NFT metadata or pass it as parameter
-      // For now, let's assume we have a way to get it or it's passed as parameter
-      // This is a limitation that needs to be addressed by either:
-      // 1. Passing collection mint as parameter
-      // 2. Reading it from NFT metadata
-      // 3. Storing it in a separate account
-      
-      // For demonstration, let's assume we get it from somewhere
-      // In a real implementation, you'd need to derive this properly
-      const collectionMint = nftMint; // This is incorrect but for demo purposes
+      // Get the collection mint from the minter tracker
+      const [minterTrackerPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('minter'), nftMint.toBuffer()],
+        PROGRAM_ID
+      );
+
+      // Fetch minter tracker to get collection mint
+      const minterTrackerData = await program.account.minterTracker.fetch(minterTrackerPda);
+      const collectionMint = minterTrackerData.collection;
 
       const [poolPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('pool'), collectionMint.toBuffer()],
@@ -137,35 +136,109 @@ export const useBidListing = () => {
 
   const getUserListings = useCallback(async (userPubkey: PublicKey) => {
     try {
-      // In a real implementation, you'd query all bid listings where lister = userPubkey
-      // For now, return empty array
-      return [];
+      const provider = getProvider();
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      
+      // Get all bid listing accounts where lister equals userPubkey
+      const bidListings = await program.account.bidListing.all([
+        {
+          memcmp: {
+            offset: 8 + 32, // Skip discriminator (8) + nftMint (32) to get to lister field
+            bytes: userPubkey.toBase58(),
+          },
+        },
+      ]);
+
+      return bidListings.map(listing => ({
+        publicKey: listing.publicKey,
+        account: {
+          nftMint: listing.account.nftMint,
+          lister: listing.account.lister,
+          minBid: listing.account.minBid.toNumber(),
+          highestBid: listing.account.highestBid.toNumber(),
+          highestBidder: listing.account.highestBidder,
+          totalBids: listing.account.totalBids,
+          status: listing.account.status,
+          createdAt: listing.account.createdAt.toNumber(),
+          expiresAt: listing.account.expiresAt.toNumber(),
+          lastPriceUpdate: listing.account.lastPriceUpdate.toNumber(),
+          bondingCurvePriceAtListing: listing.account.bondingCurvePriceAtListing.toNumber(),
+          currentBondingCurvePrice: listing.account.currentBondingCurvePrice.toNumber(),
+          requiredPremiumBp: listing.account.requiredPremiumBp,
+          bump: listing.account.bump,
+        },
+      }));
     } catch (error) {
       console.error('Error fetching user listings:', error);
-      throw error;
+      return [];
     }
-  }, []);
+  }, [getProvider]);
 
   const cancelListing = useCallback(async (listingPubkey: PublicKey) => {
     if (!publicKey) throw new Error('Wallet not connected');
 
     setIsLoading(true);
     try {
-      // Implementation for cancelling a listing
-      // This would involve calling a cancel_listing instruction
-      console.log('Cancelling listing:', listingPubkey.toString());
+      const provider = getProvider();
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+
+      // Get listing data to find the NFT mint
+      const listingData = await program.account.bidListing.fetch(listingPubkey);
+      const nftMint = listingData.nftMint;
+
+      // Verify that the connected wallet is the lister
+      if (!listingData.lister.equals(publicKey)) {
+        throw new Error('You are not authorized to cancel this listing');
+      }
+
+      // Check if listing is active
+      if (listingData.status.toString() !== 'Active') {
+        throw new Error('Listing is not active and cannot be cancelled');
+      }
+
+      // Check if there are active bids (highest bid > 0)
+      if (listingData.highestBid.toNumber() > 0) {
+        throw new Error('Cannot cancel listing with active bids. Please accept the highest bid or wait for expiration.');
+      }
+
+      // Get user's token account to verify they still own the NFT
+      const nftTokenAccount = await getAssociatedTokenAddress(
+        nftMint,
+        publicKey
+      );
+
+      // TODO: Once the contract is rebuilt and deployed with cancelListing instruction,
+      // and the IDL is regenerated, uncomment the following code:
       
-      // Mock implementation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      /*
+      const tx = await program.methods
+        .cancelListing()
+        .accounts({
+          lister: publicKey,
+          nftMint: nftMint,
+          bidListing: listingPubkey,
+          listerTokenAccount: nftTokenAccount,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .transaction();
+
+      const signature = await sendTransaction(tx, connection);
+      await connection.confirmTransaction(signature, 'confirmed');
       
+      console.log('Listing cancelled successfully:', signature);
       return true;
+      */
+
+      throw new Error('Cancel listing functionality is implemented in the contract but requires the program to be rebuilt and redeployed with the new instruction. Please rebuild the contract and regenerate the IDL.');
+      
     } catch (error) {
       console.error('Error cancelling listing:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey]);
+  }, [publicKey, connection, sendTransaction, getProvider]);
 
   return {
     listForBids,

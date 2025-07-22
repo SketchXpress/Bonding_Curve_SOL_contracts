@@ -129,49 +129,63 @@ export const useBidPlacement = () => {
 
   const getUserBids = useCallback(async (userPubkey: PublicKey) => {
     try {
-      // In a real implementation, you'd query all bids where bidder = userPubkey
-      // This might involve using getProgramAccounts with filters
+      const provider = getProvider();
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
       
-      // For now, return mock data
-      return [
+      // Get all bid accounts where bidder equals userPubkey
+      const bids = await program.account.bid.all([
         {
-          bidId: 1,
-          nftMint: new PublicKey('11111111111111111111111111111111'),
-          bidder: userPubkey,
-          amount: 100000000, // 0.1 SOL in lamports
-          status: 'Active',
-          createdAt: Date.now() / 1000,
-          expiresAt: Date.now() / 1000 + 86400, // 24 hours from now
+          memcmp: {
+            offset: 8 + 8 + 32, // Skip discriminator (8) + bidId (8) + details struct start, then nftMint (32) to get to bidder field
+            bytes: userPubkey.toBase58(),
+          },
         },
-      ];
+      ]);
+
+      return bids.map(bid => ({
+        bidId: bid.account.bidId.toNumber(),
+        nftMint: bid.account.details.nftMint,
+        bidder: bid.account.details.bidder,
+        amount: bid.account.details.amount.toNumber(),
+        status: Object.keys(bid.account.outcome.status)[0], // Get the status variant name
+        createdAt: bid.account.timing.createdAt.toNumber(),
+        expiresAt: bid.account.timing.expiresAt.toNumber(),
+      }));
     } catch (error) {
       console.error('Error fetching user bids:', error);
-      throw error;
+      return [];
     }
-  }, []);
+  }, [getProvider]);
 
   const getBidsForNft = useCallback(async (nftMint: PublicKey) => {
     try {
-      // In a real implementation, you'd query all bids for a specific NFT
-      // This might involve using getProgramAccounts with filters
+      const provider = getProvider();
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
       
-      // For now, return mock data
-      return [
+      // Get all bid accounts where nftMint equals the specified mint
+      const bids = await program.account.bid.all([
         {
-          bidId: 1,
-          nftMint: nftMint,
-          bidder: new PublicKey('11111111111111111111111111111111'),
-          amount: 100000000, // 0.1 SOL in lamports
-          status: 'Active',
-          createdAt: Date.now() / 1000,
-          expiresAt: Date.now() / 1000 + 86400, // 24 hours from now
+          memcmp: {
+            offset: 8 + 8, // Skip discriminator (8) + bidId (8) to get to details.nftMint field
+            bytes: nftMint.toBase58(),
+          },
         },
-      ];
+      ]);
+
+      return bids.map(bid => ({
+        bidId: bid.account.bidId.toNumber(),
+        nftMint: bid.account.details.nftMint,
+        bidder: bid.account.details.bidder,
+        amount: bid.account.details.amount.toNumber(),
+        status: Object.keys(bid.account.outcome.status)[0], // Get the status variant name
+        createdAt: bid.account.timing.createdAt.toNumber(),
+        expiresAt: bid.account.timing.expiresAt.toNumber(),
+      }));
     } catch (error) {
       console.error('Error fetching bids for NFT:', error);
-      throw error;
+      return [];
     }
-  }, []);
+  }, [getProvider]);
 
   const getHighestBid = useCallback(async (nftMint: PublicKey) => {
     try {

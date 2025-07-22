@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import idl from '../idl/bonding_curve_system.json';
 
@@ -122,7 +122,7 @@ export const useBidManagement = (): BidManagementResult => {
 
       // Derive the bid escrow account
       const [bidEscrowAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('bid_escrow'), bidAccount.toBuffer()],
+        [Buffer.from('bid-escrow'), bidAccount.toBuffer()],
         PROGRAM_ID
       );
 
@@ -147,8 +147,14 @@ export const useBidManagement = (): BidManagementResult => {
         creator
       );
 
-      // Platform fee account (you may need to adjust this)
-      const platformFeeAccount = new PublicKey('11111111111111111111111111111112'); // System program as placeholder
+      // Platform fee account - since platform creates collections, we can get the collection mint authority
+      // The collection mint authority is set to the platform when the collection is created
+      const collectionMintInfo = await getMint(connection, collection);
+      const platformFeeAccount = collectionMintInfo.mintAuthority;
+      
+      if (!platformFeeAccount) {
+        throw new Error('Collection mint authority not found - platform fee account cannot be determined');
+      }
 
       // Collection distribution account
       const [collectionDistributionAccount] = PublicKey.findProgramAddressSync(
