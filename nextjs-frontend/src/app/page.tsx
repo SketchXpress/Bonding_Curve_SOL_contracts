@@ -8,9 +8,6 @@ import CreatePoolCard from '@/components/CreatePoolCard';
 import CreateNftCard from '@/components/CreateNftCard';
 import SellNftCard from '@/components/SellNftCard'; // Import the new component
 import { BuyNftCard } from '@/components/BuyNftCard'; // Import the buy NFT component
-import { BidListingCard } from '@/components/BidListingCard'; // Import bid listing
-import { BidPlacementCard } from '@/components/BidPlacementCard'; // Import bid placement
-import { BidManagementCard } from '@/components/BidManagementCard'; // Import bid management
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
@@ -44,7 +41,7 @@ const AppContent = () => {
           <div className="bg-white shadow-md rounded-lg p-6 mb-6">
             <p className="mb-2">
               <span className="font-medium">Program ID:</span>{' '}
-              <span className="font-mono">BYBbjAurgYTyexC2RrbTZKMDDdG7JHha1p3RsZpZCqba</span>
+              <span className="font-mono">5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf</span>
             </p>
             <p>
               <span className="font-medium">Network:</span> <span>Devnet</span>

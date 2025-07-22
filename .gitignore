@@ -15,3 +15,4 @@ script.sh
 deploy.js
 yarn.lock
 settings.json
+.vscode/tasks.json

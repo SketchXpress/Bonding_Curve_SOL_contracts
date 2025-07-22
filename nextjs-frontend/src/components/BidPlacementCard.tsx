@@ -16,13 +16,18 @@ interface BidPlacementCardProps {
 interface BidListingData {
   nftMint: PublicKey;
   lister: PublicKey;
-  originalMinter: PublicKey;
   minBid: number;
   highestBid: number;
   highestBidder: PublicKey | null;
-  status: string;
+  totalBids: number;
+  status: any; // DecodeEnum from anchor
   createdAt: number;
   expiresAt: number;
+  lastPriceUpdate: number;
+  bondingCurvePriceAtListing: number;
+  currentBondingCurvePrice: number;
+  requiredPremiumBp: number;
+  bump: number;
 }
 
 export const BidPlacementCard: React.FC<BidPlacementCardProps> = ({
@@ -86,11 +91,9 @@ export const BidPlacementCard: React.FC<BidPlacementCardProps> = ({
 
     try {
       const bidAmountLamports = parseFloat(bidAmount) * LAMPORTS_PER_SOL;
-      const bidId = Date.now(); // Simple bid ID generation
       
       const bidPubkey = await placeBid(
         nftMint,
-        bidId,
         bidAmountLamports,
         24 // 24 hour bid duration
       );
@@ -182,9 +185,9 @@ export const BidPlacementCard: React.FC<BidPlacementCardProps> = ({
           )}
           
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Original Minter:</span>
+            <span className="text-gray-600">Lister:</span>
             <span className="font-mono text-xs">
-              {listingData.originalMinter.toString().slice(0, 8)}...
+              {listingData.lister.toString().slice(0, 8)}...
             </span>
           </div>
         </div>

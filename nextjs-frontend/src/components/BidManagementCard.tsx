@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { BN } from '@coral-xyz/anchor';
 import { useBidManagement } from '../hooks/useBidManagement';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
@@ -38,7 +39,21 @@ export const BidManagementCard: React.FC<BidManagementCardProps> = ({
 
     try {
       setLoadingBidId(bidId);
-      await cancelBid(bidId);
+      
+      // Find the bid data
+      const bidData = userBids.find(bid => bid.bidId === bidId);
+      if (!bidData) {
+        throw new Error('Bid not found');
+      }
+
+      // Derive the bid account PDA
+      const PROGRAM_ID = new PublicKey('5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf');
+      const [bidAccount] = PublicKey.findProgramAddressSync(
+        [Buffer.from('bid'), bidData.nftMint.toBuffer(), Buffer.from(new BN(bidId).toArray('le', 8))],
+        PROGRAM_ID
+      );
+
+      await cancelBid(bidAccount, bidId);
       
       if (onBidCancelled) {
         onBidCancelled(bidId);
@@ -55,7 +70,29 @@ export const BidManagementCard: React.FC<BidManagementCardProps> = ({
 
     try {
       setLoadingBidId(bidId);
-      await acceptBid(bidId);
+      
+      // Find the bid data
+      const bidData = userBids.find(bid => bid.bidId === bidId);
+      if (!bidData) {
+        throw new Error('Bid not found');
+      }
+
+      // Derive the required accounts
+      const PROGRAM_ID = new PublicKey('5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf');
+      
+      // Derive bid listing account
+      const [bidListingAccount] = PublicKey.findProgramAddressSync(
+        [Buffer.from('bid-listing'), bidData.nftMint.toBuffer()],
+        PROGRAM_ID
+      );
+      
+      // Derive bid account
+      const [bidAccount] = PublicKey.findProgramAddressSync(
+        [Buffer.from('bid'), bidData.nftMint.toBuffer(), Buffer.from(new BN(bidId).toArray('le', 8))],
+        PROGRAM_ID
+      );
+
+      await acceptBid(bidListingAccount, bidAccount, bidId);
       
       if (onBidAccepted) {
         onBidAccepted(bidId);

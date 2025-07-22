@@ -8,6 +8,8 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  getAccount,
 } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import idl from '../idl/bonding_curve_system.json';
@@ -71,7 +73,12 @@ export const useBuyNft = () => {
       const poolAddress = nftDataAccount.collectionId; // Assuming collection_id references the pool
       const currentOwner = nftDataAccount.owner;
 
-      // Derive user accounts
+      // Check if we're trying to buy our own NFT
+      if (currentOwner.equals(publicKey)) {
+        throw new Error('Cannot buy your own NFT');
+      }
+
+      // Derive user accounts (these should be initialized separately)
       const [buyerAccountPda] = PublicKey.findProgramAddressSync(
         [
           Buffer.from('user'),
@@ -100,6 +107,22 @@ export const useBuyNft = () => {
         currentOwner
       );
 
+      // Check if buyer's token account exists, create instruction if not
+      let createBuyerATAInstruction = null;
+      try {
+        await getAccount(connection, buyerTokenAccount);
+      } catch (error) {
+        // Account doesn't exist, create instruction to create it
+        createBuyerATAInstruction = createAssociatedTokenAccountInstruction(
+          publicKey, // payer
+          buyerTokenAccount,
+          publicKey, // owner
+          params.nftMint,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+      }
+
       // Convert max price from SOL to lamports
       const maxPriceInLamports = params.maxPrice ? new BN(params.maxPrice * 1e9) : null;
 
@@ -120,6 +143,11 @@ export const useBuyNft = () => {
           systemProgram: SystemProgram.programId,
         })
         .transaction();
+
+      // Add create ATA instruction if needed
+      if (createBuyerATAInstruction) {
+        tx.instructions.unshift(createBuyerATAInstruction);
+      }
 
       const signature = await sendTransaction(tx, connection);
       await connection.confirmTransaction(signature, 'confirmed');

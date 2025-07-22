@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useBidManagement } from '../hooks/useBidManagement';
+import { useCollectionFees } from '../hooks/useCollectionFees';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 interface CollectionFeesCardProps {
@@ -26,7 +26,7 @@ export const CollectionFeesCard: React.FC<CollectionFeesCardProps> = ({
   userNFTs,
 }) => {
   const { publicKey } = useWallet();
-  const { distributeCollectionFees, claimNftHolderFees, isLoading } = useBidManagement();
+  const { distributeCollectionFees, isLoading } = useCollectionFees();
   
   const [feesData, setFeesData] = useState<CollectionFeesData | null>(null);
   const [loadingAction, setLoadingAction] = useState<'distribute' | 'claim' | null>(null);
@@ -60,7 +60,7 @@ export const CollectionFeesCard: React.FC<CollectionFeesCardProps> = ({
 
     setLoadingAction('distribute');
     try {
-      await distributeCollectionFees(collectionMint);
+      await distributeCollectionFees({ collectionMint });
       await fetchFeesData(); // Refresh data
     } catch (error) {
       console.error('Error distributing fees:', error);
@@ -74,10 +74,12 @@ export const CollectionFeesCard: React.FC<CollectionFeesCardProps> = ({
 
     setLoadingAction('claim');
     try {
+      // TODO: Implement claimNftHolderFees function when available
+      console.log('Claim fees not yet implemented');
       // Claim fees for each NFT the user owns
-      for (const nftMint of userNFTs) {
-        await claimNftHolderFees(nftMint);
-      }
+      // for (const nftMint of userNFTs) {
+      //   await claimNftHolderFees(nftMint);
+      // }
       await fetchFeesData(); // Refresh data
     } catch (error) {
       console.error('Error claiming fees:', error);
