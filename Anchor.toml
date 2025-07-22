@@ -5,13 +5,13 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-bonding_curve_system = "BYBbjAurgYTyexC2RrbTZKMDDdG7JHha1p3RsZpZCqba"
+bonding_curve_system = "J9zFybyh4aqLrVaSFnggjq45gDt3JCPpUwqpQ31Q2pwW"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "Devnet"
 wallet = "/home/ubuntu/.config/solana/id.json"
 
 [scripts]
