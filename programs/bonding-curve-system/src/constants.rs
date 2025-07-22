@@ -14,7 +14,8 @@ pub const BUYBACK_BURN_PERCENTAGE: u64 = 25; // 2.5% burn for buybacks (scaled b
 pub const BUYBACK_DISTRIBUTE_PERCENTAGE: u64 = 25; // 2.5% distribute to holders for buybacks (scaled by 10)
 
 // Bidding system constants
-pub const MINTER_REVENUE_PERCENTAGE: u64 = 95; // 95% goes to original minter
+pub const SELLER_REVENUE_PERCENTAGE: u64 = 90; // 90% goes to current NFT holder (seller)
+pub const CREATOR_ROYALTY_PERCENTAGE: u64 = 5; // 5% goes to original minter (creator royalty)
 pub const PLATFORM_REVENUE_PERCENTAGE: u64 = 4; // 4% goes to platform
 pub const COLLECTION_REVENUE_PERCENTAGE: u64 = 1; // 1% goes to collection holders
 pub const MINIMUM_BID_PREMIUM_BP: u16 = 100; // 1% minimum bid premium in basis points

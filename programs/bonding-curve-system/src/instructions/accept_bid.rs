@@ -20,11 +20,11 @@ pub struct AcceptBidArgs {
 #[instruction(args: AcceptBidArgs)]
 pub struct AcceptBid<'info> {
     #[account(mut)]
-    pub original_minter: Signer<'info>,
+    pub current_holder: Signer<'info>,
 
     #[account(
         mut,
-        constraint = bid_listing.lister == original_minter.key() @ ErrorCode::Unauthorized
+        constraint = bid_listing.lister == current_holder.key() @ ErrorCode::Unauthorized
     )]
     pub bid_listing: Account<'info, BidListing>,
 
@@ -36,8 +36,7 @@ pub struct AcceptBid<'info> {
     pub bid: Account<'info, Bid>,
 
     #[account(
-        constraint = minter_tracker.nft_mint == bid.details.nft_mint @ ErrorCode::InvalidNftMint,
-        constraint = minter_tracker.original_minter == original_minter.key() @ ErrorCode::Unauthorized
+        constraint = minter_tracker.nft_mint == bid.details.nft_mint @ ErrorCode::InvalidNftMint
     )]
     pub minter_tracker: Account<'info, MinterTracker>,
 
@@ -48,7 +47,10 @@ pub struct AcceptBid<'info> {
     pub bid_escrow: Account<'info, TokenAccount>,
 
     #[account(mut)]
-    pub minter_token_account: Account<'info, TokenAccount>,
+    pub seller_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub creator_token_account: Account<'info, TokenAccount>,
 
     #[account(mut)]
     pub platform_fee_account: Account<'info, TokenAccount>,
@@ -103,9 +105,9 @@ fn validate_bid_acceptance(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContex
         return Err(ErrorCode::InvalidListingStatus.into());
     }
 
-    // Verify bidder is not the minter
-    if ctx.accounts.bid.details.bidder == ctx.accounts.original_minter.key() {
-        debug_log!(debug_ctx, LogLevel::Error, "Minter cannot accept own bid");
+    // Verify bidder is not the current holder
+    if ctx.accounts.bid.details.bidder == ctx.accounts.current_holder.key() {
+        debug_log!(debug_ctx, LogLevel::Error, "Current holder cannot accept own bid");
         return Err(ErrorCode::CannotBidOnOwnNft.into());
     }
 
@@ -117,7 +119,8 @@ fn validate_bid_acceptance(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContex
 struct RevenueDistribution {
     #[allow(dead_code)]
     total_amount: u64,
-    minter_amount: u64,
+    seller_amount: u64,
+    creator_amount: u64,
     platform_amount: u64,
     collection_amount: u64,
 }
@@ -125,30 +128,38 @@ struct RevenueDistribution {
 fn calculate_revenue_distribution(total_amount: u64, debug_ctx: &mut DebugContext) -> Result<RevenueDistribution> {
     debug_ctx.step("revenue_calculation");
     
-    // Calculate 95% to minter
-    let minter_amount = total_amount
-        .checked_mul(MINTER_REVENUE_PERCENTAGE as u64)
+    // Calculate 90% to current holder (seller)
+    let seller_amount = total_amount
+        .checked_mul(SELLER_REVENUE_PERCENTAGE as u64)
         .ok_or(ErrorCode::MathOverflow)?
-        .checked_div(10000)
+        .checked_div(100)
+        .ok_or(ErrorCode::MathUnderflow)?;
+
+    // Calculate 5% to original creator
+    let creator_amount = total_amount
+        .checked_mul(CREATOR_ROYALTY_PERCENTAGE as u64)
+        .ok_or(ErrorCode::MathOverflow)?
+        .checked_div(100)
         .ok_or(ErrorCode::MathUnderflow)?;
 
     // Calculate 4% to platform
     let platform_amount = total_amount
         .checked_mul(PLATFORM_REVENUE_PERCENTAGE as u64)
         .ok_or(ErrorCode::MathOverflow)?
-        .checked_div(10000)
+        .checked_div(100)
         .ok_or(ErrorCode::MathUnderflow)?;
 
     // Calculate 1% to collection
     let collection_amount = total_amount
         .checked_mul(COLLECTION_REVENUE_PERCENTAGE as u64)
         .ok_or(ErrorCode::MathOverflow)?
-        .checked_div(10000)
+        .checked_div(100)
         .ok_or(ErrorCode::MathUnderflow)?;
 
     let distribution = RevenueDistribution {
         total_amount,
-        minter_amount,
+        seller_amount,
+        creator_amount,
         platform_amount,
         collection_amount,
     };
@@ -156,8 +167,9 @@ fn calculate_revenue_distribution(total_amount: u64, debug_ctx: &mut DebugContex
     debug_log!(
         debug_ctx,
         LogLevel::Debug,
-        "Revenue distribution - Minter: {}, Platform: {}, Collection: {}",
-        distribution.minter_amount,
+        "Revenue distribution - Seller: {}, Creator: {}, Platform: {}, Collection: {}",
+        distribution.seller_amount,
+        distribution.creator_amount,
         distribution.platform_amount,
         distribution.collection_amount
     );
@@ -172,14 +184,25 @@ fn execute_revenue_distribution(
 ) -> Result<()> {
     debug_ctx.step("revenue_distribution");
     
-    // Transfer to original minter (95%)
+    // Transfer to current holder/seller (90%)
     transfer_from_escrow(
         &ctx.accounts.bid_escrow,
-        &ctx.accounts.minter_token_account,
+        &ctx.accounts.seller_token_account,
         &ctx.accounts.bid,
         &ctx.accounts.token_program,
-        distribution.minter_amount,
-        "minter_payment",
+        distribution.seller_amount,
+        "seller_payment",
+        debug_ctx,
+    )?;
+
+    // Transfer to original creator (5%)
+    transfer_from_escrow(
+        &ctx.accounts.bid_escrow,
+        &ctx.accounts.creator_token_account,
+        &ctx.accounts.bid,
+        &ctx.accounts.token_program,
+        distribution.creator_amount,
+        "creator_royalty",
         debug_ctx,
     )?;
 
@@ -262,11 +285,11 @@ fn add_to_collection_pool(
 fn transfer_nft_ownership(ctx: &Context<AcceptBid>, debug_ctx: &mut DebugContext) -> Result<()> {
     debug_ctx.step("nft_transfer");
     
-    // Transfer NFT from current owner to bidder
+    // Transfer NFT from current holder to bidder
     let cpi_accounts = Transfer {
-        from: ctx.accounts.minter_token_account.to_account_info(),
+        from: ctx.accounts.seller_token_account.to_account_info(),
         to: ctx.accounts.bidder_token_account.to_account_info(),
-        authority: ctx.accounts.original_minter.to_account_info(),
+        authority: ctx.accounts.current_holder.to_account_info(),
     };
     let cpi_program = ctx.accounts.token_program.to_account_info();
     let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
@@ -291,4 +314,3 @@ fn update_account_states(ctx: &mut Context<AcceptBid>, debug_ctx: &mut DebugCont
     debug_log!(debug_ctx, LogLevel::Debug, "Account states updated");
     Ok(())
 }
-
