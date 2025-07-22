@@ -2,12 +2,10 @@ import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
+import { BondingCurveSystem } from '../types/bonding_curve_system';
+import idl from '../idl/bonding_curve_system.json';
 
-// You'll need to import your IDL here
-// import { BondingCurveSystem } from '../types/bonding_curve_system';
-// import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('BYBbjAurgYTyexC2RrbTZKMDDdG7JHha1p3RsZpZCqba');
+const PROGRAM_ID = new PublicKey('5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf');
 
 export const useBidPlacement = () => {
   const { connection } = useConnection();
@@ -35,7 +33,6 @@ export const useBidPlacement = () => {
 
   const placeBid = useCallback(async (
     nftMint: PublicKey,
-    bidId: number,
     amount: number,
     durationHours?: number
   ): Promise<PublicKey | null> => {
@@ -44,7 +41,7 @@ export const useBidPlacement = () => {
     setIsLoading(true);
     try {
       const provider = getProvider();
-      // const program = new Program(idl as any, PROGRAM_ID, provider);
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
 
       // Derive PDAs
       const [bidListingPda] = PublicKey.findProgramAddressSync(
@@ -55,34 +52,34 @@ export const useBidPlacement = () => {
       const [bidPda] = PublicKey.findProgramAddressSync(
         [
           Buffer.from('bid'),
-          nftMint.toBuffer(),
-          new BN(bidId).toArrayLike(Buffer, 'le', 8)
+          bidListingPda.toBuffer(),
+          publicKey.toBuffer()
         ],
         PROGRAM_ID
       );
 
       const [bidEscrowPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('bid-escrow'), bidPda.toBuffer()],
+        [Buffer.from('bid_escrow'), bidPda.toBuffer()],
         PROGRAM_ID
       );
 
-      // Create instruction (simplified - you'll need to use your actual program)
-      const instruction = {
-        programId: PROGRAM_ID,
-        keys: [
-          { pubkey: publicKey, isSigner: true, isWritable: true },
-          { pubkey: nftMint, isSigner: false, isWritable: false },
-          { pubkey: bidListingPda, isSigner: false, isWritable: true },
-          { pubkey: bidPda, isSigner: false, isWritable: true },
-          { pubkey: bidEscrowPda, isSigner: false, isWritable: true },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        ],
-        data: Buffer.from([]), // You'll need to serialize the instruction data
-      };
+      // Convert amount from SOL to lamports
+      const amountInLamports = new BN(amount * 1e9);
 
-      const transaction = new Transaction().add(instruction);
-      const signature = await sendTransaction(transaction, connection);
-      
+      const tx = await program.methods
+        .placeBid({
+          amount: amountInLamports,
+        })
+        .accounts({
+          bidder: publicKey,
+          bidListing: bidListingPda,
+          bid: bidPda,
+          bidEscrow: bidEscrowPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .transaction();
+
+      const signature = await sendTransaction(tx, connection);
       await connection.confirmTransaction(signature, 'confirmed');
       
       console.log('Bid placed successfully:', signature);
@@ -98,33 +95,37 @@ export const useBidPlacement = () => {
   const getBid = useCallback(async (bidPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      // const program = new Program(idl as any, PROGRAM_ID, provider);
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
       
       // Fetch bid account data
-      const accountInfo = await connection.getAccountInfo(bidPubkey);
-      if (!accountInfo) {
-        throw new Error('Bid not found');
-      }
-
-      // Deserialize account data (you'll need to implement this based on your account structure)
-      // const bidData = program.account.bid.coder.accounts.decode('bid', accountInfo.data);
+      const bidData = await program.account.bid.fetch(bidPubkey);
       
-      // For now, return mock data
       return {
-        bidId: 1,
-        nftMint: new PublicKey('11111111111111111111111111111111'),
-        bidder: new PublicKey('11111111111111111111111111111111'),
-        amount: 100000000, // 0.1 SOL in lamports
-        status: 'Active',
-        createdAt: Date.now() / 1000,
-        expiresAt: 0,
-        escrowAccount: new PublicKey('11111111111111111111111111111111'),
+        bidId: bidData.bidId.toNumber(),
+        details: {
+          nftMint: bidData.details.nftMint,
+          bidder: bidData.details.bidder,
+          amount: bidData.details.amount.toNumber(),
+          premiumBp: bidData.details.premiumBp,
+        },
+        timing: {
+          createdAt: bidData.timing.createdAt.toNumber(),
+          expiresAt: bidData.timing.expiresAt.toNumber(),
+          duration: bidData.timing.duration.toNumber(),
+        },
+        outcome: {
+          status: bidData.outcome.status,
+          acceptedAt: bidData.outcome.acceptedAt?.toNumber() || null,
+          cancelledAt: bidData.outcome.cancelledAt?.toNumber() || null,
+          cancellationReason: bidData.outcome.cancellationReason || null,
+        },
+        bump: bidData.bump,
       };
     } catch (error) {
       console.error('Error fetching bid:', error);
       throw error;
     }
-  }, [connection, getProvider]);
+  }, [getProvider]);
 
   const getUserBids = useCallback(async (userPubkey: PublicKey) => {
     try {

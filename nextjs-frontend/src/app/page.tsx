@@ -7,6 +7,10 @@ import WalletSection from '@/components/WalletSection';
 import CreatePoolCard from '@/components/CreatePoolCard';
 import CreateNftCard from '@/components/CreateNftCard';
 import SellNftCard from '@/components/SellNftCard'; // Import the new component
+import { BuyNftCard } from '@/components/BuyNftCard'; // Import the buy NFT component
+import { BidListingCard } from '@/components/BidListingCard'; // Import bid listing
+import { BidPlacementCard } from '@/components/BidPlacementCard'; // Import bid placement
+import { BidManagementCard } from '@/components/BidManagementCard'; // Import bid management
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
@@ -72,12 +76,36 @@ const AppContent = () => {
           <div className="mb-6">
             <CreateCollectionNftCard /> 
           </div>
-          {/* Grid for other functions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <CreatePoolCard />
-            <CreateNftCard />
-            <SellNftCard /> {/* Added the SellNftCard */}
-            <MigrateToTensorCard />
+          
+          {/* Core NFT Functions */}
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">NFT Trading</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <CreatePoolCard />
+              <CreateNftCard />
+              <BuyNftCard />
+              <SellNftCard />
+              <MigrateToTensorCard />
+            </div>
+          </div>
+
+          {/* Bidding System */}
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">Bidding System</h3>
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md mb-4">
+              <p className="text-yellow-800 text-sm">
+                <strong>Note:</strong> Bidding components require specific NFT details. 
+                Use the NFT trading functions above to create and manage NFTs first.
+              </p>
+            </div>
+            <div className="text-gray-600 text-sm mb-4">
+              <p>The bidding system includes:</p>
+              <ul className="list-disc list-inside ml-4 mt-2">
+                <li><strong>List for Bids:</strong> Allow others to bid on your NFTs</li>
+                <li><strong>Place Bids:</strong> Bid on NFTs listed by other users</li>
+                <li><strong>Manage Bids:</strong> Accept or cancel bids on your listings</li>
+              </ul>
+            </div>
           </div>
         </section>
         

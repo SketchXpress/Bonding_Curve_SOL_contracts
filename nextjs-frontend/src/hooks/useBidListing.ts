@@ -3,12 +3,10 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { BondingCurveSystem } from '../types/bonding_curve_system';
+import idl from '../idl/bonding_curve_system.json';
 
-// You'll need to import your IDL here
-// import { BondingCurveSystem } from '../types/bonding_curve_system';
-// import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('BYBbjAurgYTyexC2RrbTZKMDDdG7JHha1p3RsZpZCqba');
+const PROGRAM_ID = new PublicKey('5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf');
 
 export const useBidListing = () => {
   const { connection } = useConnection();
@@ -44,7 +42,7 @@ export const useBidListing = () => {
     setIsLoading(true);
     try {
       const provider = getProvider();
-      // const program = new Program(idl as any, PROGRAM_ID, provider);
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
 
       // Derive PDAs
       const [bidListingPda] = PublicKey.findProgramAddressSync(
@@ -52,8 +50,19 @@ export const useBidListing = () => {
         PROGRAM_ID
       );
 
-      const [minterTrackerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('minter-tracker'), nftMint.toBuffer()],
+      // We need to get the collection mint from the NFT metadata or pass it as parameter
+      // For now, let's assume we have a way to get it or it's passed as parameter
+      // This is a limitation that needs to be addressed by either:
+      // 1. Passing collection mint as parameter
+      // 2. Reading it from NFT metadata
+      // 3. Storing it in a separate account
+      
+      // For demonstration, let's assume we get it from somewhere
+      // In a real implementation, you'd need to derive this properly
+      const collectionMint = nftMint; // This is incorrect but for demo purposes
+
+      const [poolPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('pool'), collectionMint.toBuffer()],
         PROGRAM_ID
       );
 
@@ -63,24 +72,27 @@ export const useBidListing = () => {
         publicKey
       );
 
-      // Create instruction (simplified - you'll need to use your actual program)
-      const instruction = {
-        programId: PROGRAM_ID,
-        keys: [
-          { pubkey: publicKey, isSigner: true, isWritable: true },
-          { pubkey: nftMint, isSigner: false, isWritable: false },
-          { pubkey: nftTokenAccount, isSigner: false, isWritable: false },
-          { pubkey: minterTrackerPda, isSigner: false, isWritable: false },
-          { pubkey: bidListingPda, isSigner: false, isWritable: true },
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        ],
-        data: Buffer.from([]), // You'll need to serialize the instruction data
-      };
+      // Convert min bid from SOL to lamports
+      const minBidInLamports = new BN(minBid * 1e9);
 
-      const transaction = new Transaction().add(instruction);
-      const signature = await sendTransaction(transaction, connection);
-      
+      const tx = await program.methods
+        .listForBids({
+          minBid: minBidInLamports,
+          durationHours: durationHours || null,
+        })
+        .accounts({
+          lister: publicKey,
+          nftMint: nftMint,
+          pool: poolPda,
+          collectionMint: collectionMint,
+          listerTokenAccount: nftTokenAccount,
+          bidListing: bidListingPda,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .transaction();
+
+      const signature = await sendTransaction(tx, connection);
       await connection.confirmTransaction(signature, 'confirmed');
       
       console.log('NFT listed for bids successfully:', signature);
@@ -96,34 +108,32 @@ export const useBidListing = () => {
   const getBidListing = useCallback(async (listingPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      // const program = new Program(idl as any, PROGRAM_ID, provider);
+      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
       
       // Fetch listing account data
-      const accountInfo = await connection.getAccountInfo(listingPubkey);
-      if (!accountInfo) {
-        throw new Error('Listing not found');
-      }
-
-      // Deserialize account data (you'll need to implement this based on your account structure)
-      // const listingData = program.account.bidListing.coder.accounts.decode('bidListing', accountInfo.data);
+      const listingData = await program.account.bidListing.fetch(listingPubkey);
       
-      // For now, return mock data
       return {
-        nftMint: new PublicKey('11111111111111111111111111111111'),
-        lister: new PublicKey('11111111111111111111111111111111'),
-        originalMinter: new PublicKey('11111111111111111111111111111111'),
-        minBid: 100000000, // 0.1 SOL in lamports
-        highestBid: 0,
-        highestBidder: null,
-        status: 'Active',
-        createdAt: Date.now() / 1000,
-        expiresAt: 0,
+        nftMint: listingData.nftMint,
+        lister: listingData.lister,
+        minBid: listingData.minBid.toNumber(),
+        highestBid: listingData.highestBid.toNumber(),
+        highestBidder: listingData.highestBidder,
+        totalBids: listingData.totalBids,
+        status: listingData.status,
+        createdAt: listingData.createdAt.toNumber(),
+        expiresAt: listingData.expiresAt.toNumber(),
+        lastPriceUpdate: listingData.lastPriceUpdate.toNumber(),
+        bondingCurvePriceAtListing: listingData.bondingCurvePriceAtListing.toNumber(),
+        currentBondingCurvePrice: listingData.currentBondingCurvePrice.toNumber(),
+        requiredPremiumBp: listingData.requiredPremiumBp,
+        bump: listingData.bump,
       };
     } catch (error) {
       console.error('Error fetching bid listing:', error);
       throw error;
     }
-  }, [connection, getProvider]);
+  }, [getProvider]);
 
   const getUserListings = useCallback(async (userPubkey: PublicKey) => {
     try {

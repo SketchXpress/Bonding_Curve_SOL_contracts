@@ -25,6 +25,7 @@
     "bip39": "^3.1.0",
     "chart.js": "^4.4.9",
     "chartjs-adapter-date-fns": "^3.0.0",
+    "date-fns": "^4.1.0",
     "mpl-token-metadata": "^0.0.1-security",
     "next": "15.3.1",
     "node-gyp-build": "^4.8.4",
