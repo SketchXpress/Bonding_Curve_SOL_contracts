@@ -17,7 +17,7 @@ import {
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import idl from '../idl/bonding_curve_system.json';
 
-const PROGRAM_ID = new PublicKey('5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf');
+const PROGRAM_ID = new PublicKey('2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN');
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
 
 export interface MintNftParams {

@@ -155,7 +155,7 @@ export async function getAllListedNFTs(connection: Connection): Promise<NFTMetad
   try {
     const metaplex = new Metaplex(connection);
     const LISTING_SEED = 'listing';
-    const programId = new PublicKey('5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf'); // Your marketplace program ID
+    const programId = new PublicKey('2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN'); // Your marketplace program ID
 
     // Get all program accounts for listings
     const accounts = await retry(() =>

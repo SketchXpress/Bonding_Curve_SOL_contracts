@@ -565,6 +565,51 @@
       ]
     },
     {
+      "name": "cancelListing",
+      "accounts": [
+        {
+          "name": "lister",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The NFT mint that was listed"
+          ]
+        },
+        {
+          "name": "bidListing",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The bid listing account to cancel"
+          ]
+        },
+        {
+          "name": "listerTokenAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Lister's token account (to verify they still own the NFT)"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "distributeCollectionFees",
       "accounts": [
         {
@@ -1712,29 +1757,6 @@
       }
     },
     {
-      "name": "BidStatus",
-      "docs": [
-        "Bid status enumeration"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Active"
-          },
-          {
-            "name": "Accepted"
-          },
-          {
-            "name": "Cancelled"
-          },
-          {
-            "name": "Expired"
-          }
-        ]
-      }
-    },
-    {
       "name": "CancellationReason",
       "docs": [
         "Cancellation reason enumeration"
@@ -2265,6 +2287,16 @@
       "msg": "Invalid listing status"
     },
     {
+      "code": 12141,
+      "name": "UnauthorizedLister",
+      "msg": "Unauthorized lister"
+    },
+    {
+      "code": 12142,
+      "name": "CannotCancelWithActiveBids",
+      "msg": "Cannot cancel listing with active bids"
+    },
+    {
       "code": 12150,
       "name": "InvalidDuration",
       "msg": "Invalid duration"
@@ -2281,6 +2313,6 @@
     }
   ],
   "metadata": {
-    "address": "5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf"
+    "address": "2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN"
   }
 }
