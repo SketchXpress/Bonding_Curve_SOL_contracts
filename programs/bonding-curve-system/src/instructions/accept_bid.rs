@@ -5,8 +5,7 @@ use crate::{
     constants::*,
     errors::ErrorCode,
     state::*,
-    state::types::{BidListingStatus},
-    state::bid::{BidStatus},
+    state::types::{BidListingStatus, BidStatus},
     utils::*,
     debug_log,
 };

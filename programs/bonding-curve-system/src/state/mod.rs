@@ -16,6 +16,7 @@ pub use pool::stats::PoolStats;
 
 // Explicit re-exports to avoid ambiguity
 pub use bid::Bid;
+pub use bid::CancellationReason;
 pub use bid_listing::BidListing;
 pub use nft_escrow::NftEscrow;
 pub use minter_tracker::MinterTracker;

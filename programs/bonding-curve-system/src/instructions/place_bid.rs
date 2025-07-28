@@ -4,8 +4,7 @@ use anchor_spl::token::{Token};
 use crate::{
     constants::*,
     state::{BidListing, BondingCurvePool, Bid},
-    state::types::{BidListingStatus},
-    state::bid::{BidStatus},
+    state::types::{BidListingStatus, BidStatus},
     utils::{debug::*, pricing::calculate_bonding_curve_price},
     errors::ErrorCode,
     errors::ErrorContext,

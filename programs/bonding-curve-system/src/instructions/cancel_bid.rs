@@ -2,8 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{Bid, BidListing},
-    state::bid::{CancellationReason},
+    state::{Bid, BidListing, CancellationReason},
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
