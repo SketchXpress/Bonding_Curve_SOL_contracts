@@ -1,6 +1,6 @@
 # PowerShell script to update Program ID across all frontend files
 $oldProgramId = "5PCH5ww9gXvkzJHq6zM8kkgnrVxmG2uKHrQTJk4LHJf"
-$newProgramId = "2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN"
+$newProgramId = "Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa"
 
 # Define file patterns to update
 $filePatterns = @(

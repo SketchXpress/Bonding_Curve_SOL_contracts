@@ -7,7 +7,7 @@ import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import idl from '../idl/bonding_curve_system.json';
 
-const PROGRAM_ID = new PublicKey('2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN');
+const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
 
 export interface DistributeFeesParams {
   collectionMint: PublicKey;

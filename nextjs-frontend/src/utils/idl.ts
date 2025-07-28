@@ -1,4 +1,4 @@
-export const PROGRAM_ID = '2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN';
+export const PROGRAM_ID = 'Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa';
 
 export const IDL = {
   "version": "0.1.0",
@@ -2283,7 +2283,7 @@ export const IDL = {
     }
   ],
   "metadata": {
-    "address": "2aaD5Ga4GPFTATJKNyGrpdMLyBrv9ZSee5Wb3nEPGGmN"
+    "address": "Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa"
   }
 };
 
