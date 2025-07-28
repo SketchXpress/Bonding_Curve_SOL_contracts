@@ -94,8 +94,8 @@ const AppContent = () => {
             <h3 className="text-xl font-semibold mb-4 text-gray-700">Bidding System</h3>
             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md mb-4">
               <p className="text-yellow-800 text-sm">
-                <strong>Note:</strong> The bidding system allows NFT holders to list their NFTs for bidding and enables users to place bids. 
-                To use these features, you'll need specific NFT mint addresses and listing information.
+                <strong>Note:</strong> Bidding components require specific NFT details. 
+                Use the NFT trading functions above to create and manage NFTs first.
               </p>
             </div>
             <div className="text-gray-600 text-sm mb-4">
@@ -104,30 +104,7 @@ const AppContent = () => {
                 <li><strong>List for Bids:</strong> Allow others to bid on your NFTs</li>
                 <li><strong>Place Bids:</strong> Bid on NFTs listed by other users</li>
                 <li><strong>Manage Bids:</strong> Accept or cancel bids on your listings</li>
-                <li><strong>Collection Fees:</strong> Claim your share of secondary sale fees</li>
               </ul>
-            </div>
-            <div className="bg-gray-50 border border-gray-200 p-4 rounded-md">
-              <p className="text-gray-700 text-sm">
-                <strong>Implementation Note:</strong> The bidding system components require specific NFT data (mint addresses, listing IDs, etc.). 
-                These will be integrated with NFT selection interfaces in a future update. For now, the core trading functions above provide the full NFT marketplace experience.
-              </p>
-            </div>
-          </div>
-
-          {/* Collection Fees */}
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-4 text-gray-700">Collection Fees</h3>
-            <div className="bg-blue-50 border border-blue-200 p-4 rounded-md mb-4">
-              <p className="text-blue-800 text-sm">
-                <strong>Info:</strong> NFT holders can claim their share of collection fees accumulated from secondary sales.
-                This feature requires collection mint address and your NFT holdings data.
-              </p>
-            </div>
-            <div className="bg-gray-50 border border-gray-200 p-4 rounded-md">
-              <p className="text-gray-700 text-sm">
-                <strong>Implementation Note:</strong> Collection fee claiming will be integrated with NFT portfolio tracking in a future update.
-              </p>
             </div>
           </div>
         </section>
