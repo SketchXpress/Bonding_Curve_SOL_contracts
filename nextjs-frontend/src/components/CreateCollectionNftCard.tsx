@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useCreateCollectionNft } from '@/hooks/useTransactions';
+import { useCreateCollectionNft } from '@/hooks/useCreateCollectionNft';
 
 const CreateCollectionNftCard = () => {
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
   const [uri, setUri] = useState('');
-  const { createCollectionNft, loading, error, txSignature, collectionMintAddress } = useCreateCollectionNft();
+  const { createCollectionNft, isLoading, error } = useCreateCollectionNft();
+  const [txSignature, setTxSignature] = useState<string | null>(null);
+  const [collectionMintAddress, setCollectionMintAddress] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,7 +18,11 @@ const CreateCollectionNftCard = () => {
       return;
     }
 
-    await createCollectionNft(name, symbol, uri);
+    const result = await createCollectionNft({ name, symbol, uri });
+    if (result) {
+      setCollectionMintAddress(result.toString());
+      setTxSignature('Transaction completed successfully');
+    }
   };
 
   return (
@@ -60,10 +66,10 @@ const CreateCollectionNftCard = () => {
         </div>
         <button
           type="submit"
-          disabled={loading}
+          disabled={isLoading}
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:bg-gray-400"
         >
-          {loading ? 'Processing...' : 'Create Collection NFT'}
+          {isLoading ? 'Processing...' : 'Create Collection NFT'}
         </button>
       </form>
       {error && (
