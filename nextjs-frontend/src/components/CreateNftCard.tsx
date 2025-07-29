@@ -2,23 +2,36 @@
 
 import React, { useState } from 'react';
 import { useMintNft } from '@/hooks/useNftTransactions';
+import { PublicKey } from '@solana/web3.js';
 
 const CreateNftCard = () => {
   const [name, setName] = useState('My NFT');
   const [symbol, setSymbol] = useState('MNFT');
   const [uri, setUri] = useState('https://example.com/nft.json');
-  const [poolAddress, setPoolAddress] = useState('');
+  const [collectionMintAddress, setCollectionMintAddress] = useState('');
   const { mintNft, loading, error, txSignature, nftMintAddress, escrowAddress } = useMintNft();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!poolAddress) {
-      alert('Please enter a pool address');
+    if (!collectionMintAddress) {
+      alert('Please enter a collection mint address');
       return;
     }
     
-    await mintNft(poolAddress, name, symbol, uri);
+    // Derive pool address from collection mint
+    try {
+      const collectionMint = new PublicKey(collectionMintAddress);
+      const [poolAddress] = PublicKey.findProgramAddressSync(
+        [Buffer.from('bonding-curve-pool'), collectionMint.toBuffer()],
+        new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa') // Program ID
+      );
+      
+      await mintNft(poolAddress.toString(), name, symbol, uri);
+    } catch (error) {
+      alert('Invalid collection mint address');
+      console.error('Error:', error);
+    }
   };
 
   return (
@@ -29,15 +42,16 @@ const CreateNftCard = () => {
       </p>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label htmlFor="pool-address" className="block text-gray-700 mb-2">Pool Address:</label>
+          <label htmlFor="collection-mint" className="block text-gray-700 mb-2">Collection Mint Address:</label>
           <input
             type="text"
-            id="pool-address"
-            value={poolAddress}
-            onChange={(e) => setPoolAddress(e.target.value)}
-            placeholder="Enter bonding curve pool address"
+            id="collection-mint"
+            value={collectionMintAddress}
+            onChange={(e) => setCollectionMintAddress(e.target.value)}
+            placeholder="11111111111111111111111111111112"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
+          <p className="text-xs text-gray-500 mt-1">The pool address will be derived automatically from the collection mint</p>
         </div>
         <div className="mb-4">
           <label htmlFor="nft-name" className="block text-gray-700 mb-2">Name:</label>

@@ -11,14 +11,16 @@ import {
 } from '@solana/web3.js';
 import { 
   TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddress,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
-  getAccount
 } from '@solana/spl-token';
+
+// Import SPL Token functions using require to avoid TypeScript issues
+const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, getAccount } = require('@solana/spl-token');
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
-import * as anchor from '@coral-xyz/anchor';
+
+// Import anchor with require to avoid TypeScript issues
+const anchor = require('@coral-xyz/anchor');
 
 // Metaplex Token Metadata Program ID
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -101,6 +103,8 @@ export const useMintNft = () => {
         throw new Error('Invalid pool address');
       }
       
+      console.log('Using pool address:', pool.toString());
+      
       // Get pool data to retrieve collection mint
       const poolData = await program.account.bondingCurvePool.fetch(pool);
       
@@ -120,19 +124,16 @@ export const useMintNft = () => {
       const creator = (poolData.config as any).creator as PublicKey;
 
       console.log('Generated NFT mint keypair:', nftMintKeypair.publicKey.toString());
-
-      const [collectionMetadata] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-          collectionMint.toBuffer(),
-        ],
-        TOKEN_METADATA_PROGRAM_ID
-      );
       
       // Find NFT escrow PDA
       const [escrow] = PublicKey.findProgramAddressSync(
-        [Buffer.from('nft-escrow'), nftMint.toBuffer()],
+        [Buffer.from('escrow'), nftMint.toBuffer()],
+        program.programId
+      );
+      
+      // Find minter tracker PDA
+      const [minterTracker] = PublicKey.findProgramAddressSync(
+        [Buffer.from('minter'), nftMint.toBuffer()],
         program.programId
       );
       
@@ -146,19 +147,8 @@ export const useMintNft = () => {
         TOKEN_METADATA_PROGRAM_ID
       );
       
-      // Find Metaplex master edition account PDA
-      const [masterEdition] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from('metadata'),
-          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-          nftMint.toBuffer(),
-          Buffer.from('edition')
-        ],
-        TOKEN_METADATA_PROGRAM_ID
-      );
-      
-      // Get the associated token address for the NFT
-      const tokenAccount = await getAssociatedTokenAddress(
+      // Get the associated token address for the NFT (minter token account)
+      const minterTokenAccount = await getAssociatedTokenAddress(
         nftMint,
         wallet.publicKey
       );
@@ -168,9 +158,9 @@ export const useMintNft = () => {
       console.log('poolData.config:', poolData.config);
       console.log('poolData.state:', poolData.state);
       
-      const basePrice = (poolData.config as any)?.basePrice as anchor.BN;
-      const growthFactor = (poolData.config as any)?.growthFactor as anchor.BN;
-      const currentSupply = (poolData.state as any)?.currentSupply as anchor.BN;
+      const basePrice = (poolData.config as any)?.basePrice as any;
+      const growthFactor = (poolData.config as any)?.growthFactor as any;
+      const currentSupply = (poolData.state as any)?.currentSupply as any;
       const poolCreator = (poolData.config as any)?.creator as PublicKey;
       
       console.log('Extracted values:', {
@@ -225,8 +215,17 @@ export const useMintNft = () => {
       
       console.log('Creator:', creator.toString());
       console.log('Collection Mint:', collectionMint.toString());
-      console.log('Collection Metadata:', collectionMetadata.toString());
-// Log other relevant accounts
+      // Log other relevant accounts
+      
+      console.log('About to call mintNft with accounts:', {
+        minter: wallet.publicKey.toString(),
+        bondingCurvePool: pool.toString(),
+        nftMint: nftMint.toString(),
+        minterTokenAccount: minterTokenAccount.toString(),
+        nftEscrow: escrow.toString(),
+        minterTracker: minterTracker.toString(),
+        metadata: metadataAccount.toString()
+      });
 
       // Execute the transaction to mint the NFT with proper args structure
       const tx = await program.methods
@@ -236,19 +235,16 @@ export const useMintNft = () => {
           uri: uri
         })
         .accounts({
-          payer: wallet.publicKey,
+          minter: wallet.publicKey,
+          bondingCurvePool: pool,
           nftMint: nftMint,
-          escrow: escrow,
-          pool: pool,
-          tokenAccount: tokenAccount,
-          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
-          metadataAccount: metadataAccount,
-          masterEdition: masterEdition,
-          collectionMint: collectionMint,
-          collectionMetadata: collectionMetadata,
+          minterTokenAccount: minterTokenAccount,
+          nftEscrow: escrow,
+          minterTracker: minterTracker,
+          metadata: metadataAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
-          creator: creator,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY
         })

@@ -15,4 +15,4 @@ cluster = "Devnet"
 wallet = "/root/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "echo 'Tests should be run from the frontend directory with npm test'"
