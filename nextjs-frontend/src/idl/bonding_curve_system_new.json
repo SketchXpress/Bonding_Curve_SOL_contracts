@@ -1371,32 +1371,6 @@
       }
     },
     {
-      "name": "BidStatus",
-      "docs": [
-        "Status of an individual bid"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Active"
-          },
-          {
-            "name": "Accepted"
-          },
-          {
-            "name": "Cancelled"
-          },
-          {
-            "name": "Expired"
-          },
-          {
-            "name": "Outbid"
-          }
-        ]
-      }
-    },
-    {
       "name": "BidOutcome",
       "docs": [
         "Bid outcome - status and resolution"
@@ -1827,6 +1801,32 @@
           },
           {
             "name": "Expired"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BidStatus",
+      "docs": [
+        "Status of an individual bid"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Cancelled"
+          },
+          {
+            "name": "Expired"
+          },
+          {
+            "name": "Outbid"
           }
         ]
       }

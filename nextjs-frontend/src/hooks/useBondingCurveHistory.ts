@@ -11,7 +11,10 @@ import {
   VersionedTransactionResponse, // Import VersionedTransactionResponse type
 } from "@solana/web3.js";
 import { AnchorProvider, Idl, BorshInstructionCoder, Program } from "@coral-xyz/anchor";
-import { IDL as BondingCurveIDL, PROGRAM_ID } from "../utils/idl";
+import { PROGRAM_ID } from "../utils/idl";
+import { BondingCurveSystem } from "../types/bonding_curve_system";
+// Import IDL directly from JSON file to avoid any TypeScript compilation issues
+import BondingCurveIDL from "../idl/bonding_curve_system.json";
 
 // Define interfaces for Helius API responses
 interface NativeTransfer {
@@ -120,7 +123,7 @@ export function useBondingCurveHistory(limit: number = 50) {
 
   // Anchor setup (using RPC connection for potential on-chain reads if needed, though primarily for coder here)
   const provider = new AnchorProvider(rpcConnection, {} as any, { commitment: "confirmed" });
-  const program = new Program(BondingCurveIDL as Idl, programId, provider);
+  const program = new Program(BondingCurveIDL as any, programId, provider) as Program<BondingCurveSystem>;
   const instructionCoder = program.coder.instruction as BorshInstructionCoder;
 
   // --- Function to extract price --- 
