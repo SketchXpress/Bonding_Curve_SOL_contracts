@@ -5,6 +5,7 @@ import { AnchorContextProvider } from '@/contexts/AnchorContextProvider';
 import WalletSection from '@/components/WalletSection';
 import CreatePoolCard from '@/components/CreatePoolCard';
 import CreateNftCard from '@/components/CreateNftCard';
+import PoolVerificationCard from '@/components/PoolVerificationCard';
 import SellNftCard from '@/components/SellNftCard';
 import { BuyNftCard } from '@/components/BuyNftCard';
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
@@ -72,6 +73,12 @@ const AppContent = () => {
         {/* Combined and cleaned Contract Functions section */}
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Contract Functions</h2>
+          
+          {/* Pool Verification Tool */}
+          <div className="mb-6">
+            <PoolVerificationCard />
+          </div>
+          
           {/* Create Collection NFT Card (placed above the grid for prominence) */}
           <div className="mb-6">
             <CreateCollectionNftCard /> 

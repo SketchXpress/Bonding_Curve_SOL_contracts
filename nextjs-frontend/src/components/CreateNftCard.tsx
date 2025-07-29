@@ -22,14 +22,22 @@ const CreateNftCard = () => {
     // Derive pool address from collection mint
     try {
       const collectionMint = new PublicKey(collectionMintAddress);
+      console.log('Collection mint address:', collectionMint.toString());
+      
       const [poolAddress] = PublicKey.findProgramAddressSync(
         [Buffer.from('bonding-curve-pool'), collectionMint.toBuffer()],
         new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa') // Program ID
       );
       
+      console.log('Derived pool address:', poolAddress.toString());
+      console.log('Attempting to mint NFT for pool:', poolAddress.toString());
       await mintNft(poolAddress.toString(), name, symbol, uri);
-    } catch (error) {
-      alert('Invalid collection mint address');
+    } catch (error: any) {
+      if (error.message && error.message.includes('Account does not exist')) {
+        alert(`❌ Pool Not Found!\n\nThe bonding curve pool for collection ${collectionMintAddress} does not exist yet.\n\n✅ Solution: Create a pool first using the "Create Pool" card, then try minting NFTs.`);
+      } else {
+        alert('Error: ' + (error.message || 'Invalid collection mint address'));
+      }
       console.error('Error:', error);
     }
   };
@@ -37,6 +45,16 @@ const CreateNftCard = () => {
   return (
     <div className="bg-white shadow-md rounded-lg p-6 mb-6">
       <h3 className="text-xl font-bold mb-4">Mint NFT with TOE</h3>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <p className="text-sm text-blue-800 mb-2">
+          <strong>📋 Instructions:</strong>
+        </p>
+        <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
+          <li>First, create a bonding curve pool using the "Create Pool" card above</li>
+          <li>Copy the collection mint address from the pool creation result</li>
+          <li>Paste it below to mint NFTs for that collection</li>
+        </ol>
+      </div>
       <p className="text-sm text-gray-600 mb-4">
         Mint an NFT with a Token-Owned Escrow (TOE). The current price from the bonding curve will be locked in the NFT's escrow.
       </p>
@@ -48,8 +66,8 @@ const CreateNftCard = () => {
             id="collection-mint"
             value={collectionMintAddress}
             onChange={(e) => setCollectionMintAddress(e.target.value)}
-            placeholder="11111111111111111111111111111112"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
+            placeholder="Paste collection mint address from pool creation result..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="text-xs text-gray-500 mt-1">The pool address will be derived automatically from the collection mint</p>
         </div>

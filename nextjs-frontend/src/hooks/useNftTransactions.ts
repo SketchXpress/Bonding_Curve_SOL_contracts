@@ -105,6 +105,19 @@ export const useMintNft = () => {
       
       console.log('Using pool address:', pool.toString());
       
+      // Add debugging for program context
+      console.log('Program ID from context:', program.programId?.toString());
+      console.log('Connection endpoint:', program.provider.connection.rpcEndpoint);
+      
+      // Check if the pool account exists before trying to fetch it
+      console.log('Checking if pool account exists...');
+      const poolAccountInfo = await program.provider.connection.getAccountInfo(pool);
+      console.log('Pool account info:', poolAccountInfo);
+      
+      if (!poolAccountInfo) {
+        throw new Error(`Pool account does not exist at address ${pool.toString()}. Please ensure the pool was created successfully and you're using the correct network.`);
+      }
+      
       // Get pool data to retrieve collection mint
       const poolData = await program.account.bondingCurvePool.fetch(pool);
       
