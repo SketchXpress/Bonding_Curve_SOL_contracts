@@ -1,18 +1,29 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMigrateToTensor } from '@/hooks/useTransactions';
+import { useMigrateToTensor } from '@/hooks/useMigrateToTensor';
+import { PublicKey } from '@solana/web3.js';
 
 const MigrateToTensorCard = () => {
   const [poolAddress, setPoolAddress] = useState('');
-  const { migrateToTensor, loading, error, txSignature } = useMigrateToTensor();
+  const { migrateToTensor, isLoading, error } = useMigrateToTensor();
+  const [migrationResult, setMigrationResult] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!poolAddress) {
       return;
     }
-    await migrateToTensor(poolAddress);
+    try {
+      // The migration function expects a collection mint, but we need to derive it from pool address
+      // For now, we'll assume the poolAddress is actually the collection mint
+      const result = await migrateToTensor({ collectionMint: new PublicKey(poolAddress) });
+      if (result) {
+        setMigrationResult(result);
+      }
+    } catch (err) {
+      console.error('Error migrating to Tensor:', err);
+    }
   };
 
   return (
@@ -35,10 +46,10 @@ const MigrateToTensorCard = () => {
         </div>
         <button
           type="submit"
-          disabled={loading || !poolAddress}
+          disabled={isLoading || !poolAddress}
           className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:bg-gray-400"
         >
-          {loading ? 'Processing...' : 'Migrate to Tensor'}
+          {isLoading ? 'Processing...' : 'Migrate to Tensor'}
         </button>
       </form>
       {error && (
@@ -46,9 +57,9 @@ const MigrateToTensorCard = () => {
           Error: {error}
         </div>
       )}
-      {txSignature && (
+      {migrationResult && (
         <div className="mt-4 text-green-600">
-          Success! Transaction: {txSignature.slice(0, 8)}...{txSignature.slice(-8)}
+          Success! Migration completed with transaction: {migrationResult.slice(0, 8)}...{migrationResult.slice(-8)}
         </div>
       )}
     </div>

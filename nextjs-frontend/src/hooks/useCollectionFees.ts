@@ -54,7 +54,7 @@ export const useCollectionFees = () => {
       // Derive pool PDA
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('pool'),
+          Buffer.from('bonding-curve-pool'),
           params.collectionMint.toBuffer(),
         ],
         PROGRAM_ID

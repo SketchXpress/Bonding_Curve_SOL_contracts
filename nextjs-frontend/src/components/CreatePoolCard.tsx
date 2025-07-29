@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useCreatePool } from '@/hooks/useTransactions';
+import { useCreatePool } from '@/hooks/useCreatePool';
+import { PublicKey } from '@solana/web3.js';
 import { Line } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, 
@@ -55,7 +56,7 @@ const CreatePoolCard = () => {
   const [priceImpact, setPriceImpact] = useState(0);
   
   // Transaction state
-  const { createPool, loading, error, txSignature } = useCreatePool();
+  const { createPool, isLoading, error } = useCreatePool();
   const [poolAddress, setPoolAddress] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   
@@ -124,8 +125,16 @@ const CreatePoolCard = () => {
     
     if (!collectionMint) {
       errors.collectionMint = 'Please enter a collection mint address';
-    } else if (!/^[A-Za-z0-9]{32,44}$/.test(collectionMint)) {
-      errors.collectionMint = 'Invalid mint address format';
+    } else {
+      try {
+        // Try to create a PublicKey to validate the address
+        new PublicKey(collectionMint);
+        if (!/^[A-Za-z0-9]{32,44}$/.test(collectionMint)) {
+          errors.collectionMint = 'Invalid mint address format';
+        }
+      } catch (err) {
+        errors.collectionMint = 'Invalid base58 encoded public key';
+      }
     }
     
     if (basePrice <= 0) {
@@ -151,12 +160,27 @@ const CreatePoolCard = () => {
       return;
     }
     
-    // Fix: Remove the fourth argument or update the useCreatePool hook to accept it
-    const result = await createPool(basePrice, growthFactor, collectionMint);
-    
-    if (result) {
-      // Fix: Handle result correctly based on its actual type
-      setPoolAddress(typeof result === 'string' ? result : "Generated Pool Address");
+    try {
+      console.log('Submitting pool creation with:', {
+        collectionMint,
+        basePrice,
+        growthFactor,
+        basePriceInSOL: basePrice / 1e9
+      });
+      
+      const result = await createPool({
+        collectionMint: new PublicKey(collectionMint),
+        basePrice: basePrice / 1e9, // Convert lamports to SOL
+        growthFactor: growthFactor,
+      });
+      
+      if (result) {
+        setPoolAddress(result.toString());
+        console.log('Pool created successfully:', result.toString());
+      }
+    } catch (err) {
+      console.error('Error creating pool:', err);
+      // The error will also be shown via the error state from the hook
     }
   };
 
@@ -325,10 +349,10 @@ const CreatePoolCard = () => {
         
         <button
           type="submit"
-          disabled={loading}
+          disabled={isLoading}
           className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:bg-gray-400"
         >
-          {loading ? 'Processing...' : 'Create Pool'}
+          {isLoading ? 'Processing...' : 'Create Pool'}
         </button>
       </form>
       
@@ -339,10 +363,9 @@ const CreatePoolCard = () => {
         </div>
       )}
       
-      {txSignature && poolAddress && (
+      {poolAddress && (
         <div className="mt-4 p-3 bg-green-50 text-green-700 border border-green-200 rounded">
           <p className="font-medium">Pool Created Successfully!</p>
-          <p className="mt-1">Transaction: {txSignature.slice(0, 8)}...{txSignature.slice(-8)}</p>
           <p className="mt-1">Pool Address: {poolAddress}</p>
         </div>
       )}
