@@ -7,7 +7,6 @@ const CreateNftCard = () => {
   const [name, setName] = useState('My NFT');
   const [symbol, setSymbol] = useState('MNFT');
   const [uri, setUri] = useState('https://example.com/nft.json');
-  const [sellerFeeBasisPoints, setSellerFeeBasisPoints] = useState(500);
   const [poolAddress, setPoolAddress] = useState('');
   const { mintNft, loading, error, txSignature, nftMintAddress, escrowAddress } = useMintNft();
 
@@ -19,7 +18,7 @@ const CreateNftCard = () => {
       return;
     }
     
-    await mintNft(poolAddress, name, symbol, uri, sellerFeeBasisPoints);
+    await mintNft(poolAddress, name, symbol, uri);
   };
 
   return (
@@ -69,17 +68,6 @@ const CreateNftCard = () => {
             onChange={(e) => setUri(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
-        </div>
-        <div className="mb-4">
-          <label htmlFor="seller-fee" className="block text-gray-700 mb-2">Seller Fee (basis points):</label>
-          <input
-            type="number"
-            id="seller-fee"
-            value={sellerFeeBasisPoints}
-            onChange={(e) => setSellerFeeBasisPoints(parseInt(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
-          />
-          <p className="text-xs text-gray-500 mt-1">100 basis points = 1%</p>
         </div>
         <button
           type="submit"

@@ -27,7 +27,7 @@ import { useBidListing } from '../hooks/useBidListing';     // Handles listing c
 import { useBidPlacement } from '../hooks/useBidPlacement'; // Handles bid placement and management
 
 // Type definitions for marketplace entities
-import { NFTMetadata, Listing, BidData } from '../types/marketplace';
+import { NFTMetadata, Listing, BidData, BidListing } from '../types/marketplace';
 
 /**
  * MarketplacePage Component
@@ -47,7 +47,7 @@ const MarketplacePage: React.FC = () => {
   const [userNFTs, setUserNFTs] = useState<NFTMetadata[]>([]); // User's owned NFTs
   const [listedNFTs, setListedNFTs] = useState<NFTMetadata[]>([]); // All NFTs listed in marketplace
   const [userBids, setUserBids] = useState<BidData[]>([]); // User's active bids
-  const [userListings, setUserListings] = useState<Listing[]>([]); // User's active listings
+  const [userListings, setUserListings] = useState<BidListing[]>([]); // User's active listings
   const [loading, setLoading] = useState(false); // Loading state for data fetching
 
   useEffect(() => {
@@ -62,7 +62,7 @@ const MarketplacePage: React.FC = () => {
     setLoading(true);
     try {
       // Fetch data in parallel for better performance
-      const [ownedNFTs, bids, listings, allListedNFTs]: [NFTMetadata[], BidData[], Listing[], NFTMetadata[]] = await Promise.all([
+      const [ownedNFTs, bids, listings, allListedNFTs]: [NFTMetadata[], BidData[], BidListing[], NFTMetadata[]] = await Promise.all([
         getTokensByOwner(connection, publicKey).catch(err => {
           console.error('Error fetching owned NFTs:', err);
           return [];
@@ -88,11 +88,11 @@ const MarketplacePage: React.FC = () => {
 
       // Update NFT listing status based on user's listings
       const nftsWithListingStatus = ownedNFTs.map(nft => {
-        const listing = listings.find(l => l.nftMint.toBase58() === nft.mint.toBase58());
+        const listing = listings.find(l => l.account.nftMint.toBase58() === nft.mint.toBase58());
         return {
           ...nft,
           isListed: !!listing,
-          listingPubkey: listing?.pubkey,
+          listingPubkey: listing?.publicKey,
         };
       });
       setUserNFTs(nftsWithListingStatus);

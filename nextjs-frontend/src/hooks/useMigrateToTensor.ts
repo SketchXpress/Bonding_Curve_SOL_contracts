@@ -58,7 +58,7 @@ export const useMigrateToTensor = () => {
       // Derive pool PDA
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('pool'),
+          Buffer.from('bonding-curve-pool'),
           params.collectionMint.toBuffer(),
         ],
         PROGRAM_ID
@@ -97,7 +97,7 @@ export const useMigrateToTensor = () => {
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('pool'),
+          Buffer.from('bonding-curve-pool'),
           collectionMint.toBuffer(),
         ],
         PROGRAM_ID
@@ -105,8 +105,14 @@ export const useMigrateToTensor = () => {
 
       const poolAccount = await program.account.bondingCurvePool.fetch(poolPda);
       
-      // Check if the market cap has reached the threshold
+      // Check if the market cap has reached the threshold with proper error handling
       const thresholdMarketCap = 690_000_000; // $69k in lamports (690 SOL * 1e6 from constants)
+      
+      if (!poolAccount?.stats?.marketCap) {
+        console.warn('Pool stats or marketCap not found');
+        return false;
+      }
+      
       return poolAccount.stats.marketCap.toNumber() >= thresholdMarketCap;
     } catch (err) {
       console.error('Error checking migration eligibility:', err);
@@ -125,13 +131,19 @@ export const useMigrateToTensor = () => {
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('pool'),
+          Buffer.from('bonding-curve-pool'),
           collectionMint.toBuffer(),
         ],
         PROGRAM_ID
       );
 
       const poolAccount = await program.account.bondingCurvePool.fetch(poolPda);
+      
+      // Add proper error handling for stats.marketCap
+      if (!poolAccount?.stats?.marketCap) {
+        console.warn('Pool stats or marketCap not found');
+        return null;
+      }
       
       const currentMarketCap = poolAccount.stats.marketCap.toNumber() / 1e9; // Convert to SOL
       const thresholdMarketCap = 690; // 690 SOL from constants

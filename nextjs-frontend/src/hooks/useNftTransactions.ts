@@ -69,8 +69,7 @@ export const useMintNft = () => {
     poolAddress: string,
     name: string, 
     symbol: string, 
-    uri: string, 
-    sellerFeeBasisPoints: number
+    uri: string
   ) => {
     if (!program || !wallet.publicKey || !provider) {
       setError('Program not initialized or wallet not connected');
@@ -92,10 +91,6 @@ export const useMintNft = () => {
         throw new Error('Pool address, name, symbol, and URI are required');
       }
       
-      if (sellerFeeBasisPoints < 0 || sellerFeeBasisPoints > 10000) {
-        throw new Error('Seller fee basis points must be between 0 and 10000');
-      }
-      
       // Validate pool address
       if (!isValidPublicKeyFormat(poolAddress)) {
         throw new Error('Invalid pool address format');
@@ -108,12 +103,21 @@ export const useMintNft = () => {
       
       // Get pool data to retrieve collection mint
       const poolData = await program.account.bondingCurvePool.fetch(pool);
+      
+      console.log('Raw pool data:', poolData);
+      console.log('Pool data structure:', {
+        collection: poolData.collection?.toString(),
+        config: poolData.config,
+        state: poolData.state,
+        stats: poolData.stats
+      });
+      
       const collectionMint = poolData.collection as PublicKey;
       
       // Generate a new keypair for the NFT mint
       const nftMintKeypair = Keypair.generate();
       const nftMint = nftMintKeypair.publicKey;
-      const creator = poolData.creator as PublicKey;
+      const creator = (poolData.config as any).creator as PublicKey;
 
       console.log('Generated NFT mint keypair:', nftMintKeypair.publicKey.toString());
 
@@ -160,14 +164,56 @@ export const useMintNft = () => {
       );
       
       // Calculate the current price from the pool
-      const basePrice = poolData.basePrice as anchor.BN;
-      const growthFactor = poolData.growthFactor as anchor.BN;
-      const currentSupply = poolData.currentSupply as anchor.BN;
+      console.log('Accessing pool config and state...');
+      console.log('poolData.config:', poolData.config);
+      console.log('poolData.state:', poolData.state);
+      
+      const basePrice = (poolData.config as any)?.basePrice as anchor.BN;
+      const growthFactor = (poolData.config as any)?.growthFactor as anchor.BN;
+      const currentSupply = (poolData.state as any)?.currentSupply as anchor.BN;
+      const poolCreator = (poolData.config as any)?.creator as PublicKey;
+      
+      console.log('Extracted values:', {
+        basePrice: basePrice?.toString(),
+        growthFactor: growthFactor?.toString(),
+        currentSupply: currentSupply?.toString(),
+        creator: poolCreator?.toString()
+      });
+      
+      // Add safety checks for undefined values
+      if (!basePrice || !growthFactor || currentSupply === undefined || currentSupply === null) {
+        console.error('Missing pool data:', {
+          hasBasePrice: !!basePrice,
+          hasGrowthFactor: !!growthFactor,
+          hasCurrentSupply: currentSupply !== undefined && currentSupply !== null,
+          basePrice: basePrice?.toString(),
+          growthFactor: growthFactor?.toString(), 
+          currentSupply: currentSupply?.toString()
+        });
+        throw new Error('Pool data is incomplete or malformed');
+      }
       
       // Simple price calculation (actual calculation happens on-chain)
       // price = basePrice * (growthFactor/1_000_000)^currentSupply
-      const growthFactorDecimal = growthFactor.toNumber() / 1_000_000;
-      const estimatedPrice = basePrice.toNumber() * Math.pow(growthFactorDecimal, currentSupply.toNumber());
+      console.log('Type checking before toNumber calls:', {
+        basePrice: typeof basePrice,
+        basePriceConstructor: basePrice?.constructor?.name,
+        basePriceToString: basePrice?.toString(),
+        growthFactor: typeof growthFactor,
+        growthFactorConstructor: growthFactor?.constructor?.name,
+        growthFactorToString: growthFactor?.toString(),
+        currentSupply: typeof currentSupply,
+        currentSupplyConstructor: currentSupply?.constructor?.name,
+        currentSupplyToString: currentSupply?.toString()
+      });
+      
+      // Ensure we have BN objects before calling toNumber()
+      const basePriceBN = new anchor.BN(basePrice.toString());
+      const growthFactorBN = new anchor.BN(growthFactor.toString());
+      const currentSupplyBN = new anchor.BN(currentSupply.toString());
+      
+      const growthFactorDecimal = growthFactorBN.toNumber() / 1_000_000;
+      const estimatedPrice = basePriceBN.toNumber() * Math.pow(growthFactorDecimal, currentSupplyBN.toNumber());
       
       console.log(`Estimated price for minting NFT: ${estimatedPrice / 1_000_000_000} SOL`);
       
@@ -182,9 +228,13 @@ export const useMintNft = () => {
       console.log('Collection Metadata:', collectionMetadata.toString());
 // Log other relevant accounts
 
-      // Execute the transaction to mint the NFT with TOE
+      // Execute the transaction to mint the NFT with proper args structure
       const tx = await program.methods
-        .mintNft(name, symbol, uri, sellerFeeBasisPoints)
+        .mintNft({
+          name: name,
+          symbol: symbol,
+          uri: uri
+        })
         .accounts({
           payer: wallet.publicKey,
           nftMint: nftMint,
