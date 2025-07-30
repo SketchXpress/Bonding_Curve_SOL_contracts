@@ -149,13 +149,13 @@ To get started with the NextJS frontend:
 3. Install dependencies:
 
    ```
-   npm install
+   yarn install
    ```
 
 4. Start the development server:
 
    ```
-   npm run dev
+   yarn dev
    ```
 
 5. Open your browser and navigate to `http://localhost:3000`
@@ -170,10 +170,10 @@ To get started with the NextJS frontend:
 
 ### Available Scripts
 
-- `npm run dev` - Start the development server
-- `npm run build` - Build the application for production
-- `npm run start` - Start the production server
-- `npm run lint` - Run ESLint to check code quality
+- `yarn dev` - Start the development server
+- `yarn build` - Build the application for production
+- `yarn start` - Start the production server
+- `yarn lint` - Run ESLint to check code quality
 
 ## Deployment
 
@@ -182,7 +182,7 @@ To deploy the NextJS frontend:
 1. Build the application:
 
    ```
-   npm run build
+   yarn build
    ```
 
 2. Deploy to your preferred hosting platform (Vercel, Netlify, etc.)
@@ -190,7 +190,7 @@ To deploy the NextJS frontend:
 For local testing, you can start the production server:
 
 ```
-npm run start
+yarn start
 ```
 
 ## Contract Integration Details

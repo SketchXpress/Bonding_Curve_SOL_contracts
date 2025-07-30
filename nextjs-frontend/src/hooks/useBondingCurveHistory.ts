@@ -130,7 +130,7 @@ export interface HistoryItem {
 const HELIUS_API_KEY = "69b4db73-1ed1-4558-8e85-192e0994e556"; // Use environment variable in production
 const HELIUS_API_BASE = `https://api-devnet.helius.xyz/v0`; // For REST API calls
 const HELIUS_RPC_ENDPOINT = `https://devnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`; // For RPC calls
-const programId = new PublicKey(PROGRAM_ID);
+// Note: programId will be created inside the hook after polyfills are applied
 
 // Helper function to find account index by name in IDL
 const findAccountIndex = (idlInstruction: any, accountName: string): number => {
@@ -174,18 +174,6 @@ const getAccountKeys = (txDetails: TransactionResponse | VersionedTransactionRes
 
 
 export function useBondingCurveHistory(limit: number = 50) {
-  // Ensure polyfill is applied before any BN operations
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        require('../utils/bn-polyfill-direct.js');
-        console.log('useBondingCurveHistory: Applied polyfill');
-      }
-    } catch (error) {
-      console.warn('Failed to apply BN polyfill in useBondingCurveHistory:', error);
-    }
-  }, []);
-
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -198,42 +186,95 @@ export function useBondingCurveHistory(limit: number = 50) {
       return fn();
     } catch (error: any) {
       if (error.message && error.message.includes('_bn')) {
-        console.warn('Caught _bn error, attempting to recover:', error);
-        // Try to reapply the polyfill
-        try {
-          if (typeof window !== 'undefined') {
-            require('../utils/bn-polyfill-direct.js');
-          }
-        } catch (patchError) {
-          console.error('Failed to reapply polyfill:', patchError);
-        }
-        // Return a safe default
+        console.warn('Caught _bn error in safeWrapper:', error);
+        // Return a safe default instead of trying to reapply polyfills
         return null;
       }
       throw error; // Re-throw non-_bn errors
     }
   }, []);
 
-  // Connections for Helius REST and RPC
-  const restConnection = new Connection(`${HELIUS_API_BASE}/?api-key=${HELIUS_API_KEY}`, "confirmed");
-  const rpcConnection = new Connection(HELIUS_RPC_ENDPOINT, "confirmed");
+  // Lazy initialization of connections and program
+  const [programInstance, setProgramInstance] = useState<Program | null>(null);
+  const [instructionCoder, setInstructionCoder] = useState<InstructionCoder | null>(null);
+  const [rpcConnection, setRpcConnection] = useState<Connection | null>(null);
+  const [restConnection, setRestConnection] = useState<Connection | null>(null);
+  const [programId, setProgramId] = useState<PublicKey | null>(null);
 
-  // Anchor setup (using RPC connection for potential on-chain reads if needed, though primarily for coder here)
-  const wallet = {
-    publicKey: SystemProgram.programId,
-    signTransaction: async () => { throw new Error('Not implemented'); },
-    signAllTransactions: async () => { throw new Error('Not implemented'); },
-  };
-  const provider = new AnchorProvider(rpcConnection, wallet, { commitment: "confirmed" });
-  const program = new Program(BondingCurveIDL as unknown as Idl, provider);
-  const instructionCoder = program.coder.instruction as InstructionCoder;
+  // Initialize program after existing polyfills have taken effect
+  useEffect(() => {
+    const initializeProgram = async () => {
+      try {
+        console.log('useBondingCurveHistory: Starting initialization (relying on existing polyfills)...');
+        
+        // Give existing polyfills time to take effect
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Test PublicKey creation to ensure polyfills are working
+        try {
+          console.log('useBondingCurveHistory: Testing PublicKey creation...');
+          const testKey = new PublicKey('11111111111111111111111111111112');
+          console.log('useBondingCurveHistory: PublicKey test successful');
+        } catch (testError: any) {
+          console.error('useBondingCurveHistory: PublicKey test failed:', testError);
+          throw new Error(`PublicKey creation failed: ${testError.message}`);
+        }
+
+        // Create programId safely
+        const progId = new PublicKey(PROGRAM_ID);
+        console.log('useBondingCurveHistory: Program ID created successfully');
+        
+        // Connections for Helius REST and RPC
+        const restConn = new Connection(`${HELIUS_API_BASE}/?api-key=${HELIUS_API_KEY}`, "confirmed");
+        const rpcConn = new Connection(HELIUS_RPC_ENDPOINT, "confirmed");
+
+        // Anchor setup
+        const wallet = {
+          publicKey: SystemProgram.programId,
+          signTransaction: async () => { throw new Error('Not implemented'); },
+          signAllTransactions: async () => { throw new Error('Not implemented'); },
+        };
+        const provider = new AnchorProvider(rpcConn, wallet, { commitment: "confirmed" });
+        const program = new Program(BondingCurveIDL as unknown as Idl, provider);
+        const coder = program.coder.instruction as InstructionCoder;
+
+        setProgramId(progId);
+        setRestConnection(restConn);
+        setRpcConnection(rpcConn);
+        setProgramInstance(program);
+        setInstructionCoder(coder);
+        console.log('useBondingCurveHistory: Program initialized successfully');
+      } catch (error: any) {
+        console.error('useBondingCurveHistory: Failed to initialize program:', error);
+        setError(`Failed to initialize program: ${error?.message || 'Unknown error'}`);
+        
+        // Retry initialization with longer delays, limited retries
+        if (!error.retryCount || error.retryCount < 3) {
+          const retryCount = (error.retryCount || 0) + 1;
+          console.log(`useBondingCurveHistory: Retrying initialization (attempt ${retryCount})...`);
+          setTimeout(() => {
+            const retryError = new Error(error.message);
+            (retryError as any).retryCount = retryCount;
+            initializeProgram();
+          }, 1000 * retryCount); // Exponential backoff
+        } else {
+          console.error('useBondingCurveHistory: Max retries reached, giving up');
+        }
+      }
+    };
+
+    // Start initialization with a longer delay to ensure all existing polyfills are applied
+    const timer = setTimeout(initializeProgram, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // --- Function to extract price --- 
   const extractPrice = async (
     tx: HeliusEnhancedTransaction,
     decodedName: string,
     relevantInstruction: any,
-    idlInstruction: any
+    idlInstruction: any,
+    rpcConn: Connection
   ): Promise<number | undefined> => {
     let price: number | undefined = undefined;
     let escrowAddress: string | undefined = undefined;
@@ -269,7 +310,7 @@ export function useBondingCurveHistory(limit: number = 50) {
       console.log(`[${tx.signature}] (Sell) Attempting price extraction via getTransaction for escrow: ${escrowAddress}`);
       try {
         // Use RPC connection to get full transaction details
-        const txDetails = await rpcConnection.getTransaction(tx.signature, {
+        const txDetails = await rpcConn.getTransaction(tx.signature, {
           commitment: "confirmed",
           maxSupportedTransactionVersion: 0 // Request version 0 for balance info
         });
@@ -329,6 +370,13 @@ export function useBondingCurveHistory(limit: number = 50) {
   const fetchHeliusHistory = useCallback(
     async (fetchBeforeSignature?: string) => {
       if (isLoading) return;
+      
+      // Check if required dependencies are initialized
+      if (!instructionCoder || !rpcConnection || !programId) {
+        console.log('fetchHeliusHistory: Dependencies not yet initialized');
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
@@ -434,7 +482,7 @@ export function useBondingCurveHistory(limit: number = 50) {
                     // --- Extract Price --- 
                     // Call the dedicated price extraction function
                     try {
-                      price = await extractPrice(tx, decodedName, relevantInstruction, idlInstruction);
+                      price = await extractPrice(tx, decodedName, relevantInstruction, idlInstruction, rpcConnection);
                     } catch (priceError) {
                       console.warn(`[${tx.signature}] Error extracting price:`, priceError);
                       price = undefined; // Set to undefined if price extraction fails
@@ -489,24 +537,30 @@ export function useBondingCurveHistory(limit: number = 50) {
         setIsLoading(false);
       }
     },
-    [isLoading, limit, instructionCoder, extractPrice, safeWrapper] // Add safeWrapper dependency
+    [isLoading, limit, instructionCoder, rpcConnection, programId, extractPrice, safeWrapper] // Add programId dependency
   );
 
-  // Initial fetch
+  // Initial fetch - only when dependencies are ready
   useEffect(() => {
-    if (history.length === 0 && !isLoading && canLoadMore) {
+    if (history.length === 0 && !isLoading && canLoadMore && instructionCoder && rpcConnection && programId) {
       fetchHeliusHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, [instructionCoder, rpcConnection, programId]); // Run when dependencies are ready
 
   // Function to load more history items
   const loadMore = () => {
-    if (canLoadMore && lastSignature && !isLoading) {
+    if (canLoadMore && lastSignature && !isLoading && instructionCoder && rpcConnection && programId) {
       fetchHeliusHistory(lastSignature);
     }
   };
 
-  return { history, isLoading, error, loadMore, canLoadMore };
+  return { 
+    history, 
+    isLoading: isLoading || !instructionCoder || !rpcConnection || !programId, // Include initialization in loading state
+    error, 
+    loadMore, 
+    canLoadMore 
+  };
 }
 

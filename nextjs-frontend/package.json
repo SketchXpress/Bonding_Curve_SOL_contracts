@@ -9,7 +9,7 @@
     "start": "cross-env NODE_ENV=production node server.js",
     "start:custom": "cross-env NODE_ENV=production node server.js",
     "lint": "next lint",
-    "rebuild": "npm rebuild bigint-buffer --update-binary"
+    "rebuild": "yarn rebuild"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
