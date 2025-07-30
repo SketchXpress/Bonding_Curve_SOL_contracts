@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
+    "@metaplex-foundation/js": "^0.20.1",
     "@solana/spl-token": "^0.4.13",
     "@solana/wallet-adapter-base": "^0.9.25",
     "@solana/wallet-adapter-react": "^0.15.37",
@@ -22,6 +23,8 @@
     "axios": "^1.9.0",
     "bn.js": "^5.2.1",
     "chart.js": "^4.4.9",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "date-fns": "^4.1.0",
     "helius-sdk": "^1.5.1",
     "next": "15.3.1",
     "pino-pretty": "^13.0.0",

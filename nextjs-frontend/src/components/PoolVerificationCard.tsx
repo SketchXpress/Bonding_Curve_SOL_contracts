@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import { useAnchorContext } from '@/contexts/AnchorContextProvider';
+import { useAnchorContext } from '../contexts/AnchorContextProvider';
 
 const PoolVerificationCard = () => {
   const [collectionMintAddress, setCollectionMintAddress] = useState('');
@@ -40,7 +40,7 @@ const PoolVerificationCard = () => {
       let poolData = null;
       if (poolAccountInfo) {
         try {
-          poolData = await program.account.bondingCurvePool.fetch(poolAddress);
+          poolData = await (program.account as any).bondingCurvePool.fetch(poolAddress);
         } catch (fetchError) {
           console.error('Error fetching pool data:', fetchError);
         }

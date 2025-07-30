@@ -10,11 +10,74 @@ import {
   TransactionResponse, // Import TransactionResponse type
   VersionedTransactionResponse, // Import VersionedTransactionResponse type
 } from "@solana/web3.js";
-import { AnchorProvider, Idl, BorshInstructionCoder, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, Idl, InstructionCoder, Program } from "@coral-xyz/anchor";
 import { PROGRAM_ID } from "../utils/idl";
 import { BondingCurveSystem } from "../types/bonding_curve_system";
 // Import IDL directly from JSON file to avoid any TypeScript compilation issues
 import BondingCurveIDL from "../idl/bonding_curve_system.json";
+
+// Safe BN handling function to prevent _bn errors
+const safeConvertBNObjects = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  
+  try {
+    // Handle BN objects with safer detection
+    if (obj && typeof obj === 'object') {
+      // Check for BN objects more safely
+      const isBN = (
+        obj.constructor && 
+        (obj.constructor.name === 'BN' || 
+         obj.constructor.toString().includes('BN') ||
+         typeof obj.toString === 'function' && 
+         typeof obj.toNumber === 'function' &&
+         typeof obj.add === 'function')
+      );
+      
+      if (isBN) {
+        try {
+          // Never access _bn property directly, just use toString
+          return obj.toString();
+        } catch (error) {
+          console.warn('Error converting BN object:', error);
+          return '0'; // Return safe default
+        }
+      }
+    }
+    
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      return obj.map(item => {
+        try {
+          return safeConvertBNObjects(item);
+        } catch (error) {
+          console.warn('Error converting array item:', error);
+          return item;
+        }
+      });
+    }
+    
+    // Handle objects
+    if (typeof obj === 'object') {
+      const result: any = {};
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          try {
+            result[key] = safeConvertBNObjects(obj[key]);
+          } catch (error) {
+            console.warn(`Error converting property ${key}:`, error);
+            result[key] = obj[key]; // Keep original value if conversion fails
+          }
+        }
+      }
+      return result;
+    }
+    
+    return obj;
+  } catch (error) {
+    console.warn('Error in safeConvertBNObjects:', error);
+    return obj; // Return original object if all else fails
+  }
+};
 
 // Define interfaces for Helius API responses
 interface NativeTransfer {
@@ -111,20 +174,59 @@ const getAccountKeys = (txDetails: TransactionResponse | VersionedTransactionRes
 
 
 export function useBondingCurveHistory(limit: number = 50) {
+  // Ensure polyfill is applied before any BN operations
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        require('../utils/bn-polyfill-direct.js');
+        console.log('useBondingCurveHistory: Applied polyfill');
+      }
+    } catch (error) {
+      console.warn('Failed to apply BN polyfill in useBondingCurveHistory:', error);
+    }
+  }, []);
+
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [canLoadMore, setCanLoadMore] = useState<boolean>(true);
   const [lastSignature, setLastSignature] = useState<string | undefined>(undefined);
 
+  // Wrap the entire hook logic in a try-catch to prevent _bn errors from crashing the app
+  const safeWrapper = useCallback((fn: () => any) => {
+    try {
+      return fn();
+    } catch (error: any) {
+      if (error.message && error.message.includes('_bn')) {
+        console.warn('Caught _bn error, attempting to recover:', error);
+        // Try to reapply the polyfill
+        try {
+          if (typeof window !== 'undefined') {
+            require('../utils/bn-polyfill-direct.js');
+          }
+        } catch (patchError) {
+          console.error('Failed to reapply polyfill:', patchError);
+        }
+        // Return a safe default
+        return null;
+      }
+      throw error; // Re-throw non-_bn errors
+    }
+  }, []);
+
   // Connections for Helius REST and RPC
   const restConnection = new Connection(`${HELIUS_API_BASE}/?api-key=${HELIUS_API_KEY}`, "confirmed");
   const rpcConnection = new Connection(HELIUS_RPC_ENDPOINT, "confirmed");
 
   // Anchor setup (using RPC connection for potential on-chain reads if needed, though primarily for coder here)
-  const provider = new AnchorProvider(rpcConnection, {} as any, { commitment: "confirmed" });
-  const program = new Program(BondingCurveIDL as any, programId, provider) as Program<BondingCurveSystem>;
-  const instructionCoder = program.coder.instruction as BorshInstructionCoder;
+  const wallet = {
+    publicKey: SystemProgram.programId,
+    signTransaction: async () => { throw new Error('Not implemented'); },
+    signAllTransactions: async () => { throw new Error('Not implemented'); },
+  };
+  const provider = new AnchorProvider(rpcConnection, wallet, { commitment: "confirmed" });
+  const program = new Program(BondingCurveIDL as unknown as Idl, provider);
+  const instructionCoder = program.coder.instruction as InstructionCoder;
 
   // --- Function to extract price --- 
   const extractPrice = async (
@@ -283,16 +385,17 @@ export function useBondingCurveHistory(limit: number = 50) {
 
         // Step 3: Process transactions and extract info (including price)
         const parsedHistoryPromises: Promise<HistoryItem | null>[] = detailedTransactionsData.map(async (tx) => {
-          const basicInfo = basicInfoMap.get(tx.signature);
-          if (!basicInfo) return null; // Skip if no basic info (shouldn't happen)
+          return safeWrapper(async () => {
+            const basicInfo = basicInfoMap.get(tx.signature);
+            if (!basicInfo) return null; // Skip if no basic info (shouldn't happen)
 
-          let decodedName = "Unknown";
-          let decodedArgs: any = {};
-          let decodedAccounts: PublicKey[] = [];
-          let poolAddress: string | undefined = undefined;
-          let price: number | undefined = undefined;
-          let relevantInstruction: any = undefined;
-          let idlInstruction: any = undefined;
+            let decodedName = "Unknown";
+            let decodedArgs: any = {};
+            let decodedAccounts: PublicKey[] = [];
+            let poolAddress: string | undefined = undefined;
+            let price: number | undefined = undefined;
+            let relevantInstruction: any = undefined;
+            let idlInstruction: any = undefined;
 
           if (tx.instructions && Array.isArray(tx.instructions)) {
             const mainProgramInstructionIndex = tx.instructions.findIndex(
@@ -302,10 +405,22 @@ export function useBondingCurveHistory(limit: number = 50) {
 
             if (relevantInstruction) {
               try {
-                const decoded = instructionCoder.decode(relevantInstruction.data, "base58");
-                if (decoded) {
+                const decoded = (instructionCoder as any).decode(relevantInstruction.data, "base58");
+                if (decoded && decoded.name) {
                   decodedName = decoded.name;
-                  decodedArgs = decoded.data;
+                  // Apply safe conversion to handle BN objects without _bn property
+                  try {
+                    // Ensure decoded.data exists and is an object before processing
+                    if (decoded.data && typeof decoded.data === 'object') {
+                      decodedArgs = safeConvertBNObjects(decoded.data);
+                    } else {
+                      decodedArgs = {};
+                    }
+                  } catch (argsError) {
+                    console.warn(`[${tx.signature}] Error converting decoded args:`, argsError);
+                    decodedArgs = {}; // Use empty object as fallback
+                  }
+                  
                   if (relevantInstruction.accounts && Array.isArray(relevantInstruction.accounts)) {
                     decodedAccounts = relevantInstruction.accounts.map((acc: string) => new PublicKey(acc));
                     idlInstruction = BondingCurveIDL.instructions.find(ix => ix.name === decodedName);
@@ -318,7 +433,12 @@ export function useBondingCurveHistory(limit: number = 50) {
 
                     // --- Extract Price --- 
                     // Call the dedicated price extraction function
-                    price = await extractPrice(tx, decodedName, relevantInstruction, idlInstruction);
+                    try {
+                      price = await extractPrice(tx, decodedName, relevantInstruction, idlInstruction);
+                    } catch (priceError) {
+                      console.warn(`[${tx.signature}] Error extracting price:`, priceError);
+                      price = undefined; // Set to undefined if price extraction fails
+                    }
                     // --- End Extract Price ---
                   }
                 }
@@ -341,6 +461,7 @@ export function useBondingCurveHistory(limit: number = 50) {
             poolAddress: poolAddress,
             price: price,
           };
+          }) || null; // Close safeWrapper and provide fallback
         });
 
         // Wait for all price extractions and processing to complete
@@ -368,7 +489,7 @@ export function useBondingCurveHistory(limit: number = 50) {
         setIsLoading(false);
       }
     },
-    [isLoading, limit, instructionCoder, extractPrice] // Add extractPrice dependency
+    [isLoading, limit, instructionCoder, extractPrice, safeWrapper] // Add safeWrapper dependency
   );
 
   // Initial fetch

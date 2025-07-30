@@ -31,8 +31,18 @@ const formatInstructionName = (name: string) => {
 };
 
 const TransactionHistory = () => {
-  // Use the enhanced hook
-  const { history, isLoading, error, loadMore, canLoadMore } = useBondingCurveHistory(20); 
+  // Use the enhanced hook with error handling
+  const { history, isLoading, error, loadMore, canLoadMore } = useBondingCurveHistory(20);
+
+  // Safe rendering function to handle potential errors
+  const safeRender = (renderFn: () => React.ReactNode) => {
+    try {
+      return renderFn();
+    } catch (error) {
+      console.error('Error rendering transaction history item:', error);
+      return <div className="text-red-500 text-sm">Error rendering transaction</div>;
+    }
+  }; 
 
   return (
     <div className="bg-gray-800 text-white shadow-md rounded-lg p-6 border border-gray-700">
@@ -46,8 +56,9 @@ const TransactionHistory = () => {
 
       {history.length > 0 && (
         <div className="space-y-4 max-h-96 overflow-y-auto pr-2"> 
-          {/* FIX: Add type annotation for tx */}
-          {history.map((tx: HistoryItem) => (
+          {/* FIX: Add type annotation for tx and safe rendering */}
+          {history.map((tx: HistoryItem) => 
+            safeRender(() => (
             <div key={tx.signature} className="border-b border-gray-600 pb-3 last:border-b-0">
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-purple-400">{formatInstructionName(tx.instructionName)}</span>
@@ -64,11 +75,11 @@ const TransactionHistory = () => {
                     <p>Price: <span className="font-semibold text-green-400">{tx.price.toFixed(4)} SOL</span></p>
                 )}
 
-                {/* Display specific args */}
-                {tx.instructionName === "createPool" && tx.args.basePrice && (
+                {/* Display specific args with safe access */}
+                {tx.instructionName === "createPool" && tx.args?.basePrice && (
                   <p>Base Price: {(Number(tx.args.basePrice) / LAMPORTS_PER_SOL).toFixed(4)} SOL</p>
                 )}
-                {tx.instructionName === "mintNft" && tx.args.name && (
+                {tx.instructionName === "mintNft" && tx.args?.name && (
                   <p>Name: {tx.args.name}</p>
                 )}
                 {tx.instructionName === "sellNft" && (
@@ -89,7 +100,8 @@ const TransactionHistory = () => {
                 {tx.error && <p className="text-red-500 text-xs">Transaction Failed: {JSON.stringify(tx.error)}</p>}
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 

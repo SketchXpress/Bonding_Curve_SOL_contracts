@@ -119,7 +119,7 @@ export const useMintNft = () => {
       }
       
       // Get pool data to retrieve collection mint
-      const poolData = await program.account.bondingCurvePool.fetch(pool);
+      const poolData = await (program.account as any).bondingCurvePool.fetch(pool);
       
       console.log('Raw pool data:', poolData);
       console.log('Pool data structure:', {
@@ -331,7 +331,7 @@ export const useSellNft = () => {
       }
 
       // Get pool data to retrieve collection mint AND CREATOR
-      const poolData = await program.account.bondingCurvePool.fetch(pool);
+      const poolData = await (program.account as any).bondingCurvePool.fetch(pool);
       const collectionMint = poolData.collection as PublicKey;
       const creator = poolData.creator as PublicKey; // <-- Get the creator public key
 
