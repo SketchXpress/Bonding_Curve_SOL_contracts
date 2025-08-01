@@ -8,7 +8,7 @@ import {
   VersionedTransactionResponse, // Import VersionedTransactionResponse type
 } from "@solana/web3.js";
 import { AnchorProvider, Idl, InstructionCoder, Program } from "@coral-xyz/anchor";
-import { PROGRAM_ID, IDL as BondingCurveIDL } from "../utils/idl";
+import { PROGRAM_ID, IDL } from "../utils/idl";
 import { BondingCurveSystem } from "../types/bonding_curve_system";
 
 // Enhanced BN patches for this module - based on library analysis
@@ -323,7 +323,7 @@ export function useBondingCurveHistory(limit: number = 50) {
           console.log('useBondingCurveHistory: Creating program with corrected IDL...');
           
           const directIdl = {
-            ...BondingCurveIDL,
+            ...IDL,
             address: PROGRAM_ID
           };
           
@@ -331,7 +331,7 @@ export function useBondingCurveHistory(limit: number = 50) {
           console.log('useBondingCurveHistory: IDL instructions count:', directIdl.instructions?.length);
           console.log('useBondingCurveHistory: IDL accounts count:', directIdl.accounts?.length);
           
-          program = new Program(directIdl as any, provider);
+          program = new Program(IDL as any, provider);
           coder = program.coder.instruction;
           console.log('useBondingCurveHistory: ✓ Full IDL Program created successfully');
         } catch (directError) {
@@ -387,7 +387,7 @@ export function useBondingCurveHistory(limit: number = 50) {
               version: "0.1.0",
               name: "bonding_curve_system",
               address: PROGRAM_ID,
-              instructions: BondingCurveIDL.instructions,
+              instructions: IDL.instructions,
               types: [], // Empty types to avoid account validation
               accounts: [], // Empty accounts to avoid validation
               events: [],
@@ -396,7 +396,7 @@ export function useBondingCurveHistory(limit: number = 50) {
             
             // First try with minimal IDL
             try {
-              program = new Program(minimalIdl as any, provider);
+              program = new Program(IDL as any, provider);
               coder = program.coder.instruction;
               console.log('useBondingCurveHistory: Program created successfully with minimal IDL');
             } catch (minimalError: any) {
@@ -404,18 +404,18 @@ export function useBondingCurveHistory(limit: number = 50) {
               
               // Fallback to full IDL with enhanced error handling
               const directIdl = {
-                ...BondingCurveIDL,
+                ...IDL,
                 address: PROGRAM_ID
               };
               
               try {
-                program = new Program(directIdl as any, provider);
+                program = new Program(IDL as any, provider);
                 coder = program.coder.instruction;
                 console.log('useBondingCurveHistory: Program created successfully with full IDL');
               } catch (accountError: any) {
                 console.warn('useBondingCurveHistory: Account validation failed:', accountError?.message);
                 // Log the error but continue - this is expected on devnet
-                program = new Program(directIdl as any, provider);
+                program = new Program(IDL as any, provider);
                 coder = program.coder.instruction;
                 console.log('useBondingCurveHistory: Program created despite validation warnings');
               }
@@ -673,7 +673,7 @@ export function useBondingCurveHistory(limit: number = 50) {
                   
                   if (relevantInstruction.accounts && Array.isArray(relevantInstruction.accounts)) {
                     decodedAccounts = relevantInstruction.accounts.map((acc: string) => new PublicKey(acc));
-                    idlInstruction = BondingCurveIDL.instructions.find(ix => ix.name === decodedName);
+                    idlInstruction = IDL.instructions.find((ix: any) => ix.name === decodedName);
 
                     // Extract Pool Address
                     const poolAccountIndex = findAccountIndex(idlInstruction, "pool");
