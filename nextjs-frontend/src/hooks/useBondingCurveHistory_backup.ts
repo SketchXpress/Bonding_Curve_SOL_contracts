@@ -98,16 +98,25 @@ export const useBondingCurveHistory = () => {
               instructions = message.compiledInstructions;
             }
             
-            const instructionData = instructions[0];
-            
-            transactionDetails.push({
-              signature: sigInfo.signature,
-              type: 'buy', // Simplified - you'd determine this from instruction data
-              nftMint: PROGRAM_ID, // Simplified - you'd extract this from the transaction
-              price: 0, // Simplified - you'd calculate this from the transaction
-              timestamp: (sigInfo.blockTime || 0) * 1000,
-              user: PROGRAM_ID, // Simplified - you'd extract this from the transaction
-            });
+            // Safety check for instructions array
+            if (instructions && instructions.length > 0) {
+              const instructionData = instructions[0];
+              
+              transactionDetails.push({
+                signature: sigInfo.signature,
+                type: 'buy', // Simplified - you'd determine this from instruction data
+                nftMint: PROGRAM_ID, // Simplified - you'd extract this from the transaction
+                price: 0, // Simplified - you'd calculate this from the transaction
+                timestamp: (sigInfo.blockTime || 0) * 1000,
+                user: PROGRAM_ID, // Simplified - you'd extract this from the transaction
+              });
+            }
+          } else if (tx && tx.meta && tx.meta.err) {
+            // Log failed transactions for debugging
+            console.warn('Transaction failed:', sigInfo.signature, tx.meta.err);
+            if (tx.meta.logMessages) {
+              console.warn('Transaction logs:', tx.meta.logMessages);
+            }
           }
         } catch (txError) {
           console.warn('Failed to parse transaction:', sigInfo.signature, txError);

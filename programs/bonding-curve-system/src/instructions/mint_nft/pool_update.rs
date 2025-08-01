@@ -7,7 +7,7 @@ use crate::{
 use super::{MintNft, calculate_platform_fee};
 
 /// Update bonding curve pool state after mint
-pub fn update_pool_state(ctx: &mut Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
+pub fn update_pool_state(ctx: &Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
     debug_ctx.step("pool_update");
     
     let pool = &mut ctx.accounts.bonding_curve_pool;

@@ -6,7 +6,7 @@ use crate::{
 use super::MintNft;
 
 /// Initialize minter tracker account
-pub fn initialize_minter_tracker(ctx: &mut Context<MintNft>, debug_ctx: &mut DebugContext) -> Result<()> {
+pub fn initialize_minter_tracker(ctx: &Context<MintNft>, debug_ctx: &mut DebugContext) -> Result<()> {
     debug_ctx.step("minter_tracking");
     
     let tracker = &mut ctx.accounts.minter_tracker;

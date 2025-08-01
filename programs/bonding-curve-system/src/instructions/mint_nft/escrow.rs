@@ -7,7 +7,7 @@ use crate::{
 use super::{MintNft, calculate_platform_fee};
 
 /// Initialize NFT escrow account
-pub fn initialize_nft_escrow(ctx: &mut Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
+pub fn initialize_nft_escrow(ctx: &Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
     debug_ctx.step("escrow_initialization");
     
     let platform_fee = calculate_platform_fee(mint_price)?;
