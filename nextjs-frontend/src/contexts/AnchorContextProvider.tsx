@@ -5,7 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import { createContext, useContext } from 'react';
-import { IDL } from '../utils/idl';
+import { PROGRAM_ID, IDL } from '../utils/idl';
 import { useAnchorFallback } from '../hooks/useAnchorFallback';
 import dynamic from 'next/dynamic';
 
@@ -47,7 +47,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Program ID for the bonding curve system
-const PROGRAM_ID = 'Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa';
+// Using main IDL from utils/idl
 
 interface AnchorContextProviderProps {
   children: ReactNode;
@@ -270,7 +270,8 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
           let publicKey;
           try {
             console.log('AnchorContextProvider: Attempting PublicKey creation...');
-            publicKey = new PublicKey(PROGRAM_ID);
+            // Create PublicKey from PROGRAM_ID string
+            publicKey = new PublicKey(PROGRAM_ID.toString());
             console.log('AnchorContextProvider: ✓ PublicKey created successfully');
           } catch (pkError) {
             console.warn('AnchorContextProvider: PublicKey creation failed, using manual approach:', pkError);
@@ -280,7 +281,7 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
             const bs58 = require('bs58');
             
             try {
-              const decoded = bs58.decode(PROGRAM_ID);
+              const decoded = bs58.decode(PROGRAM_ID.toString());
               const bn = new BN(decoded);
               
               // Force _bn property on the BN instance
@@ -325,15 +326,12 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
           // Add address to IDL if missing (this is the root cause)
           const patchedIDL: any = { ...IDL };
           if (!patchedIDL.address) {
-            patchedIDL.address = PROGRAM_ID;
+            patchedIDL.address = PROGRAM_ID.toString();
             console.log('AnchorContextProvider: ✓ Added missing address to IDL');
           }
           
-          // Create PublicKey from PROGRAM_ID for the Program constructor
-          const programIdKey = new PublicKey(PROGRAM_ID);
-          
-          // @ts-expect-error - Ignoring type error for now to allow build to complete
-          const anchorProgram = new Program(patchedIDL, programIdKey, anchorProvider);
+          // Create the program using modern Anchor pattern
+          const anchorProgram = new Program(patchedIDL, anchorProvider);
           
           setProgram(anchorProgram);
           setInitialized(true);
@@ -397,7 +395,7 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
           // Wait for patches to take effect
           await new Promise(resolve => setTimeout(resolve, 500));
           
-          const program = await fallback.createProgram(PROGRAM_ID, IDL);
+          const program = await fallback.createProgram(PROGRAM_ID.toString(), IDL);
           
           // Only set if we got a valid Program instance
           if (program && typeof program === 'object' && 'programId' in program) {

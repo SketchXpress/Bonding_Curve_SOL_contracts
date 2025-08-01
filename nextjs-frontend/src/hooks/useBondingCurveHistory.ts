@@ -319,21 +319,16 @@ export function useBondingCurveHistory(limit: number = 50) {
         let coder;
         
         try {
-          // Create program with corrected IDL
-          console.log('useBondingCurveHistory: Creating program with corrected IDL...');
+          // Create program with standardized IDL
+          console.log('useBondingCurveHistory: Creating program with standardized IDL...');
           
-          const directIdl = {
-            ...IDL,
-            address: PROGRAM_ID
-          };
-          
-          console.log('useBondingCurveHistory: IDL address field:', directIdl.address);
-          console.log('useBondingCurveHistory: IDL instructions count:', directIdl.instructions?.length);
-          console.log('useBondingCurveHistory: IDL accounts count:', directIdl.accounts?.length);
+          console.log('useBondingCurveHistory: IDL address field:', IDL.address);
+          console.log('useBondingCurveHistory: IDL instructions count:', IDL.instructions?.length);
+          console.log('useBondingCurveHistory: IDL accounts count:', IDL.accounts?.length);
           
           program = new Program(IDL as any, provider);
           coder = program.coder.instruction;
-          console.log('useBondingCurveHistory: ✓ Full IDL Program created successfully');
+          console.log('useBondingCurveHistory: ✓ Standardized IDL Program created successfully');
         } catch (directError) {
           console.warn('Safe program creation failed:', directError);
           
@@ -382,43 +377,14 @@ export function useBondingCurveHistory(limit: number = 50) {
             // Attempt 2: Direct Program creation with enhanced BN patches
             console.log('useBondingCurveHistory: Attempting direct program creation with enhanced BN patches...');
             
-            // Create a minimal IDL for testing to avoid account validation issues
-            const minimalIdl = {
-              version: "0.1.0",
-              name: "bonding_curve_system",
-              address: PROGRAM_ID,
-              instructions: IDL.instructions,
-              types: [], // Empty types to avoid account validation
-              accounts: [], // Empty accounts to avoid validation
-              events: [],
-              errors: []
-            };
-            
-            // First try with minimal IDL
+            // Use the standardized IDL directly
             try {
               program = new Program(IDL as any, provider);
               coder = program.coder.instruction;
-              console.log('useBondingCurveHistory: Program created successfully with minimal IDL');
-            } catch (minimalError: any) {
-              console.log('useBondingCurveHistory: Minimal IDL failed, trying full IDL...');
-              
-              // Fallback to full IDL with enhanced error handling
-              const directIdl = {
-                ...IDL,
-                address: PROGRAM_ID
-              };
-              
-              try {
-                program = new Program(IDL as any, provider);
-                coder = program.coder.instruction;
-                console.log('useBondingCurveHistory: Program created successfully with full IDL');
-              } catch (accountError: any) {
-                console.warn('useBondingCurveHistory: Account validation failed:', accountError?.message);
-                // Log the error but continue - this is expected on devnet
-                program = new Program(IDL as any, provider);
-                coder = program.coder.instruction;
-                console.log('useBondingCurveHistory: Program created despite validation warnings');
-              }
+              console.log('useBondingCurveHistory: Program created successfully with standardized IDL');
+            } catch (programError: any) {
+              console.error('useBondingCurveHistory: Program creation failed:', programError?.message);
+              throw programError; // Re-throw to be handled by outer catch
             }
           } catch (bnError) {
             console.error('Program creation with enhanced BN patches failed:', bnError);
