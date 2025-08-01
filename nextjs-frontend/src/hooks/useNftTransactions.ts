@@ -9,10 +9,10 @@ import {
   SYSVAR_RENT_PUBKEY,
   ComputeBudgetProgram
 } from '@solana/web3.js';
-import { 
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-} from '@solana/spl-token';
+
+// Define the correct program IDs directly
+const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
 
 // Import SPL Token functions using require to avoid TypeScript issues
 const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, getAccount } = require('@solana/spl-token');
@@ -121,6 +121,11 @@ export const useMintNft = () => {
         nftMint: nftMint.toString(),
         minterTokenAccount: minterTokenAccount.toString()
       });
+
+      // Debug the program IDs being used
+      console.log('TOKEN_PROGRAM_ID:', TOKEN_PROGRAM_ID.toString());
+      console.log('ASSOCIATED_TOKEN_PROGRAM_ID:', ASSOCIATED_TOKEN_PROGRAM_ID.toString());
+      console.log('TOKEN_METADATA_PROGRAM_ID:', TOKEN_METADATA_PROGRAM_ID.toString());
 
       // Derive metadata account PDA
       const [metadataAddress] = PublicKey.findProgramAddressSync(
