@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useCollectionFees } from '../hooks/useCollectionFees';
+import { useAnchorContext } from '../contexts/AnchorContextProvider';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 interface CollectionFeesCardProps {
@@ -27,6 +28,7 @@ export const CollectionFeesCard: React.FC<CollectionFeesCardProps> = ({
 }) => {
   const { publicKey } = useWallet();
   const { distributeCollectionFees, isLoading } = useCollectionFees();
+  const { program: anchorProgram } = useAnchorContext();
   
   const [feesData, setFeesData] = useState<CollectionFeesData | null>(null);
   const [loadingAction, setLoadingAction] = useState<'distribute' | 'claim' | null>(null);
@@ -36,22 +38,75 @@ export const CollectionFeesCard: React.FC<CollectionFeesCardProps> = ({
   }, [collectionMint, userNFTs]);
 
   const fetchFeesData = async () => {
+    if (!collectionMint || !anchorProgram) {
+      console.log('CollectionFeesCard: Missing required dependencies');
+      return;
+    }
+
     try {
-      // In a real implementation, you'd fetch this from your program
-      // For now, using mock data
-      const mockData: CollectionFeesData = {
-        totalAccumulated: 0.5 * LAMPORTS_PER_SOL, // 0.5 SOL accumulated
-        totalNFTs: 100, // 100 NFTs in collection
-        perNFTAmount: (0.5 * LAMPORTS_PER_SOL) / 100, // 0.005 SOL per NFT
-        lastDistribution: Date.now() / 1000 - 86400, // 24 hours ago
-        distributionCount: 5,
-        userClaimableAmount: userNFTs.length * ((0.5 * LAMPORTS_PER_SOL) / 100),
+      console.log('CollectionFeesCard: Fetching real collection fees data...');
+      
+      // Try to get account data - using type assertion to handle potential IDL issues
+      const [collectionDistributionPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("collection_distribution"), new PublicKey(collectionMint).toBuffer()],
+        anchorProgram.programId
+      );
+
+      // Use any type to handle potential account name variations
+      const accounts = anchorProgram.account as any;
+      let collectionDistribution = null;
+      
+      // Try different possible account names
+      if (accounts.collectionDistribution) {
+        collectionDistribution = await accounts.collectionDistribution.fetchNullable(collectionDistributionPda);
+      } else if (accounts.CollectionDistribution) {
+        collectionDistribution = await accounts.CollectionDistribution.fetchNullable(collectionDistributionPda);
+      }
+      
+      if (!collectionDistribution) {
+        console.log('CollectionFeesCard: Collection distribution not found');
+        setFeesData({
+          totalAccumulated: 0,
+          totalNFTs: 0,
+          perNFTAmount: 0,
+          lastDistribution: 0,
+          distributionCount: 0,
+          userClaimableAmount: 0,
+          userNFTCount: userNFTs.length,
+        });
+        return;
+      }
+
+      // Calculate fees data from real collection distribution account
+      const totalAccumulated = collectionDistribution.accumulatedFees || 0;
+      const totalNFTs = collectionDistribution.totalNfts || 0;
+      const perNFTAmount = totalNFTs > 0 ? totalAccumulated / totalNFTs : 0;
+      const userClaimableAmount = userNFTs.length * perNFTAmount;
+
+      const realFeesData: CollectionFeesData = {
+        totalAccumulated,
+        totalNFTs,
+        perNFTAmount,
+        lastDistribution: collectionDistribution.lastDistribution || 0,
+        distributionCount: collectionDistribution.distributionRound || 0,
+        userClaimableAmount,
         userNFTCount: userNFTs.length,
       };
       
-      setFeesData(mockData);
+      setFeesData(realFeesData);
+      console.log('CollectionFeesCard: ✓ Real fees data loaded successfully');
     } catch (error) {
-      console.error('Error fetching fees data:', error);
+      console.error('CollectionFeesCard: Error fetching real fees data:', error);
+      // Set empty data instead of mock data for devnet work
+      setFeesData({
+        totalAccumulated: 0,
+        totalNFTs: 0,
+        perNFTAmount: 0,
+        lastDistribution: 0,
+        distributionCount: 0,
+        userClaimableAmount: 0,
+        userNFTCount: userNFTs.length,
+      });
     }
   };
 

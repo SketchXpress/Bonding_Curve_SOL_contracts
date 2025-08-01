@@ -1,6 +1,3 @@
-// /home/ubuntu/Bonding_Curve_SOL_contracts/nextjs-frontend/src/hooks/useBondingCurveHistory_updated.ts
-// Updated implementation incorporating the provided solution for sell NFT fee detection.
-
 import { useState, useEffect, useCallback } from "react";
 import {
   PublicKey,
@@ -15,6 +12,75 @@ import { PROGRAM_ID } from "../utils/idl";
 import { BondingCurveSystem } from "../types/bonding_curve_system";
 // Import IDL directly from JSON file to avoid any TypeScript compilation issues
 import BondingCurveIDL from "../idl/bonding_curve_system.json";
+
+// Enhanced BN patches for this module - based on library analysis
+if (typeof window !== 'undefined') {
+  try {
+    console.log('useBondingCurveHistory: Applying enhanced BN patches...');
+    
+    // 1. Patch BN.js prototype directly
+    const BN = require('bn.js');
+    if (BN && BN.prototype) {
+      // Ensure _bn property for Solana compatibility based on analysis of @solana/web3.js
+      if (!Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+        Object.defineProperty(BN.prototype, '_bn', {
+          get: function() { return this; },
+          set: function(value) { /* Allow setting for compatibility */ },
+          configurable: true,
+          enumerable: false
+        });
+        console.log('useBondingCurveHistory: ✓ Added _bn property to BN prototype');
+      }
+      
+      // 2. Enhanced constructor patching
+      const originalConstructor = BN.prototype.constructor;
+      BN.prototype.constructor = function(...args: any[]) {
+        const result = originalConstructor.apply(this, args);
+        // Ensure _bn is always set for Solana compatibility
+        if (!this._bn) {
+          Object.defineProperty(this, '_bn', {
+            value: this,
+            writable: true,
+            configurable: true,
+            enumerable: false
+          });
+        }
+        return result;
+      };
+      
+      console.log('useBondingCurveHistory: ✓ Enhanced BN constructor patched');
+    }
+    
+    // 3. Patch PublicKey constructor for better BN compatibility
+    const { PublicKey: PKClass } = require('@solana/web3.js');
+    if (PKClass && PKClass.prototype) {
+      const originalPKConstructor = PKClass.prototype.constructor;
+      PKClass.prototype.constructor = function(value: any) {
+        try {
+          // If value is a BN-like object, ensure it has _bn property
+          if (value && typeof value === 'object' && value.constructor?.name === 'BN') {
+            if (!value._bn) {
+              Object.defineProperty(value, '_bn', {
+                value: value,
+                writable: true,
+                configurable: true,
+                enumerable: false
+              });
+            }
+          }
+          return originalPKConstructor.call(this, value);
+        } catch (error) {
+          console.warn('useBondingCurveHistory: PublicKey constructor patch failed, falling back:', error);
+          return originalPKConstructor.call(this, value);
+        }
+      };
+      console.log('useBondingCurveHistory: ✓ Enhanced PublicKey constructor patched');
+    }
+    
+  } catch (error) {
+    console.warn('useBondingCurveHistory: Enhanced BN patch failed:', error);
+  }
+}
 
 // Safe BN handling function to prevent _bn errors
 const safeConvertBNObjects = (obj: any): any => {
@@ -255,57 +321,69 @@ export function useBondingCurveHistory(limit: number = 50) {
         let coder;
         
         try {
-          // Attempt 1: Direct program creation
+          // Attempt 1: Direct program creation with enhanced BN compatibility
+          console.log('useBondingCurveHistory: Attempting program creation with enhanced compatibility...');
           program = new Program(BondingCurveIDL as unknown as Idl, provider);
-          coder = program.coder.instruction as InstructionCoder;
-          console.log('useBondingCurveHistory: Program created successfully (direct)');
+          coder = program.coder.instruction;
+          console.log('useBondingCurveHistory: Program created successfully with standard coder');
         } catch (directError) {
           console.warn('Direct program creation failed:', directError);
           
           try {
-            // Attempt 2: With minimal BN patching
+            // Attempt 2: Enhanced BN patching with retry
+            console.log('useBondingCurveHistory: Applying enhanced BN patches for program creation...');
+            
             if (typeof window !== 'undefined') {
               const BN = (window as any).BN || require('bn.js');
               
-              if (BN && BN.prototype && !BN.prototype.hasOwnProperty('_bn')) {
-                Object.defineProperty(BN.prototype, '_bn', {
-                  get: function() { return this; },
-                  configurable: true,
-                  enumerable: false
-                });
+              // Apply comprehensive BN patches
+              if (BN && BN.prototype) {
+                // Ensure _bn property exists with enhanced configuration
+                if (!Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+                  Object.defineProperty(BN.prototype, '_bn', {
+                    get: function() { return this; },
+                    set: function(value) { /* Allow setting for compatibility */ },
+                    configurable: true,
+                    enumerable: false
+                  });
+                }
+                
+                // Patch constructor for better compatibility
+                const originalConstructor = BN.prototype.constructor;
+                if (!BN._patched) {
+                  BN.prototype.constructor = function(...args: any[]) {
+                    const result = originalConstructor.apply(this, args);
+                    if (!this._bn) {
+                      Object.defineProperty(this, '_bn', {
+                        value: this,
+                        writable: true,
+                        configurable: true,
+                        enumerable: false
+                      });
+                    }
+                    return result;
+                  };
+                  BN._patched = true;
+                }
               }
             }
             
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // Allow patches to settle
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             program = new Program(BondingCurveIDL as unknown as Idl, provider);
-            coder = program.coder.instruction as InstructionCoder;
-            console.log('useBondingCurveHistory: Program created successfully (with BN patch)');
+            coder = program.coder.instruction;
+            console.log('useBondingCurveHistory: Program created successfully with enhanced BN patches');
           } catch (bnError) {
-            console.warn('Program creation with BN patch failed:', bnError);
-            
-            // Attempt 3: Create a stub coder that doesn't decode
-            console.log('useBondingCurveHistory: Creating stub coder for compatibility');
-            coder = {
-              decode: (data: string, encoding: string) => {
-                console.warn('Stub coder: decode not implemented due to BN errors');
-                return { name: 'Unknown', data: {} };
-              },
-              encode: (name: string, data: any) => {
-                console.warn('Stub coder: encode not implemented due to BN errors');
-                return Buffer.from([]);
-              }
-            } as InstructionCoder;
-            
-            // Set program to null - we'll handle history without instruction decoding
-            program = null;
-            console.log('useBondingCurveHistory: Using stub coder due to persistent BN errors');
+            console.error('Program creation with enhanced BN patches failed:', bnError);
+            throw bnError; // Re-throw to be handled by outer catch
           }
         }
         console.log('useBondingCurveHistory: Program created successfully');
         
-        // Use the coder from program creation attempts, or null if using stub
+        // Use the coder from program creation attempts
         if (program && !coder) {
-          coder = program.coder.instruction as InstructionCoder;
+          coder = program.coder.instruction;
         }
 
         setProgramId(progId);

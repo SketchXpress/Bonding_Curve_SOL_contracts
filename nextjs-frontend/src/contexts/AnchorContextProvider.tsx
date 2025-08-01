@@ -118,10 +118,60 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
             
             console.log('AnchorContextProvider: Applied BN instance method patches');
           }
+          
+          // Enhanced PublicKey patching - patch the constructor directly
+          try {
+            const { PublicKey } = require('@solana/web3.js');
+            
+            if (PublicKey && PublicKey.prototype) {
+              // Ensure PublicKey works with our enhanced BN instances
+              const originalPublicKeyConstructor = PublicKey.prototype.constructor;
+              PublicKey.prototype.constructor = function(value: any) {
+                try {
+                  // If value is a string, create BN with enhanced compatibility
+                  if (typeof value === 'string') {
+                    const bs58 = require('bs58');
+                    const decoded = bs58.decode(value);
+                    const bn = new BN(decoded);
+                    
+                    // Ensure the BN has _bn property
+                    if (!bn._bn) {
+                      Object.defineProperty(bn, '_bn', {
+                        get: function() { return this; },
+                        set: function(val) { /* Allow setting */ },
+                        configurable: true,
+                        enumerable: false
+                      });
+                    }
+                    
+                    return originalPublicKeyConstructor.call(this, bn);
+                  } else {
+                    // For other types, ensure they have _bn if they're BN-like
+                    if (value && typeof value === 'object' && value.constructor?.name === 'BN' && !value._bn) {
+                      Object.defineProperty(value, '_bn', {
+                        get: function() { return this; },
+                        set: function(val) { /* Allow setting */ },
+                        configurable: true,
+                        enumerable: false
+                      });
+                    }
+                    return originalPublicKeyConstructor.call(this, value);
+                  }
+                } catch (error) {
+                  console.warn('PublicKey constructor patch failed, falling back to original:', error);
+                  return originalPublicKeyConstructor.call(this, value);
+                }
+              };
+              
+              console.log('AnchorContextProvider: Applied PublicKey constructor patch');
+            }
+          } catch (pkError) {
+            console.warn('AnchorContextProvider: PublicKey patching failed:', pkError);
+          }
         }
 
         // Extended delay to ensure all patches are in effect
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Create the provider
         const anchorProvider = new AnchorProvider(
@@ -140,8 +190,172 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
         await new Promise(resolve => setTimeout(resolve, 500));
         
         try {
+          console.log('AnchorContextProvider: Creating PublicKey with comprehensive BN patches...');
+          
+          // Apply ultra-comprehensive BN patching before any operations
+          if (typeof window !== 'undefined') {
+            const BN = require('bn.js');
+            
+            // 1. Patch BN constructor at the deepest level
+            if (BN) {
+              const OriginalBN = BN;
+              const PatchedBN = function(...args: any[]) {
+                const instance = new OriginalBN(...args);
+                // Ensure every BN instance has _bn pointing to itself
+                if (!instance._bn) {
+                  Object.defineProperty(instance, '_bn', {
+                    value: instance,
+                    writable: true,
+                    configurable: true,
+                    enumerable: false
+                  });
+                }
+                return instance;
+              };
+              
+              // Copy all static properties
+              Object.setPrototypeOf(PatchedBN, OriginalBN);
+              Object.getOwnPropertyNames(OriginalBN).forEach(name => {
+                if (name !== 'prototype' && name !== 'name' && name !== 'length') {
+                  try {
+                    (PatchedBN as any)[name] = (OriginalBN as any)[name];
+                  } catch (e) {
+                    // Ignore non-configurable properties
+                  }
+                }
+              });
+              PatchedBN.prototype = OriginalBN.prototype;
+              
+              // Replace the global BN
+              if (typeof window !== 'undefined') {
+                (window as any).BN = PatchedBN;
+              }
+              if (typeof global !== 'undefined') {
+                (global as any).BN = PatchedBN;
+              }
+            }
+            
+            // 2. Patch any existing BN instances
+            if (BN && BN.prototype) {
+              if (!Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+                Object.defineProperty(BN.prototype, '_bn', {
+                  get: function() { return this; },
+                  set: function(value) { /* Allow setting */ },
+                  configurable: true,
+                  enumerable: false
+                });
+              }
+            }
+          }
+          
+          // 3. Wait longer for patches to fully propagate
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Create PublicKey with ultra-defensive error handling
+          let publicKey;
+          try {
+            console.log('AnchorContextProvider: Attempting PublicKey creation...');
+            publicKey = new PublicKey(PROGRAM_ID);
+            console.log('AnchorContextProvider: ✓ PublicKey created successfully');
+          } catch (pkError) {
+            console.warn('AnchorContextProvider: PublicKey creation failed, using manual approach:', pkError);
+            
+            // Ultra-defensive manual PublicKey creation
+            const BN = require('bn.js');
+            const bs58 = require('bs58');
+            
+            try {
+              const decoded = bs58.decode(PROGRAM_ID);
+              const bn = new BN(decoded);
+              
+              // Force _bn property on the BN instance
+              Object.defineProperty(bn, '_bn', {
+                value: bn,
+                writable: true,
+                configurable: true,
+                enumerable: false
+              });
+              
+              // Additional safety: ensure all BN methods work
+              if (!bn.toString) bn.toString = function() { return this.value?.toString() || '0'; };
+              if (!bn.toNumber) bn.toNumber = function() { return Number(this.value || 0); };
+              
+              publicKey = new PublicKey(bn);
+              console.log('AnchorContextProvider: ✓ PublicKey created with manual BN');
+            } catch (manualError) {
+              console.error('AnchorContextProvider: Manual PublicKey creation also failed:', manualError);
+              throw manualError;
+            }
+          }
+          
+          // 4. Additional delay before Program creation
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          console.log('AnchorContextProvider: Creating Program with enhanced compatibility...');
+          
+          // CRITICAL FIX: Patch the Anchor translateAddress function before Program creation
+          if (typeof window !== 'undefined') {
+            try {
+              // Import Anchor to access its internal functions
+              const anchorModule = require('@coral-xyz/anchor');
+              
+              // Patch the translateAddress function to handle undefined address
+              if (anchorModule && typeof anchorModule.translateAddress === 'function') {
+                const originalTranslateAddress = anchorModule.translateAddress;
+                anchorModule.translateAddress = function(address: any) {
+                  // If address is undefined, use our PROGRAM_ID
+                  if (address === undefined) {
+                    console.log('AnchorContextProvider: translateAddress received undefined, using PROGRAM_ID');
+                    address = PROGRAM_ID;
+                  }
+                  
+                  // Ensure PublicKey creation with proper BN patching
+                  if (typeof address === 'string') {
+                    try {
+                      return new PublicKey(address);
+                    } catch (pkError) {
+                      console.warn('AnchorContextProvider: PublicKey creation in translateAddress failed, using manual BN:', pkError);
+                      
+                      // Manual BN creation for PublicKey
+                      const BN = require('bn.js');
+                      const bs58 = require('bs58');
+                      
+                      const decoded = bs58.decode(address);
+                      const bn = new BN(decoded);
+                      
+                      // Ensure _bn property
+                      if (!bn._bn) {
+                        Object.defineProperty(bn, '_bn', {
+                          value: bn,
+                          writable: true,
+                          configurable: true,
+                          enumerable: false
+                        });
+                      }
+                      
+                      return new PublicKey(bn);
+                    }
+                  }
+                  
+                  return originalTranslateAddress(address);
+                };
+                
+                console.log('AnchorContextProvider: ✓ Patched translateAddress function');
+              }
+            } catch (anchorPatchError) {
+              console.warn('AnchorContextProvider: Failed to patch translateAddress:', anchorPatchError);
+            }
+          }
+          
+          // Add address to IDL if missing (this is the root cause)
+          const patchedIDL: any = { ...IDL };
+          if (!patchedIDL.address) {
+            patchedIDL.address = PROGRAM_ID;
+            console.log('AnchorContextProvider: ✓ Added missing address to IDL');
+          }
+          
           // @ts-expect-error - Ignoring type error for now to allow build to complete
-          const anchorProgram = new Program(IDL, new PublicKey(PROGRAM_ID), anchorProvider);
+          const anchorProgram = new Program(patchedIDL, publicKey, anchorProvider);
           
           setProgram(anchorProgram);
           setInitialized(true);
@@ -170,57 +384,64 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
     initializeAnchor();
   }, [connection, wallet.publicKey, wallet.signAllTransactions, wallet.signTransaction]);
 
-  // Handle fallback mode
+  // Handle fallback mode - retry with enhanced BN patching
   useEffect(() => {
     if (useFallback && fallback.initialized && fallback.provider) {
       const attemptFallbackProgram = async () => {
         try {
-          console.log('AnchorContextProvider: Attempting fallback program creation...');
+          console.log('AnchorContextProvider: Attempting fallback program creation with enhanced patches...');
+          
+          // Apply additional BN patches before attempting program creation
+          if (typeof window !== 'undefined') {
+            const BN = require('bn.js');
+            
+            // Ensure all BN instances have _bn property
+            if (BN && BN.prototype) {
+              if (!Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+                Object.defineProperty(BN.prototype, '_bn', {
+                  get: function() { return this; },
+                  set: function(value) { /* Allow setting for compatibility */ },
+                  configurable: true,
+                  enumerable: false
+                });
+              }
+              
+              // Patch constructor to ensure _bn is always set
+              const originalConstructor = BN.prototype.constructor;
+              BN.prototype.constructor = function(...args: any[]) {
+                const result = originalConstructor.apply(this, args);
+                if (!this._bn) this._bn = this;
+                return result;
+              };
+            }
+          }
+          
+          // Wait for patches to take effect
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           const program = await fallback.createProgram(PROGRAM_ID, IDL);
           
-          setProvider(fallback.provider);
-          setProgram(program);
-          setInitialized(true);
-          
-          console.log('AnchorContextProvider: Fallback program creation successful!');
+          // Only set if we got a valid Program instance
+          if (program && typeof program === 'object' && 'programId' in program) {
+            setProvider(fallback.provider);
+            // Use type assertion to handle the fallback program type
+            setProgram(program as Program);
+            setInitialized(true);
+            
+            console.log('AnchorContextProvider: Fallback program creation successful!');
+          } else {
+            throw new Error('Invalid program returned from fallback');
+          }
         } catch (fallbackError) {
-          console.error('AnchorContextProvider: Fallback program creation also failed:', fallbackError);
+          console.error('AnchorContextProvider: Fallback program creation failed:', fallbackError);
           
-          // Final fallback: Create a mock context that allows the app to function
-          console.log('AnchorContextProvider: Creating mock context for graceful degradation');
+          // Don't use mock data - just leave uninitialized for devnet work
+          console.log('AnchorContextProvider: Leaving uninitialized - no mock data for devnet work');
           
-          const mockProvider = {
-            connection,
-            wallet: {
-              publicKey: wallet.publicKey,
-              signAllTransactions: wallet.signAllTransactions,
-              signTransaction: wallet.signTransaction,
-            },
-            opts: { commitment: 'confirmed' }
-          } as AnchorProvider;
-          
-          // Create a minimal mock program that won't cause errors
-          const mockProgram = {
-            programId: new PublicKey(PROGRAM_ID),
-            provider: mockProvider,
-            rpc: {},
-            account: {},
-            instruction: {},
-            methods: {},
-            state: null,
-            coder: {
-              instruction: {
-                decode: () => ({ name: 'unknown', data: {} }),
-                encode: () => Buffer.from([])
-              }
-            }
-          } as unknown as Program;
-          
-          setProvider(mockProvider);
-          setProgram(mockProgram);
-          setInitialized(true);
-          
-          console.log('AnchorContextProvider: Mock context created successfully');
+          setProvider(null);
+          setProgram(null);
+          setInitialized(false);
+          setUseFallback(false);
         }
       };
 
