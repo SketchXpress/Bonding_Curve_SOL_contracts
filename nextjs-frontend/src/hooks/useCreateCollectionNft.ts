@@ -60,7 +60,7 @@ export const useCreateCollectionNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Generate new keypair for collection mint
       const collectionMint = Keypair.generate();

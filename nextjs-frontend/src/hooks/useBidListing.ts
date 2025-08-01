@@ -40,7 +40,7 @@ export const useBidListing = () => {
     setIsLoading(true);
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive PDAs
       const [bidListingPda] = PublicKey.findProgramAddressSync(
@@ -105,7 +105,7 @@ export const useBidListing = () => {
   const getBidListing = useCallback(async (listingPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       // Fetch listing account data
       const listingData = await (program.account as any).bidListing.fetch(listingPubkey);
@@ -135,7 +135,7 @@ export const useBidListing = () => {
   const getUserListings = useCallback(async (userPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       // Get all bid listing accounts where lister equals userPubkey
       const bidListings = await (program.account as any).bidListing.all([
@@ -178,7 +178,7 @@ export const useBidListing = () => {
     setIsLoading(true);
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Get listing data to find the NFT mint
       const listingData = await (program.account as any).bidListing.fetch(listingPubkey);

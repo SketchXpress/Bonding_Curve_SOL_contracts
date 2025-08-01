@@ -68,7 +68,7 @@ export const useMintNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider) as any;
+      const program = new Program(IDL as any, PROGRAM_ID, provider) as any;
 
       // Generate new keypair for NFT mint
       const nftMint = Keypair.generate();
@@ -163,7 +163,7 @@ export const useMintNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider) as any;
+      const program = new Program(IDL as any, PROGRAM_ID, provider) as any;
       
       const [nftEscrowPda] = PublicKey.findProgramAddressSync(
         [
@@ -190,7 +190,7 @@ export const useMintNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider) as any;
+      const program = new Program(IDL as any, PROGRAM_ID, provider) as any;
       
       const [minterTrackerPda] = PublicKey.findProgramAddressSync(
         [

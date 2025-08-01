@@ -55,7 +55,7 @@ export const useBuyNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -164,7 +164,7 @@ export const useBuyNft = () => {
   const getCurrentPrice = useCallback(async (nftMint: PublicKey): Promise<number | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -189,7 +189,7 @@ export const useBuyNft = () => {
   const getNftOwner = useCallback(async (nftMint: PublicKey): Promise<PublicKey | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(

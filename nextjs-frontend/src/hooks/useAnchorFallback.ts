@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { AnchorProvider } from '@coral-xyz/anchor';
+import { IDL, PROGRAM_ID } from '@/utils/idl';
 
 // Custom hook to handle Anchor context without immediate Program creation
 export const useAnchorFallback = () => {
@@ -194,8 +195,8 @@ export const useAnchorFallback = () => {
       try {
         const { Program } = await import('@coral-xyz/anchor');
         
-        // Use correct Program constructor signature: new Program(idl, provider)
-        const program = new Program(idl, provider);
+        // Use correct Program constructor signature for Anchor 0.29.0: new Program(idl, programId, provider)
+        const program = new Program(idl as any, PROGRAM_ID, provider);
         
         setProgram(program);
         console.log('AnchorFallback: ✓ Program created successfully');

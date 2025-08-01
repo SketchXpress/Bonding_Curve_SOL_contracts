@@ -330,8 +330,8 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
             console.log('AnchorContextProvider: ✓ Added missing address to IDL');
           }
           
-          // Create the program using modern Anchor pattern
-          const anchorProgram = new Program(patchedIDL, anchorProvider);
+          // Create the program using Anchor 0.29.0 pattern
+          const anchorProgram = new Program(patchedIDL as any, PROGRAM_ID, anchorProvider);
           
           setProgram(anchorProgram);
           setInitialized(true);

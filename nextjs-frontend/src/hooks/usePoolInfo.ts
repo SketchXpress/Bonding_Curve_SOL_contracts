@@ -65,7 +65,7 @@ export const usePoolInfo = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
@@ -121,7 +121,7 @@ export const usePoolInfo = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       const pools = await (program.account as any).bondingCurvePool.all();
       

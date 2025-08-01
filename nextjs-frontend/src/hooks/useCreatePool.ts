@@ -49,7 +49,7 @@ export const useCreatePool = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Verify the program exists
       console.log('Checking if program exists at:', PROGRAM_ID.toString());
@@ -184,7 +184,7 @@ export const useCreatePool = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       const poolPda = getPoolPda(collectionMint);
       const poolAccount = await (program.account as any).bondingCurvePool.fetch(poolPda);

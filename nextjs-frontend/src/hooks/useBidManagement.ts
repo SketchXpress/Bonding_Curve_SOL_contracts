@@ -49,7 +49,7 @@ export const useBidManagement = (): BidManagementResult => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Get bid data to find NFT mint and bid listing
       const bidData = await (program.account as any).bid.fetch(bidAccount);
@@ -102,7 +102,7 @@ export const useBidManagement = (): BidManagementResult => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Get bid listing data
       const bidListingData = await (program.account as any).bidListing.fetch(bidListingAccount);

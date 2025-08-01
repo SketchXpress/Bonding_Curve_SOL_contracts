@@ -54,7 +54,7 @@ export const useSellNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive NFT escrow PDA
       const [escrowPda] = PublicKey.findProgramAddressSync(
@@ -164,7 +164,7 @@ export const useSellNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -188,7 +188,7 @@ export const useSellNft = () => {
   const estimateSellPrice = useCallback(async (nftMint: PublicKey): Promise<number | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(

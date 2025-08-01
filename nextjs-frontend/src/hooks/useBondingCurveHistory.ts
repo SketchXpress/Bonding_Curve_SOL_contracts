@@ -326,7 +326,7 @@ export function useBondingCurveHistory(limit: number = 50) {
           console.log('useBondingCurveHistory: IDL instructions count:', IDL.instructions?.length);
           console.log('useBondingCurveHistory: IDL accounts count:', IDL.accounts?.length);
           
-          program = new Program(IDL as any, provider);
+          program = new Program(IDL as any, PROGRAM_ID, provider);
           coder = program.coder.instruction;
           console.log('useBondingCurveHistory: ✓ Standardized IDL Program created successfully');
         } catch (directError) {
@@ -379,7 +379,7 @@ export function useBondingCurveHistory(limit: number = 50) {
             
             // Use the standardized IDL directly
             try {
-              program = new Program(IDL as any, provider);
+              program = new Program(IDL as any, PROGRAM_ID, provider);
               coder = program.coder.instruction;
               console.log('useBondingCurveHistory: Program created successfully with standardized IDL');
             } catch (programError: any) {

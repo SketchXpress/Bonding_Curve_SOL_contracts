@@ -49,7 +49,7 @@ export const useCollectionFees = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive pool PDA
       const [poolPda] = PublicKey.findProgramAddressSync(
@@ -98,7 +98,7 @@ export const useCollectionFees = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       const [collectionDistributionPda] = PublicKey.findProgramAddressSync(
         [
@@ -123,7 +123,7 @@ export const useCollectionFees = () => {
   const getPendingFees = useCallback(async (collectionMint: PublicKey): Promise<number | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       // Get collection distribution to check accumulated fees
       const [collectionDistributionPda] = PublicKey.findProgramAddressSync(

@@ -51,7 +51,7 @@ export const useMigrateToTensor = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
 
       // Derive pool PDA
       const [poolPda] = PublicKey.findProgramAddressSync(
@@ -91,7 +91,7 @@ export const useMigrateToTensor = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
@@ -125,7 +125,7 @@ export const useMigrateToTensor = () => {
   } | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(IDL as any, provider);
+      const program = new Program(IDL as any, PROGRAM_ID, provider);
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
