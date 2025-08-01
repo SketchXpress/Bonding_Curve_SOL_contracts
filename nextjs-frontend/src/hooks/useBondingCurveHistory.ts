@@ -217,42 +217,6 @@ export function useBondingCurveHistory(limit: number = 50) {
       try {
         console.log('useBondingCurveHistory: Starting initialization (relying on existing polyfills)...');
         
-        // Apply comprehensive BN patches before any Anchor operations
-        if (typeof window !== 'undefined') {
-          const BN = require('bn.js');
-          
-          // Apply the same deep patching as in AnchorContextProvider
-          if (BN && BN.prototype && !Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
-            Object.defineProperty(BN.prototype, '_bn', {
-              get: function() { return this; },
-              set: function(value) { /* Allow setting for compatibility */ },
-              configurable: true,
-              enumerable: false
-            });
-            console.log('useBondingCurveHistory: Applied BN _bn patch before program creation');
-          }
-          
-          // Enhanced constructor patching for any new BN instances
-          if (!BN._bondingCurvePatched) {
-            const originalToNumber = BN.prototype.toNumber;
-            BN.prototype.toNumber = function() {
-              // Ensure _bn property exists before calling original method
-              if (!this.hasOwnProperty('_bn')) {
-                Object.defineProperty(this, '_bn', {
-                  get: function() { return this; },
-                  set: function(value) { /* Allow setting */ },
-                  configurable: true,
-                  enumerable: false
-                });
-              }
-              return originalToNumber.call(this);
-            };
-            
-            BN._bondingCurvePatched = true;
-            console.log('useBondingCurveHistory: Applied enhanced BN patches');
-          }
-        }
-        
         // Extended delay to ensure all polyfills are in effect
         await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -286,63 +250,22 @@ export function useBondingCurveHistory(limit: number = 50) {
         
         console.log('useBondingCurveHistory: Creating Program instance...');
         
-        // Ultra-aggressive BN patching right before program creation
+        // Comprehensive BN patch before program creation
         if (typeof window !== 'undefined') {
-          // Ensure BN is available and properly patched
-          const BN = (window as any).BN || require('bn.js');
-          
-          // Force _bn property on all BN instances
-          if (BN && BN.prototype && !BN.prototype.hasOwnProperty('_bn')) {
-            Object.defineProperty(BN.prototype, '_bn', {
-              get: function() { return this; },
-              configurable: true,
-              enumerable: false
-            });
-          }
-          
-          // Patch any existing BN instances in the provider
-          const patchBNInObject = (obj: any) => {
-            if (!obj) return;
-            for (const key in obj) {
-              const value = obj[key];
-              if (value && typeof value === 'object') {
-                if (value.constructor && value.constructor.name === 'BN') {
-                  if (!value._bn) {
-                    Object.defineProperty(value, '_bn', {
-                      value: value,
-                      configurable: true,
-                      enumerable: false
-                    });
-                  }
-                }
-                if (typeof value === 'object' && value !== obj) {
-                  patchBNInObject(value);
-                }
-              }
-            }
-          };
-          
-          // Patch BN instances in provider and connection
-          patchBNInObject(provider);
-          patchBNInObject(rpcConn);
-          
-          console.log('useBondingCurveHistory: Applied ultra-aggressive BN patches');
-        }
-        
-        // Additional delay before program creation
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        let program;
-        try {
-          program = new Program(BondingCurveIDL as unknown as Idl, provider);
-        } catch (bnError) {
-          console.error('Program creation failed with BN error, attempting recovery:', bnError);
-          
-          // Emergency BN recovery attempt
-          if (typeof window !== 'undefined') {
+          try {
             const BN = (window as any).BN || require('bn.js');
             
-            // Completely override BN constructor to always include _bn
+            // Ensure BN prototype has _bn property
+            if (BN && BN.prototype && !BN.prototype.hasOwnProperty('_bn')) {
+              Object.defineProperty(BN.prototype, '_bn', {
+                get: function() { return this; },
+                configurable: true,
+                enumerable: false
+              });
+              console.log('useBondingCurveHistory: Applied minimal BN _bn patch');
+            }
+            
+            // Also apply emergency constructor override immediately
             const OriginalBN = BN;
             (window as any).BN = function(value: any, base?: any) {
               const instance = new OriginalBN(value, base);
@@ -360,6 +283,67 @@ export function useBondingCurveHistory(limit: number = 50) {
             Object.setPrototypeOf((window as any).BN, OriginalBN);
             Object.assign((window as any).BN, OriginalBN);
             (window as any).BN.prototype = OriginalBN.prototype;
+            
+            console.log('useBondingCurveHistory: Applied comprehensive BN constructor override');
+          } catch (patchError) {
+            console.warn('useBondingCurveHistory: BN patch failed:', patchError);
+          }
+        }
+        
+        // Additional delay before program creation
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        let program;
+        try {
+          program = new Program(BondingCurveIDL as unknown as Idl, provider);
+        } catch (bnError) {
+          console.error('Program creation failed with BN error, attempting recovery:', bnError);
+          
+          // Additional emergency recovery with more aggressive patching
+          if (typeof window !== 'undefined') {
+            try {
+              // Try requiring BN directly and ensure global availability
+              const BN = require('bn.js');
+              (window as any).BN = BN;
+              
+              // Force _bn property on prototype again
+              if (BN.prototype && !BN.prototype.hasOwnProperty('_bn')) {
+                Object.defineProperty(BN.prototype, '_bn', {
+                  get: function() { return this; },
+                  configurable: true,
+                  enumerable: false
+                });
+              }
+              
+              // Patch constructor again with more aggressive approach
+              const OriginalBN = BN;
+              (window as any).BN = function(value: any, base?: any) {
+                try {
+                  const instance = new OriginalBN(value, base);
+                  if (!instance._bn) {
+                    Object.defineProperty(instance, '_bn', {
+                      value: instance,
+                      configurable: true,
+                      enumerable: false
+                    });
+                  }
+                  return instance;
+                } catch (constructorError) {
+                  console.warn('BN constructor error:', constructorError);
+                  const fallbackInstance = { _bn: null, toString: () => '0' };
+                  return fallbackInstance;
+                }
+              };
+              
+              // Copy all static methods and properties
+              Object.setPrototypeOf((window as any).BN, OriginalBN);
+              Object.assign((window as any).BN, OriginalBN);
+              (window as any).BN.prototype = OriginalBN.prototype;
+              
+              console.log('useBondingCurveHistory: Applied emergency BN recovery');
+            } catch (emergencyError) {
+              console.error('Emergency BN recovery failed:', emergencyError);
+            }
           }
           
           // Wait and retry
