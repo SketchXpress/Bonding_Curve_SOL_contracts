@@ -1,14 +1,8 @@
 use anchor_lang::prelude::*;
-use crate::{
-    utils::debug::*,
-    debug_log,
-};
 use super::MintNft;
 
 /// Initialize minter tracker account
-pub fn initialize_minter_tracker(ctx: &mut Context<MintNft>, debug_ctx: &mut DebugContext) -> Result<()> {
-    debug_ctx.step("minter_tracking");
-    
+pub fn initialize_minter_tracker(ctx: &mut Context<MintNft>) -> Result<()> {
     let tracker = &mut ctx.accounts.minter_tracker;
     tracker.nft_mint = ctx.accounts.nft_mint.key();
     tracker.original_minter = ctx.accounts.minter.key();
@@ -16,7 +10,7 @@ pub fn initialize_minter_tracker(ctx: &mut Context<MintNft>, debug_ctx: &mut Deb
     tracker.collection = ctx.accounts.bonding_curve_pool.collection;
     tracker.bump = ctx.bumps.minter_tracker;
 
-    debug_log!(debug_ctx, LogLevel::Debug, "Minter tracker initialized");
+    msg!("Minter tracker initialized");
     Ok(())
 }
 

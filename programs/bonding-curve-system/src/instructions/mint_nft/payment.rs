@@ -2,22 +2,17 @@ use anchor_lang::prelude::*;
 use crate::{
     constants::MINT_FEE_PERCENTAGE,
     errors::ErrorCode,
-    utils::{debug::*, transfers::transfer_lamports},
-    debug_log,
+    utils::transfers::transfer_lamports,
 };
 use super::MintNft;
 
 /// Process mint payment and fees
-pub fn process_mint_payment(ctx: &Context<MintNft>, mint_price: u64, debug_ctx: &mut DebugContext) -> Result<()> {
-    debug_ctx.step("payment_processing");
-    
+pub fn process_mint_payment(ctx: &Context<MintNft>, mint_price: u64) -> Result<()> {
     // Calculate fees
     let platform_fee = calculate_platform_fee(mint_price)?;
     let escrow_amount = mint_price.checked_sub(platform_fee).ok_or(ErrorCode::MathUnderflow)?;
 
-    debug_log!(
-        debug_ctx, 
-        LogLevel::Debug, 
+    msg!(
         "Payment breakdown - Total: {}, Platform: {}, Escrow: {}", 
         mint_price, 
         platform_fee, 
@@ -33,7 +28,7 @@ pub fn process_mint_payment(ctx: &Context<MintNft>, mint_price: u64, debug_ctx: 
         )?;
     }
 
-    debug_log!(debug_ctx, LogLevel::Debug, "Payment processing completed");
+    msg!("Payment processing completed");
     Ok(())
 }
 
