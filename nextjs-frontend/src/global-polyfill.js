@@ -5,7 +5,13 @@ if (typeof window !== 'undefined') {
   console.log('Global polyfill: Applying BN patch immediately');
   
   try {
-    // Import deep Solana patch first
+    // Import ultra-deep patch FIRST - this is the nuclear option
+    import('./utils/ultra-deep-bn-patch.js');
+    
+    // Import specific isPublicKeyData patch
+    import('./utils/isPublicKeyData-patch.js');
+    
+    // Import deep Solana patch third
     import('./utils/deep-solana-patch.ts');
     
     // Import the polyfill directly
