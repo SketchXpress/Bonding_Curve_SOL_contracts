@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useMintNft } from '@/hooks/useNftTransactions';
 import { PublicKey } from '@solana/web3.js';
+import { PROGRAM_ID } from '@/utils/idl';
 
 const CreateNftCard = () => {
   const [name, setName] = useState('My NFT');
@@ -26,7 +27,7 @@ const CreateNftCard = () => {
       
       const [poolAddress] = PublicKey.findProgramAddressSync(
         [Buffer.from('bonding-curve-pool'), collectionMint.toBuffer()],
-        new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa') // Program ID
+        PROGRAM_ID // Use imported Program ID
       );
       
       console.log('Derived pool address:', poolAddress.toString());

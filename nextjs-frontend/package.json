@@ -19,7 +19,7 @@
     "@solana/wallet-adapter-react": "^0.15.37",
     "@solana/wallet-adapter-react-ui": "^0.9.37",
     "@solana/wallet-adapter-wallets": "^0.19.35",
-    "@solana/web3.js": "^1.87.6",
+    "@solana/web3.js": "^1.68.0",
     "axios": "^1.9.0",
     "bn.js": "^5.2.1",
     "chart.js": "^4.4.9",
@@ -47,5 +47,8 @@
     "node-gyp": "^11.2.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "resolutions": {
+    "@solana/web3.js": "^1.68.0"
   }
 }

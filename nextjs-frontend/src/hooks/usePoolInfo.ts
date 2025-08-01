@@ -7,7 +7,7 @@ import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { IDL } from '../utils/idl';
 
-const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
 
 export interface PoolInfo {
   address: PublicKey;

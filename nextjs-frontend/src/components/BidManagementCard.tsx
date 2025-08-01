@@ -47,7 +47,7 @@ export const BidManagementCard: React.FC<BidManagementCardProps> = ({
       }
 
       // Derive the bid account PDA
-      const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+      const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
       const [bidAccount] = PublicKey.findProgramAddressSync(
         [Buffer.from('bid'), bidData.nftMint.toBuffer(), Buffer.from(new BN(bidId).toArray('le', 8))],
         PROGRAM_ID
@@ -78,7 +78,7 @@ export const BidManagementCard: React.FC<BidManagementCardProps> = ({
       }
 
       // Derive the required accounts
-      const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+      const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
       
       // Derive bid listing account
       const [bidListingAccount] = PublicKey.findProgramAddressSync(

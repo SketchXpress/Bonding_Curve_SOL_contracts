@@ -18,7 +18,7 @@ use anchor_lang::prelude::*;
 use crate::{utils::debug::*, debug_log};
 
 /// Main mint NFT instruction - orchestrates all steps
-pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
+pub fn mint_nft(mut ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     let mut debug_ctx = DebugContext::new("mint_nft");
     debug_log!(debug_ctx, LogLevel::Info, "Starting NFT mint");
 
@@ -30,19 +30,19 @@ pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     validate_payment(&ctx.accounts.minter, mint_price, &mut debug_ctx)?;
 
     // Step 3: Process payment and fees
-    process_mint_payment(&ctx, mint_price, &mut debug_ctx)?;
+    process_mint_payment(&mut ctx, mint_price, &mut debug_ctx)?;
 
     // Step 4: Create NFT and metadata
-    create_nft_and_metadata(&ctx, &args, &mut debug_ctx)?;
+    create_nft_and_metadata(&mut ctx, &args, &mut debug_ctx)?;
 
     // Step 5: Initialize escrow
-    initialize_nft_escrow(&ctx, mint_price, &mut debug_ctx)?;
+    initialize_nft_escrow(&mut ctx, mint_price, &mut debug_ctx)?;
 
     // Step 6: Track original minter
-    initialize_minter_tracker(&ctx, &mut debug_ctx)?;
+    initialize_minter_tracker(&mut ctx, &mut debug_ctx)?;
 
     // Step 7: Update pool state
-    update_pool_state(&ctx, mint_price, &mut debug_ctx)?;
+    update_pool_state(&mut ctx, mint_price, &mut debug_ctx)?;
 
     debug_log!(debug_ctx, LogLevel::Info, "NFT mint completed successfully");
     Ok(())
