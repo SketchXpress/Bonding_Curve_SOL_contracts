@@ -124,11 +124,8 @@ export const useMintNft = () => {
         })
         .accounts({
           minter: publicKey,
-          bondingCurvePool: poolPda,
           nftMint: nftMint.publicKey,
           minterTokenAccount: minterTokenAccount,
-          nftEscrow: nftEscrowPda,
-          minterTracker: minterTrackerPda,
           metadata: metadataAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,

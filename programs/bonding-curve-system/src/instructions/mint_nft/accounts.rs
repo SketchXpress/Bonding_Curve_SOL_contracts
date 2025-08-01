@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount, Mint};
-use crate::state::*;
+use crate::state::{BondingCurvePool, NftEscrow, MinterTracker};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct MintNftArgs {
@@ -14,9 +14,6 @@ pub struct MintNftArgs {
 pub struct MintNft<'info> {
     #[account(mut)]
     pub minter: Signer<'info>,
-
-    #[account(mut)]
-    pub bonding_curve_pool: Account<'info, BondingCurvePool>,
 
     #[account(
         init,
@@ -36,31 +33,49 @@ pub struct MintNft<'info> {
     pub minter_token_account: Account<'info, TokenAccount>,
 
     #[account(
-        init,
-        payer = minter,
-        space = 8 + std::mem::size_of::<NftEscrow>(),
-        seeds = [b"escrow", nft_mint.key().as_ref()],
-        bump
+        mut,
+        seeds = [b"bonding_curve_pool"],
+        bump,
     )]
-    pub nft_escrow: Account<'info, NftEscrow>,
+    pub bonding_curve_pool: Account<'info, BondingCurvePool>,
 
     #[account(
         init,
         payer = minter,
-        space = 8 + std::mem::size_of::<MinterTracker>(),
-        seeds = [b"minter", nft_mint.key().as_ref()],
-        bump
+        space = NftEscrow::SPACE,
+        seeds = [b"nft_escrow", nft_mint.key().as_ref()],
+        bump,
+    )]
+    pub nft_escrow: Account<'info, NftEscrow>,
+
+    #[account(
+        init_if_needed,
+        payer = minter,
+        space = MinterTracker::SPACE,
+        seeds = [b"minter_tracker", minter.key().as_ref()],
+        bump,
     )]
     pub minter_tracker: Account<'info, MinterTracker>,
 
-    /// CHECK: Metadata account
-    #[account(mut)]
+    /// CHECK: This is the metadata account for the NFT
+    #[account(
+        mut,
+        seeds = [
+            b"metadata",
+            token_metadata_program.key().as_ref(),
+            nft_mint.key().as_ref(),
+        ],
+        bump,
+        seeds::program = token_metadata_program.key(),
+    )]
     pub metadata: UncheckedAccount<'info>,
 
+    #[account(address = anchor_spl::token::ID)]
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
-    /// CHECK: This is the MPL Token Metadata program
-    pub token_metadata_program: AccountInfo<'info>,
+    /// CHECK: This is the Metaplex Token Metadata Program
+    #[account(address = mpl_token_metadata::ID)]
+    pub token_metadata_program: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }

@@ -114,17 +114,17 @@
           "isSigner": true
         },
         {
-          "name": "bondingCurvePool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
         },
         {
           "name": "minterTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bondingCurvePool",
           "isMut": true,
           "isSigner": false
         },

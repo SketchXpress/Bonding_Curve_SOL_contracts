@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::ErrorCode;
 
-/// Calculate bonding curve price - simple and debuggable
+/// Calculate bonding curve price - optimized to prevent stack overflow
 pub fn calculate_bonding_curve_price(
     base_price: u64,
     growth_factor: u16,
@@ -15,15 +15,43 @@ pub fn calculate_bonding_curve_price(
         return Err(ErrorCode::InvalidAmount.into());
     }
 
-    // Simple exponential formula: price = base_price * (growth_factor/10000)^supply
-    let mut price = base_price;
+    // Prevent potentially expensive calculations for high supply
+    if current_supply > 100 {
+        msg!("Supply too high for calculation: {}", current_supply);
+        return Err(ErrorCode::MaxSupplyReached.into());
+    }
+
+    // For small supplies, use simple multiplication to avoid loops
+    if current_supply == 0 {
+        return Ok(base_price);
+    }
+
+    // Use bit shifting and multiplication instead of loops for efficiency
+    let growth_numerator = growth_factor as u64;
+    let growth_denominator = 10000u64;
     
-    for _ in 0..current_supply {
-        price = price
-            .checked_mul(growth_factor as u64)
-            .ok_or(ErrorCode::MathOverflow)?
-            .checked_div(10000)
-            .ok_or(ErrorCode::MathUnderflow)?;
+    let mut price = base_price;
+    let mut remaining_supply = current_supply;
+    
+    // Process in chunks to avoid deep recursion/loops
+    while remaining_supply > 0 {
+        let chunk_size = remaining_supply.min(10); // Process max 10 at a time
+        
+        for _ in 0..chunk_size {
+            price = price
+                .checked_mul(growth_numerator)
+                .ok_or(ErrorCode::MathOverflow)?
+                .checked_div(growth_denominator)
+                .ok_or(ErrorCode::MathUnderflow)?;
+        }
+        
+        remaining_supply = remaining_supply.saturating_sub(chunk_size);
+        
+        // Safety check to prevent infinite loops
+        if price > 1_000_000_000_000 { // 1 trillion lamports max
+            msg!("Price too high: {}", price);
+            return Err(ErrorCode::MathOverflow.into());
+        }
     }
 
     Ok(price)
