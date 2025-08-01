@@ -88,7 +88,17 @@ export const useBondingCurveHistory = () => {
           if (tx && tx.meta && !tx.meta.err) {
             // Parse instruction data to determine transaction type
             // This is a simplified version - you might want to add more sophisticated parsing
-            const instructionData = tx.transaction.message.instructions[0];
+            const message = tx.transaction.message;
+            let instructions: any[] = [];
+            
+            // Handle both legacy and versioned transactions
+            if ('instructions' in message) {
+              instructions = message.instructions;
+            } else if ('compiledInstructions' in message) {
+              instructions = message.compiledInstructions;
+            }
+            
+            const instructionData = instructions[0];
             
             transactionDetails.push({
               signature: sigInfo.signature,
