@@ -34,10 +34,12 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
-                                              "type":  {
-                                                           "defined":  "CreatePoolArgs"
-                                                       }
+                                              "name":  "basePrice",
+                                              "type":  "u64"
+                                          },
+                                          {
+                                              "name":  "growthFactor",
+                                              "type":  "u64"
                                           }
                                       ]
                          },
@@ -100,10 +102,16 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
-                                              "type":  {
-                                                           "defined":  "CreateCollectionNftArgs"
-                                                       }
+                                              "name":  "name",
+                                              "type":  "string"
+                                          },
+                                          {
+                                              "name":  "symbol",
+                                              "type":  "string"
+                                          },
+                                          {
+                                              "name":  "uri",
+                                              "type":  "string"
                                           }
                                       ]
                          },
@@ -173,10 +181,16 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
-                                              "type":  {
-                                                           "defined":  "MintNftArgs"
-                                                       }
+                                              "name":  "name",
+                                              "type":  "string"
+                                          },
+                                          {
+                                              "name":  "symbol",
+                                              "type":  "string"
+                                          },
+                                          {
+                                              "name":  "uri",
+                                              "type":  "string"
                                           }
                                       ]
                          },
@@ -236,9 +250,9 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
+                                              "name":  "maxPrice",
                                               "type":  {
-                                                           "defined":  "BuyNftArgs"
+                                                           "option":  "u64"
                                                        }
                                           }
                                       ]
@@ -312,9 +326,7 @@ export const IDL = {
                                                   "isSigner":  false
                                               }
                                           ],
-                             "args":  [
-
-                                      ]
+                             "args":  []
                          },
                          {
                              "name":  "listForBids",
@@ -377,9 +389,13 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
+                                              "name":  "minBid",
+                                              "type":  "u64"
+                                          },
+                                          {
+                                              "name":  "durationHours",
                                               "type":  {
-                                                           "defined":  "ListForBidsArgs"
+                                                           "option":  "u32"
                                                        }
                                           }
                                       ]
@@ -433,10 +449,8 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
-                                              "type":  {
-                                                           "defined":  "PlaceBidArgs"
-                                                       }
+                                              "name":  "amount",
+                                              "type":  "u64"
                                           }
                                       ]
                          },
@@ -506,10 +520,8 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
-                                              "type":  {
-                                                           "defined":  "AcceptBidArgs"
-                                                       }
+                                              "name":  "bidId",
+                                              "type":  "u64"
                                           }
                                       ]
                          },
@@ -561,10 +573,8 @@ export const IDL = {
                                           ],
                              "args":  [
                                           {
-                                              "name":  "args",
-                                              "type":  {
-                                                           "defined":  "CancelBidArgs"
-                                                       }
+                                              "name":  "bidId",
+                                              "type":  "u64"
                                           }
                                       ]
                          },
@@ -611,9 +621,7 @@ export const IDL = {
                                                   "isSigner":  false
                                               }
                                           ],
-                             "args":  [
-
-                                      ]
+                             "args":  []
                          },
                          {
                              "name":  "distributeCollectionFees",
@@ -648,9 +656,7 @@ export const IDL = {
                                                   "isSigner":  false
                                               }
                                           ],
-                             "args":  [
-
-                                      ]
+                             "args":  []
                          },
                          {
                              "name":  "migrateToTensor",
@@ -676,14 +682,12 @@ export const IDL = {
                                                   "isSigner":  false
                                               }
                                           ],
-                             "args":  [
-
-                                      ]
+                             "args":  []
                          }
                      ],
     "accounts":  [
                      {
-                         "name":  "NftHolderFeeClaim",
+                         "name":  "nftHolderFeeClaim",
                          "type":  {
                                       "kind":  "struct",
                                       "fields":  [
@@ -715,7 +719,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "BidListing",
+                         "name":  "bidListing",
                          "docs":  [
                                       "Account for managing NFT bid listings with dynamic pricing"
                                   ],
@@ -772,7 +776,7 @@ export const IDL = {
                                                                       "Current status of the listing"
                                                                   ],
                                                          "type":  {
-                                                                      "defined":  "BidListingStatus"
+                                                                      "defined":  "bidListingStatus"
                                                                   }
                                                      },
                                                      {
@@ -828,7 +832,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "Bid",
+                         "name":  "bid",
                          "docs":  [
                                       "Individual bid state - clean and focused"
                                   ],
@@ -848,7 +852,7 @@ export const IDL = {
                                                                       "Bid details"
                                                                   ],
                                                          "type":  {
-                                                                      "defined":  "BidDetails"
+                                                                      "defined":  "bidDetails"
                                                                   }
                                                      },
                                                      {
@@ -857,7 +861,7 @@ export const IDL = {
                                                                       "Bid timing"
                                                                   ],
                                                          "type":  {
-                                                                      "defined":  "BidTiming"
+                                                                      "defined":  "bidTiming"
                                                                   }
                                                      },
                                                      {
@@ -866,7 +870,7 @@ export const IDL = {
                                                                       "Bid status and outcome"
                                                                   ],
                                                          "type":  {
-                                                                      "defined":  "BidOutcome"
+                                                                      "defined":  "bidOutcome"
                                                                   }
                                                      },
                                                      {
@@ -880,7 +884,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "CollectionDistribution",
+                         "name":  "collectionDistribution",
                          "type":  {
                                       "kind":  "struct",
                                       "fields":  [
@@ -937,7 +941,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "MinterTracker",
+                         "name":  "minterTracker",
                          "type":  {
                                       "kind":  "struct",
                                       "fields":  [
@@ -994,7 +998,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "NftEscrow",
+                         "name":  "nftEscrow",
                          "type":  {
                                       "kind":  "struct",
                                       "fields":  [
@@ -1018,7 +1022,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "NFTData",
+                         "name":  "nftData",
                          "type":  {
                                       "kind":  "struct",
                                       "fields":  [
@@ -1074,7 +1078,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "BondingCurvePool",
+                         "name":  "bondingCurvePool",
                          "docs":  [
                                       "Bonding curve pool - main account"
                                   ],
@@ -1094,7 +1098,7 @@ export const IDL = {
                                                                       "Pool configuration"
                                                                   ],
                                                          "type":  {
-                                                                      "defined":  "PoolConfig"
+                                                                      "defined":  "poolConfig"
                                                                   }
                                                      },
                                                      {
@@ -1103,7 +1107,7 @@ export const IDL = {
                                                                       "Current pool state"
                                                                   ],
                                                          "type":  {
-                                                                      "defined":  "PoolState"
+                                                                      "defined":  "poolState"
                                                                   }
                                                      },
                                                      {
@@ -1112,7 +1116,7 @@ export const IDL = {
                                                                       "Pool statistics"
                                                                   ],
                                                          "type":  {
-                                                                      "defined":  "PoolStats"
+                                                                      "defined":  "poolStats"
                                                                   }
                                                      },
                                                      {
@@ -1126,7 +1130,7 @@ export const IDL = {
                                   }
                      },
                      {
-                         "name":  "UserAccount",
+                         "name":  "userAccount",
                          "type":  {
                                       "kind":  "struct",
                                       "fields":  [
@@ -1172,7 +1176,7 @@ export const IDL = {
                  ],
     "types":  [
                   {
-                      "name":  "AcceptBidArgs",
+                      "name":  "acceptBidArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1184,7 +1188,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "BuyNftArgs",
+                      "name":  "buyNftArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1198,7 +1202,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "CancelBidArgs",
+                      "name":  "cancelBidArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1210,7 +1214,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "CreateCollectionNftArgs",
+                      "name":  "createCollectionNftArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1230,7 +1234,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "CreatePoolArgs",
+                      "name":  "createPoolArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1246,16 +1250,28 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "DistributeCollectionFeesArgs",
+                      "name":  "cancelListingArgs",
                       "type":  {
                                    "kind":  "struct",
-                                   "fields":  [
-
-                                              ]
+                                   "fields":  []
                                }
                   },
                   {
-                      "name":  "ListForBidsArgs",
+                      "name":  "sellNftArgs",
+                      "type":  {
+                                   "kind":  "struct",
+                                   "fields":  []
+                               }
+                  },
+                  {
+                      "name":  "distributeCollectionFeesArgs",
+                      "type":  {
+                                   "kind":  "struct",
+                                   "fields":  []
+                               }
+                  },
+                  {
+                      "name":  "listForBidsArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1273,16 +1289,14 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "MigrateToTensorArgs",
+                      "name":  "migrateToTensorArgs",
                       "type":  {
                                    "kind":  "struct",
-                                   "fields":  [
-
-                                              ]
+                                   "fields":  []
                                }
                   },
                   {
-                      "name":  "MintNftArgs",
+                      "name":  "mintNftArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1302,7 +1316,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "PlaceBidArgs",
+                      "name":  "placeBidArgs",
                       "type":  {
                                    "kind":  "struct",
                                    "fields":  [
@@ -1314,7 +1328,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "BidDetails",
+                      "name":  "bidDetails",
                       "docs":  [
                                    "Bid details - core bid information"
                                ],
@@ -1353,7 +1367,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "BidTiming",
+                      "name":  "bidTiming",
                       "docs":  [
                                    "Bid timing - when bid was created and expires"
                                ],
@@ -1385,7 +1399,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "BidStatus",
+                      "name":  "bidStatus",
                       "docs":  [
                                    "Status of an individual bid"
                                ],
@@ -1411,7 +1425,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "BidOutcome",
+                      "name":  "bidOutcome",
                       "docs":  [
                                    "Bid outcome - status and resolution"
                                ],
@@ -1424,7 +1438,7 @@ export const IDL = {
                                                                    "Current bid status"
                                                                ],
                                                       "type":  {
-                                                                   "defined":  "BidStatus"
+                                                                   "defined":  "bidStatus"
                                                                }
                                                   },
                                                   {
@@ -1452,7 +1466,7 @@ export const IDL = {
                                                                ],
                                                       "type":  {
                                                                    "option":  {
-                                                                                  "defined":  "CancellationReason"
+                                                                                  "defined":  "cancellationReason"
                                                                               }
                                                                }
                                                   }
@@ -1460,7 +1474,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "PoolConfig",
+                      "name":  "poolConfig",
                       "docs":  [
                                    "Pool configuration - immutable settings"
                                ],
@@ -1513,7 +1527,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "PoolState",
+                      "name":  "poolState",
                       "docs":  [
                                    "Pool state - mutable state"
                                ],
@@ -1577,7 +1591,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "PoolStats",
+                      "name":  "poolStats",
                       "docs":  [
                                    "Pool statistics - tracking metrics"
                                ],
@@ -1625,7 +1639,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "RevenueDistribution",
+                      "name":  "revenueDistribution",
                       "docs":  [
                                    "Revenue distribution configuration for the bidding system"
                                ],
@@ -1657,7 +1671,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "DynamicPricingConfig",
+                      "name":  "dynamicPricingConfig",
                       "docs":  [
                                    "Dynamic pricing configuration"
                                ],
@@ -1696,7 +1710,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "BondingCurveParams",
+                      "name":  "bondingCurveParams",
                       "docs":  [
                                    "Bonding curve parameters"
                                ],
@@ -1735,7 +1749,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "CollectionMetadata",
+                      "name":  "collectionMetadata",
                       "docs":  [
                                    "Collection metadata for fee distribution"
                                ],
@@ -1797,7 +1811,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "CancellationReason",
+                      "name":  "cancellationReason",
                       "docs":  [
                                    "Cancellation reason enumeration"
                                ],
@@ -1823,7 +1837,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "BidListingStatus",
+                      "name":  "bidListingStatus",
                       "docs":  [
                                    "Status of a bid listing"
                                ],
@@ -1846,7 +1860,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "MarketPosition",
+                      "name":  "marketPosition",
                       "docs":  [
                                    "Market position relative to bonding curve"
                                ],
@@ -1866,7 +1880,7 @@ export const IDL = {
                                }
                   },
                   {
-                      "name":  "LogLevel",
+                      "name":  "logLevel",
                       "docs":  [
                                    "Debug logging levels"
                                ],

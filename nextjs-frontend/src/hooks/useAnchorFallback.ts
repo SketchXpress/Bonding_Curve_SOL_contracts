@@ -183,12 +183,19 @@ export const useAnchorFallback = () => {
         console.log('AnchorFallback: ✓ Emergency PublicKey mock created');
       }
       
+      // Ensure IDL has the required address field
+      if (!idl.address) {
+        console.log('AnchorFallback: Adding missing address field to IDL...');
+        idl = { ...idl, address: programId };
+        console.log('AnchorFallback: ✓ IDL address field added');
+      }
+      
       // Create the Anchor program
       try {
         const { Program } = await import('@coral-xyz/anchor');
         
-        // @ts-expect-error - Ignoring type error for program creation with enhanced patches
-        const program = new Program(idl, publicKey, provider);
+        // Use correct Program constructor signature: new Program(idl, provider)
+        const program = new Program(idl, provider);
         
         setProgram(program);
         console.log('AnchorFallback: ✓ Program created successfully');

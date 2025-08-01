@@ -1,6 +1,7 @@
 {
   "version": "0.1.0",
   "name": "bonding_curve_system",
+  "address": "Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa",
   "docs": [
     "SketchXpress Bonding Curve System",
     "Revolutionary NFT marketplace with dynamic pricing"
@@ -310,7 +311,14 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SellNftArgs"
+          }
+        }
+      ]
     },
     {
       "name": "listForBids",
@@ -607,7 +615,14 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CancelListingArgs"
+          }
+        }
+      ]
     },
     {
       "name": "distributeCollectionFees",
@@ -642,7 +657,14 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "DistributeCollectionFeesArgs"
+          }
+        }
+      ]
     },
     {
       "name": "migrateToTensor",
@@ -668,7 +690,14 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MigrateToTensorArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1233,6 +1262,20 @@
             "type": "u64"
           }
         ]
+      }
+    },
+    {
+      "name": "CancelListingArgs",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "SellNftArgs",
+      "type": {
+        "kind": "struct",
+        "fields": []
       }
     },
     {

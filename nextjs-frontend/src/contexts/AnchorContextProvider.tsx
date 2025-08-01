@@ -308,55 +308,15 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
           
           console.log('AnchorContextProvider: Creating Program with enhanced compatibility...');
           
-          // CRITICAL FIX: Patch the Anchor translateAddress function before Program creation
+          // CRITICAL FIX: Anchor translateAddress is read-only, rely on IDL address field instead
           if (typeof window !== 'undefined') {
             try {
-              // Import Anchor to access its internal functions
+              // Import Anchor to check availability
               const anchorModule = require('@coral-xyz/anchor');
               
-              // Patch the translateAddress function to handle undefined address
-              if (anchorModule && typeof anchorModule.translateAddress === 'function') {
-                const originalTranslateAddress = anchorModule.translateAddress;
-                anchorModule.translateAddress = function(address: any) {
-                  // If address is undefined, use our PROGRAM_ID
-                  if (address === undefined) {
-                    console.log('AnchorContextProvider: translateAddress received undefined, using PROGRAM_ID');
-                    address = PROGRAM_ID;
-                  }
-                  
-                  // Ensure PublicKey creation with proper BN patching
-                  if (typeof address === 'string') {
-                    try {
-                      return new PublicKey(address);
-                    } catch (pkError) {
-                      console.warn('AnchorContextProvider: PublicKey creation in translateAddress failed, using manual BN:', pkError);
-                      
-                      // Manual BN creation for PublicKey
-                      const BN = require('bn.js');
-                      const bs58 = require('bs58');
-                      
-                      const decoded = bs58.decode(address);
-                      const bn = new BN(decoded);
-                      
-                      // Ensure _bn property
-                      if (!bn._bn) {
-                        Object.defineProperty(bn, '_bn', {
-                          value: bn,
-                          writable: true,
-                          configurable: true,
-                          enumerable: false
-                        });
-                      }
-                      
-                      return new PublicKey(bn);
-                    }
-                  }
-                  
-                  return originalTranslateAddress(address);
-                };
-                
-                console.log('AnchorContextProvider: ✓ Patched translateAddress function');
-              }
+              // Note: translateAddress is a read-only property and cannot be patched
+              // Instead, we ensure the IDL has the correct address field
+              console.log('AnchorContextProvider: Skipping translateAddress patch (read-only), relying on IDL address field');
             } catch (anchorPatchError) {
               console.warn('AnchorContextProvider: Failed to patch translateAddress:', anchorPatchError);
             }
@@ -369,8 +329,11 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
             console.log('AnchorContextProvider: ✓ Added missing address to IDL');
           }
           
+          // Create PublicKey from PROGRAM_ID for the Program constructor
+          const programIdKey = new PublicKey(PROGRAM_ID);
+          
           // @ts-expect-error - Ignoring type error for now to allow build to complete
-          const anchorProgram = new Program(patchedIDL, publicKey, anchorProvider);
+          const anchorProgram = new Program(patchedIDL, programIdKey, anchorProvider);
           
           setProgram(anchorProgram);
           setInitialized(true);
