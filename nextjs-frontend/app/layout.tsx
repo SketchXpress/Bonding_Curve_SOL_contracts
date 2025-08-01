@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalPatcher from "@/components/GlobalPatcher"; // Import GlobalPatcher
 
+// Import the webpack-level BN patch immediately
+import "../src/utils/webpack-bn-patch.js";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

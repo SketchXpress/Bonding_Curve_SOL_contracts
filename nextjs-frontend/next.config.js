@@ -11,6 +11,25 @@ const nextConfig = {
   },
   // Remove deprecated appDir setting - it's enabled by default in Next.js 15
   experimental: {},
+  
+  // Add webpack configuration for better compatibility
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Configure module resolution
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: false,
+        stream: false,
+        assert: false,
+        http: false,
+        https: false,
+        os: false,
+        url: false,
+      };
+    }
+    
+    return config;
+  },
 };
 
 module.exports = nextConfig;
