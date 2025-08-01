@@ -68,7 +68,9 @@ export const useMintNft = () => {
   const [escrowAddress, setEscrowAddress] = useState<string | null>(null);
 
   const mintNft = async (
-    name: string
+    name: string,
+    symbol: string,
+    uri: string
   ) => {
     if (!program || !wallet.publicKey || !provider) {
       setError('Program not initialized or wallet not connected');
@@ -86,11 +88,11 @@ export const useMintNft = () => {
     
     try {
       // Validate inputs
-      if (!name) {
-        throw new Error('Name is required');
+      if (!name || !symbol || !uri) {
+        throw new Error('Name, symbol, and URI are required');
       }
       
-      console.log('Using minimal mint NFT with name:', name);
+      console.log('Using minimal mint NFT with:', { name, symbol, uri });
       
       // Add debugging for program context
       console.log('Program ID from context:', program.programId?.toString());
@@ -120,17 +122,33 @@ export const useMintNft = () => {
         minterTokenAccount: minterTokenAccount.toString()
       });
 
+      // Derive metadata account PDA
+      const [metadataAddress] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('metadata'),
+          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+          nftMint.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+      );
+
+      console.log('Derived metadata address:', metadataAddress.toString());
+
       // Execute the transaction to mint the NFT with minimal args structure
       const tx = await program.methods
         .mintNft({
-          name: name
+          name: name,
+          symbol: symbol,
+          uri: uri
         })
         .accounts({
           minter: wallet.publicKey,
           nftMint: nftMint,
           minterTokenAccount: minterTokenAccount,
+          metadata: metadataAddress,
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY
         })

@@ -15,30 +15,12 @@ const CreateNftCard = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!collectionMintAddress) {
-      alert('Please enter a collection mint address');
-      return;
-    }
-    
-    // Derive pool address from collection mint
+    // For minimal version, we don't need collection mint address
     try {
-      const collectionMint = new PublicKey(collectionMintAddress);
-      console.log('Collection mint address:', collectionMint.toString());
-      
-      const [poolAddress] = PublicKey.findProgramAddressSync(
-        [Buffer.from('bonding-curve-pool'), collectionMint.toBuffer()],
-        PROGRAM_ID // Use imported Program ID
-      );
-      
-      console.log('Derived pool address:', poolAddress.toString());
-      console.log('Attempting to mint NFT for pool:', poolAddress.toString());
-      await mintNft(poolAddress.toString(), name, symbol, uri);
+      console.log('Attempting to mint minimal NFT:', { name, symbol, uri });
+      await mintNft(name, symbol, uri);
     } catch (error: any) {
-      if (error.message && error.message.includes('Account does not exist')) {
-        alert(`❌ Pool Not Found!\n\nThe bonding curve pool for collection ${collectionMintAddress} does not exist yet.\n\n✅ Solution: Create a pool first using the "Create Pool" card, then try minting NFTs.`);
-      } else {
-        alert('Error: ' + (error.message || 'Invalid collection mint address'));
-      }
+      alert('Error: ' + (error.message || 'Failed to mint NFT'));
       console.error('Error:', error);
     }
   };
@@ -57,21 +39,9 @@ const CreateNftCard = () => {
         </ol>
       </div>
       <p className="text-sm text-gray-600 mb-4">
-        Mint an NFT with a Token-Owned Escrow (TOE). The current price from the bonding curve will be locked in the NFT's escrow.
+        Mint a minimal NFT for testing. Fixed price: 0.001 SOL.
       </p>
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="collection-mint" className="block text-gray-700 mb-2">Collection Mint Address:</label>
-          <input
-            type="text"
-            id="collection-mint"
-            value={collectionMintAddress}
-            onChange={(e) => setCollectionMintAddress(e.target.value)}
-            placeholder="Paste collection mint address from pool creation result..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-500 mt-1">The pool address will be derived automatically from the collection mint</p>
-        </div>
         <div className="mb-4">
           <label htmlFor="nft-name" className="block text-gray-700 mb-2">Name:</label>
           <input
