@@ -5,52 +5,21 @@ pub use accounts::*;
 use anchor_lang::prelude::*;
 use mpl_token_metadata::{instructions::CreateMetadataAccountV3, types::DataV2};
 use anchor_lang::solana_program::program::invoke;
-use crate::math::bonding_curve::calculate_bonding_curve_price;
 use crate::ErrorCode;
 
-/// Main mint NFT instruction with bonding curve pricing and escrow
+/// Minimal NFT minting instruction to test stack overflow fix
 pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
-    msg!("Starting NFT mint with bonding curve pricing");
+    msg!("Starting minimal NFT mint");
 
     // Validate input
     if args.name.is_empty() || args.symbol.is_empty() {
         return Err(ErrorCode::InvalidAmount.into());
     }
+    msg!("Input validation passed");
 
-    let bonding_curve_pool = &mut ctx.accounts.bonding_curve_pool;
-    let nft_escrow = &mut ctx.accounts.nft_escrow;
-    let minter_tracker = &mut ctx.accounts.minter_tracker;
-
-    // Calculate NFT price based on current supply using bonding curve
-    let price = calculate_bonding_curve_price(
-        bonding_curve_pool.config.base_price,
-        bonding_curve_pool.config.growth_factor,
-        bonding_curve_pool.state.current_supply,
-    )?;
-    msg!("NFT price calculated: {} lamports", price);
-
-    // Check if minter has enough SOL
-    let minter_balance = ctx.accounts.minter.lamports();
-    if minter_balance < price {
-        return Err(ErrorCode::InsufficientBalance.into());
-    }
-
-    // Transfer SOL payment from minter to escrow
-    let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
-        &ctx.accounts.minter.key(),
-        &nft_escrow.key(),
-        price,
-    );
-    
-    anchor_lang::solana_program::program::invoke(
-        &transfer_instruction,
-        &[
-            ctx.accounts.minter.to_account_info(),
-            nft_escrow.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-        ],
-    )?;
-    msg!("Payment transferred to escrow: {} lamports", price);
+    // Simple fixed price for testing
+    let price = 1_000_000u64; // 0.001 SOL
+    msg!("Price set to {} lamports", price);
 
     // Mint the NFT token
     let cpi_accounts = anchor_spl::token::MintTo {
@@ -104,28 +73,9 @@ pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     )?;
     msg!("NFT metadata created successfully");
 
-    // Initialize NFT escrow state with 99% of payment
-    nft_escrow.nft_mint = ctx.accounts.nft_mint.key();
-    nft_escrow.lamports = (price * 99) / 100; // 99% in escrow
-    nft_escrow.last_price = price;
-
-    // Update minter tracker
-    minter_tracker.nft_mint = ctx.accounts.nft_mint.key();
-    minter_tracker.original_minter = ctx.accounts.minter.key();
-    minter_tracker.minted_at = Clock::get()?.unix_timestamp;
-    minter_tracker.collection = bonding_curve_pool.collection;
-    minter_tracker.total_revenue_earned = 0;
-    minter_tracker.sale_count = 0;
-
-    // Update bonding curve pool state
-    bonding_curve_pool.state.current_supply += 1;
-    bonding_curve_pool.stats.total_volume += price;
-
-    msg!("NFT mint completed successfully with bonding curve pricing");
+    msg!("Minimal NFT mint completed successfully");
     msg!("NFT: {}", ctx.accounts.nft_mint.key());
     msg!("Price: {} lamports", price);
-    msg!("Escrow amount: {} lamports", nft_escrow.lamports);
-    msg!("Original minter: {}", minter_tracker.original_minter);
 
     Ok(())
 }

@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount, Mint};
-use crate::state::{BondingCurvePool, NftEscrow, MinterTracker};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct MintNftArgs {
@@ -31,31 +30,6 @@ pub struct MintNft<'info> {
         associated_token::authority = minter,
     )]
     pub minter_token_account: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        seeds = [b"bonding_curve_pool"],
-        bump,
-    )]
-    pub bonding_curve_pool: Account<'info, BondingCurvePool>,
-
-    #[account(
-        init,
-        payer = minter,
-        space = NftEscrow::SPACE,
-        seeds = [b"nft_escrow", nft_mint.key().as_ref()],
-        bump,
-    )]
-    pub nft_escrow: Account<'info, NftEscrow>,
-
-    #[account(
-        init_if_needed,
-        payer = minter,
-        space = MinterTracker::SPACE,
-        seeds = [b"minter_tracker", minter.key().as_ref()],
-        bump,
-    )]
-    pub minter_tracker: Account<'info, MinterTracker>,
 
     /// CHECK: This is the metadata account for the NFT
     #[account(
