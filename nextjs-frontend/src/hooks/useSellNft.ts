@@ -9,7 +9,7 @@ import {
   getAssociatedTokenAddress,
 } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
+import { IDL } from '../utils/idl';
 
 const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -54,7 +54,7 @@ export const useSellNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive NFT escrow PDA
       const [escrowPda] = PublicKey.findProgramAddressSync(
@@ -66,7 +66,7 @@ export const useSellNft = () => {
       );
 
       // Get escrow data to find the pool
-      const escrowAccount = await program.account.nftEscrow.fetch(escrowPda);
+      const escrowAccount = await (program.account as any).nftEscrow.fetch(escrowPda);
 
       // Get pool data to find creator
       // For this, we'll need to find the pool by collection mint or get it from escrow if it has pool reference
@@ -106,7 +106,7 @@ export const useSellNft = () => {
         PROGRAM_ID
       );
 
-      const minterTrackerData = await program.account.minterTracker.fetch(minterTrackerPda);
+      const minterTrackerData = await (program.account as any).minterTracker.fetch(minterTrackerPda);
       const collectionMint = minterTrackerData.collection;
       const creator = minterTrackerData.originalMinter;
 
@@ -164,7 +164,7 @@ export const useSellNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -175,7 +175,7 @@ export const useSellNft = () => {
         PROGRAM_ID
       );
 
-      const nftDataAccount = await program.account.nftData.fetch(nftDataPda);
+      const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
       
       // Check if the current user owns the NFT
       return nftDataAccount.owner.equals(publicKey);
@@ -188,7 +188,7 @@ export const useSellNft = () => {
   const estimateSellPrice = useCallback(async (nftMint: PublicKey): Promise<number | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -199,7 +199,7 @@ export const useSellNft = () => {
         PROGRAM_ID
       );
 
-      const nftDataAccount = await program.account.nftData.fetch(nftDataPda);
+      const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
       
       // Return the last price (would need bonding curve calculation for current sell price)
       return nftDataAccount.lastPrice.toNumber() / 1e9;

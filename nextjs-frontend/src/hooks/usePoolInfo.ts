@@ -5,7 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
+import { IDL } from '../utils/idl';
 
 const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
 
@@ -65,7 +65,7 @@ export const usePoolInfo = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
@@ -75,7 +75,7 @@ export const usePoolInfo = () => {
         PROGRAM_ID
       );
 
-      const poolAccount = await program.account.bondingCurvePool.fetch(poolPda);
+      const poolAccount = await (program.account as any).bondingCurvePool.fetch(poolPda);
       
       return {
         address: poolPda,
@@ -121,11 +121,11 @@ export const usePoolInfo = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
-      const pools = await program.account.bondingCurvePool.all();
+      const pools = await (program.account as any).bondingCurvePool.all();
       
-      return pools.map(pool => ({
+      return pools.map((pool: any) => ({
         address: pool.publicKey,
         collection: pool.account.collection,
         config: {

@@ -690,7 +690,7 @@ export const IDL = {
   ],
   "accounts": [
     {
-      "name": "NftHolderFeeClaim",
+      "name": "nftHolderFeeClaim",
       "type": {
         "kind": "struct",
         "fields": [
@@ -722,7 +722,7 @@ export const IDL = {
       }
     },
     {
-      "name": "BidListing",
+      "name": "bidListing",
       "docs": [
         "Account for managing NFT bid listings with dynamic pricing"
       ],
@@ -1081,7 +1081,7 @@ export const IDL = {
       }
     },
     {
-      "name": "BondingCurvePool",
+      "name": "bondingCurvePool",
       "docs": [
         "Bonding curve pool - main account"
       ],
@@ -1133,7 +1133,7 @@ export const IDL = {
       }
     },
     {
-      "name": "UserAccount",
+      "name": "userAccount",
       "type": {
         "kind": "struct",
         "fields": [

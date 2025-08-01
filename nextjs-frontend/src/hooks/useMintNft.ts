@@ -20,7 +20,7 @@ const { getAssociatedTokenAddress } = require('@solana/spl-token');
 const anchor = require('@coral-xyz/anchor');
 const { Program, AnchorProvider } = anchor;
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
+import { IDL } from '../utils/idl';
 
 const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -68,7 +68,7 @@ export const useMintNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as any;
+      const program = new Program(IDL as any, provider) as any;
 
       // Generate new keypair for NFT mint
       const nftMint = Keypair.generate();
@@ -163,7 +163,7 @@ export const useMintNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as any;
+      const program = new Program(IDL as any, provider) as any;
       
       const [nftEscrowPda] = PublicKey.findProgramAddressSync(
         [
@@ -190,7 +190,7 @@ export const useMintNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as any;
+      const program = new Program(IDL as any, provider) as any;
       
       const [minterTrackerPda] = PublicKey.findProgramAddressSync(
         [

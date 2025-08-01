@@ -5,7 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
+import { IDL } from '../utils/idl';
 
 const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
 
@@ -49,7 +49,7 @@ export const useCollectionFees = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive pool PDA
       const [poolPda] = PublicKey.findProgramAddressSync(
@@ -98,7 +98,7 @@ export const useCollectionFees = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       const [collectionDistributionPda] = PublicKey.findProgramAddressSync(
         [
@@ -108,7 +108,7 @@ export const useCollectionFees = () => {
         PROGRAM_ID
       );
 
-      const distributionAccount = await program.account.collectionDistribution.fetch(collectionDistributionPda);
+      const distributionAccount = await (program.account as any).collectionDistribution.fetch(collectionDistributionPda);
       
       return {
         address: collectionDistributionPda,
@@ -123,7 +123,7 @@ export const useCollectionFees = () => {
   const getPendingFees = useCallback(async (collectionMint: PublicKey): Promise<number | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       // Get collection distribution to check accumulated fees
       const [collectionDistributionPda] = PublicKey.findProgramAddressSync(
@@ -135,7 +135,7 @@ export const useCollectionFees = () => {
       );
 
       try {
-        const collectionDistribution = await program.account.collectionDistribution.fetch(collectionDistributionPda);
+        const collectionDistribution = await (program.account as any).collectionDistribution.fetch(collectionDistributionPda);
         
         // Return accumulated fees converted to SOL
         return collectionDistribution.accumulatedFees.toNumber() / 1e9;
