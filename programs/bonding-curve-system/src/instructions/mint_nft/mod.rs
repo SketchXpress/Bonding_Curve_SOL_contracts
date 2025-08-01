@@ -1,29 +1,47 @@
 pub mod accounts;
+pub mod validation;
+pub mod payment;
+pub mod nft_creation;
+pub mod escrow;
+pub mod tracker;
+pub mod pool_update;
 
 pub use accounts::*;
+pub use validation::*;
+pub use payment::*;
+pub use nft_creation::*;
+pub use escrow::*;
+pub use tracker::*;
+pub use pool_update::*;
 
 use anchor_lang::prelude::*;
 
-/// Main mint NFT instruction - truly minimal version for debugging stack overflow
-pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
-    msg!("Starting truly minimal NFT mint");
+/// Main mint NFT instruction with complete functionality
+pub fn mint_nft(mut ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
+    msg!("Starting complete NFT mint with bonding curve");
 
-    // Only do the most basic validation and token minting
-    if args.name.is_empty() {
-        return Err(ProgramError::InvalidInstructionData.into());
-    }
+    // Step 1: Validate inputs
+    validate_mint_inputs(&args)?;
 
-    // Simple token mint without any complex operations
-    let cpi_accounts = anchor_spl::token::MintTo {
-        mint: ctx.accounts.nft_mint.to_account_info(),
-        to: ctx.accounts.minter_token_account.to_account_info(),
-        authority: ctx.accounts.minter.to_account_info(),
-    };
-    let cpi_program = ctx.accounts.token_program.to_account_info();
-    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-    anchor_spl::token::mint_to(cpi_ctx, 1)?;
+    // Step 2: Calculate mint price from bonding curve
+    let price = calculate_mint_price(&ctx.accounts.bonding_curve_pool)?;
 
-    msg!("Truly minimal NFT mint completed");
+    // Step 3: Process payment
+    process_mint_payment(&ctx, price)?;
+
+    // Step 4: Create NFT and metadata
+    create_nft_and_metadata(&ctx, &args)?;
+
+    // Step 5: Setup escrow
+    initialize_nft_escrow(&mut ctx, price)?;
+
+    // Step 6: Initialize minter tracker
+    initialize_minter_tracker(&mut ctx)?;
+
+    // Step 7: Update pool state
+    update_pool_state(&mut ctx, price)?;
+
+    msg!("NFT mint completed successfully - Price: {} lamports", price);
     Ok(())
 }
 

@@ -68,10 +68,7 @@ export const useMintNft = () => {
   const [escrowAddress, setEscrowAddress] = useState<string | null>(null);
 
   const mintNft = async (
-    poolAddress: string,
-    name: string, 
-    symbol: string, 
-    uri: string
+    name: string
   ) => {
     if (!program || !wallet.publicKey || !provider) {
       setError('Program not initialized or wallet not connected');
@@ -89,76 +86,21 @@ export const useMintNft = () => {
     
     try {
       // Validate inputs
-      if (!poolAddress || !name || !symbol || !uri) {
-        throw new Error('Pool address, name, symbol, and URI are required');
+      if (!name) {
+        throw new Error('Name is required');
       }
       
-      // Validate pool address
-      if (!isValidPublicKeyFormat(poolAddress)) {
-        throw new Error('Invalid pool address format');
-      }
-      
-      const pool = safePublicKey(poolAddress);
-      if (!pool) {
-        throw new Error('Invalid pool address');
-      }
-      
-      console.log('Using pool address:', pool.toString());
+      console.log('Using minimal mint NFT with name:', name);
       
       // Add debugging for program context
       console.log('Program ID from context:', program.programId?.toString());
       console.log('Connection endpoint:', program.provider.connection.rpcEndpoint);
       
-      // Check if the pool account exists before trying to fetch it
-      console.log('Checking if pool account exists...');
-      const poolAccountInfo = await program.provider.connection.getAccountInfo(pool);
-      console.log('Pool account info:', poolAccountInfo);
-      
-      if (!poolAccountInfo) {
-        throw new Error(`Pool account does not exist at address ${pool.toString()}. Please ensure the pool was created successfully and you're using the correct network.`);
-      }
-      
-      // Get pool data to retrieve collection mint
-      const poolData = await (program.account as any).bondingCurvePool.fetch(pool);
-      
-      console.log('Raw pool data:', poolData);
-      console.log('Pool data structure:', {
-        collection: poolData.collection?.toString(),
-        config: poolData.config,
-        state: poolData.state,
-        stats: poolData.stats
-      });
-      
-      const collectionMint = poolData.collection as PublicKey;
-      
       // Generate a new keypair for the NFT mint
       const nftMintKeypair = Keypair.generate();
       const nftMint = nftMintKeypair.publicKey;
-      const creator = (poolData.config as any).creator as PublicKey;
 
       console.log('Generated NFT mint keypair:', nftMintKeypair.publicKey.toString());
-      
-      // Find NFT escrow PDA
-      const [escrow] = PublicKey.findProgramAddressSync(
-        [Buffer.from('escrow'), nftMint.toBuffer()],
-        program.programId
-      );
-      
-      // Find minter tracker PDA
-      const [minterTracker] = PublicKey.findProgramAddressSync(
-        [Buffer.from('minter'), nftMint.toBuffer()],
-        program.programId
-      );
-      
-      // Find Metaplex metadata account PDA
-      const [metadataAccount] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from('metadata'),
-          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-          nftMint.toBuffer()
-        ],
-        TOKEN_METADATA_PROGRAM_ID
-      );
       
       // Get the associated token address for the NFT (minter token account)
       const minterTokenAccount = await getAssociatedTokenAddress(
@@ -166,98 +108,29 @@ export const useMintNft = () => {
         wallet.publicKey
       );
       
-      // Calculate the current price from the pool
-      console.log('Accessing pool config and state...');
-      console.log('poolData.config:', poolData.config);
-      console.log('poolData.state:', poolData.state);
-      
-      const basePrice = (poolData.config as any)?.basePrice as any;
-      const growthFactor = (poolData.config as any)?.growthFactor as any;
-      const currentSupply = (poolData.state as any)?.currentSupply as any;
-      const poolCreator = (poolData.config as any)?.creator as PublicKey;
-      
-      console.log('Extracted values:', {
-        basePrice: basePrice?.toString(),
-        growthFactor: growthFactor?.toString(),
-        currentSupply: currentSupply?.toString(),
-        creator: poolCreator?.toString()
-      });
-      
-      // Add safety checks for undefined values
-      if (!basePrice || !growthFactor || currentSupply === undefined || currentSupply === null) {
-        console.error('Missing pool data:', {
-          hasBasePrice: !!basePrice,
-          hasGrowthFactor: !!growthFactor,
-          hasCurrentSupply: currentSupply !== undefined && currentSupply !== null,
-          basePrice: basePrice?.toString(),
-          growthFactor: growthFactor?.toString(), 
-          currentSupply: currentSupply?.toString()
-        });
-        throw new Error('Pool data is incomplete or malformed');
-      }
-      
-      // Simple price calculation (actual calculation happens on-chain)
-      // price = basePrice * (growthFactor/1_000_000)^currentSupply
-      console.log('Type checking before toNumber calls:', {
-        basePrice: typeof basePrice,
-        basePriceConstructor: basePrice?.constructor?.name,
-        basePriceToString: basePrice?.toString(),
-        growthFactor: typeof growthFactor,
-        growthFactorConstructor: growthFactor?.constructor?.name,
-        growthFactorToString: growthFactor?.toString(),
-        currentSupply: typeof currentSupply,
-        currentSupplyConstructor: currentSupply?.constructor?.name,
-        currentSupplyToString: currentSupply?.toString()
-      });
-      
-      // Ensure we have BN objects before calling toNumber()
-      const basePriceBN = new anchor.BN(basePrice.toString());
-      const growthFactorBN = new anchor.BN(growthFactor.toString());
-      const currentSupplyBN = new anchor.BN(currentSupply.toString());
-      
-      const growthFactorDecimal = growthFactorBN.toNumber() / 1_000_000;
-      const estimatedPrice = basePriceBN.toNumber() * Math.pow(growthFactorDecimal, currentSupplyBN.toNumber());
-      
-      console.log(`Estimated price for minting NFT: ${estimatedPrice / 1_000_000_000} SOL`);
-      
       // --- ADD COMPUTE UNIT LIMIT INSTRUCTION --- 
       const computeUnitLimitInstruction = ComputeBudgetProgram.setComputeUnitLimit({ 
         units: 400000 // Request 400,000 CUs (adjust if needed)
       });
       // --- END ADD COMPUTE UNIT LIMIT INSTRUCTION ---
       
-      console.log('Creator:', creator.toString());
-      console.log('Collection Mint:', collectionMint.toString());
-      // Log other relevant accounts
-      
-      console.log('About to call mintNft with accounts:', {
+      console.log('About to call minimal mintNft with accounts:', {
         minter: wallet.publicKey.toString(),
-        bondingCurvePool: pool.toString(),
         nftMint: nftMint.toString(),
-        minterTokenAccount: minterTokenAccount.toString(),
-        nftEscrow: escrow.toString(),
-        minterTracker: minterTracker.toString(),
-        metadata: metadataAccount.toString()
+        minterTokenAccount: minterTokenAccount.toString()
       });
 
-      // Execute the transaction to mint the NFT with proper args structure
+      // Execute the transaction to mint the NFT with minimal args structure
       const tx = await program.methods
         .mintNft({
-          name: name,
-          symbol: symbol,
-          uri: uri
+          name: name
         })
         .accounts({
           minter: wallet.publicKey,
-          bondingCurvePool: pool,
           nftMint: nftMint,
           minterTokenAccount: minterTokenAccount,
-          nftEscrow: escrow,
-          minterTracker: minterTracker,
-          metadata: metadataAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY
         })
@@ -270,15 +143,13 @@ export const useMintNft = () => {
       
       console.log('NFT minted successfully with signature:', tx);
       
-      // Set the transaction signature, NFT mint address, and escrow address
+      // Set the transaction signature and NFT mint address
       setTxSignature(tx);
       setNftMintAddress(nftMint.toString());
-      setEscrowAddress(escrow.toString());
       
       return { 
         tx, 
-        nftMint: nftMint.toString(),
-        escrow: escrow.toString()
+        nftMint: nftMint.toString()
       };
     } catch (error) {
       const errorMessage = safeStringifyError(error);

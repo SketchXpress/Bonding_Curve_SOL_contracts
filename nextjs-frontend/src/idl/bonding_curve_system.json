@@ -114,6 +114,11 @@
           "isSigner": true
         },
         {
+          "name": "bondingCurvePool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -124,12 +129,32 @@
           "isSigner": false
         },
         {
+          "name": "nftEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "minterTracker",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "metadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1250,6 +1275,14 @@
           {
             "name": "name",
             "type": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
           }
         ]
       }
@@ -2278,5 +2311,8 @@
       "name": "InvalidPercentage",
       "msg": "Invalid percentage"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE"
+  }
 }

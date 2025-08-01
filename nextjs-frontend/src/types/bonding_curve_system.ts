@@ -114,6 +114,11 @@ export type BondingCurveSystem = {
           "isSigner": true
         },
         {
+          "name": "bondingCurvePool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -124,12 +129,32 @@ export type BondingCurveSystem = {
           "isSigner": false
         },
         {
+          "name": "nftEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "minterTracker",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "metadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -1249,6 +1274,14 @@ export type BondingCurveSystem = {
         "fields": [
           {
             "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "uri",
             "type": "string"
           }
         ]
@@ -2397,6 +2430,11 @@ export const IDL: BondingCurveSystem = {
           "isSigner": true
         },
         {
+          "name": "bondingCurvePool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -2407,12 +2445,32 @@ export const IDL: BondingCurveSystem = {
           "isSigner": false
         },
         {
+          "name": "nftEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "minterTracker",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "metadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadataProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -3532,6 +3590,14 @@ export const IDL: BondingCurveSystem = {
         "fields": [
           {
             "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "uri",
             "type": "string"
           }
         ]
