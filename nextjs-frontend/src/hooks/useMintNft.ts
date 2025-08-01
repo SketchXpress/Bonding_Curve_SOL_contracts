@@ -8,6 +8,7 @@ import {
   SYSVAR_RENT_PUBKEY,
   Keypair
 } from '@solana/web3.js';
+import { PROGRAM_ID } from '@/utils/idl';
 import { 
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -22,7 +23,6 @@ const { Program, AnchorProvider } = anchor;
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { IDL } from '../utils/idl';
 
-const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
 
 export interface MintNftParams {

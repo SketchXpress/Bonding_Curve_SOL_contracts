@@ -13,6 +13,7 @@ import {
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor';
 import { Listing } from '../types/marketplace';
+import { PROGRAM_ID } from './idl';
 
 // Configuration for retry mechanism
 const MAX_RETRIES = 3;        // Maximum number of retry attempts
@@ -155,11 +156,10 @@ export async function getAllListedNFTs(connection: Connection): Promise<NFTMetad
   try {
     const metaplex = new Metaplex(connection);
     const LISTING_SEED = 'listing';
-    const programId = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE'); // Your marketplace program ID
 
     // Get all program accounts for listings
     const accounts = await retry(() =>
-      connection.getProgramAccounts(programId, {
+      connection.getProgramAccounts(PROGRAM_ID, {
         filters: [
           {
             memcmp: {

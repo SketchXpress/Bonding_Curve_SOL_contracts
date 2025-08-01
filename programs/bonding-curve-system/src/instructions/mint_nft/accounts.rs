@@ -1,12 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount, Mint};
-use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct MintNftArgs {
     pub name: String,
-    pub symbol: String,
-    pub uri: String,
 }
 
 #[derive(Accounts)]
@@ -14,9 +11,6 @@ pub struct MintNftArgs {
 pub struct MintNft<'info> {
     #[account(mut)]
     pub minter: Signer<'info>,
-
-    #[account(mut)]
-    pub bonding_curve_pool: Account<'info, BondingCurvePool>,
 
     #[account(
         init,
@@ -35,32 +29,8 @@ pub struct MintNft<'info> {
     )]
     pub minter_token_account: Account<'info, TokenAccount>,
 
-    #[account(
-        init,
-        payer = minter,
-        space = 8 + std::mem::size_of::<NftEscrow>(),
-        seeds = [b"escrow", nft_mint.key().as_ref()],
-        bump
-    )]
-    pub nft_escrow: Account<'info, NftEscrow>,
-
-    #[account(
-        init,
-        payer = minter,
-        space = 8 + std::mem::size_of::<MinterTracker>(),
-        seeds = [b"minter", nft_mint.key().as_ref()],
-        bump
-    )]
-    pub minter_tracker: Account<'info, MinterTracker>,
-
-    /// CHECK: Metadata account
-    #[account(mut)]
-    pub metadata: UncheckedAccount<'info>,
-
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
-    /// CHECK: This is the MPL Token Metadata program
-    pub token_metadata_program: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }

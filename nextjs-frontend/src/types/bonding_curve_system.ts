@@ -114,11 +114,6 @@ export type BondingCurveSystem = {
           "isSigner": true
         },
         {
-          "name": "bondingCurvePool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -129,32 +124,12 @@ export type BondingCurveSystem = {
           "isSigner": false
         },
         {
-          "name": "nftEscrow",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "minterTracker",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "metadata",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenMetadataProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -563,6 +538,51 @@ export type BondingCurveSystem = {
           }
         }
       ]
+    },
+    {
+      "name": "cancelListing",
+      "accounts": [
+        {
+          "name": "lister",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The NFT mint that was listed"
+          ]
+        },
+        {
+          "name": "bidListing",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The bid listing account to cancel"
+          ]
+        },
+        {
+          "name": "listerTokenAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Lister's token account (to verify they still own the NFT)"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "distributeCollectionFees",
@@ -1230,14 +1250,6 @@ export type BondingCurveSystem = {
           {
             "name": "name",
             "type": "string"
-          },
-          {
-            "name": "symbol",
-            "type": "string"
-          },
-          {
-            "name": "uri",
-            "type": "string"
           }
         ]
       }
@@ -1707,29 +1719,6 @@ export type BondingCurveSystem = {
               "Royalty percentage (basis points)"
             ],
             "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "BidStatus",
-      "docs": [
-        "Bid status enumeration"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Active"
-          },
-          {
-            "name": "Accepted"
-          },
-          {
-            "name": "Cancelled"
-          },
-          {
-            "name": "Expired"
           }
         ]
       }
@@ -2263,6 +2252,16 @@ export type BondingCurveSystem = {
       "code": 12140,
       "name": "InvalidListingStatus",
       "msg": "Invalid listing status"
+    },
+    {
+      "code": 12141,
+      "name": "UnauthorizedLister",
+      "msg": "Unauthorized lister"
+    },
+    {
+      "code": 12142,
+      "name": "CannotCancelWithActiveBids",
+      "msg": "Cannot cancel listing with active bids"
     },
     {
       "code": 12150,
@@ -2398,11 +2397,6 @@ export const IDL: BondingCurveSystem = {
           "isSigner": true
         },
         {
-          "name": "bondingCurvePool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -2413,32 +2407,12 @@ export const IDL: BondingCurveSystem = {
           "isSigner": false
         },
         {
-          "name": "nftEscrow",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "minterTracker",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "metadata",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenMetadataProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -2847,6 +2821,51 @@ export const IDL: BondingCurveSystem = {
           }
         }
       ]
+    },
+    {
+      "name": "cancelListing",
+      "accounts": [
+        {
+          "name": "lister",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The NFT mint that was listed"
+          ]
+        },
+        {
+          "name": "bidListing",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The bid listing account to cancel"
+          ]
+        },
+        {
+          "name": "listerTokenAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Lister's token account (to verify they still own the NFT)"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "distributeCollectionFees",
@@ -3514,14 +3533,6 @@ export const IDL: BondingCurveSystem = {
           {
             "name": "name",
             "type": "string"
-          },
-          {
-            "name": "symbol",
-            "type": "string"
-          },
-          {
-            "name": "uri",
-            "type": "string"
           }
         ]
       }
@@ -3991,29 +4002,6 @@ export const IDL: BondingCurveSystem = {
               "Royalty percentage (basis points)"
             ],
             "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "BidStatus",
-      "docs": [
-        "Bid status enumeration"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Active"
-          },
-          {
-            "name": "Accepted"
-          },
-          {
-            "name": "Cancelled"
-          },
-          {
-            "name": "Expired"
           }
         ]
       }
@@ -4547,6 +4535,16 @@ export const IDL: BondingCurveSystem = {
       "code": 12140,
       "name": "InvalidListingStatus",
       "msg": "Invalid listing status"
+    },
+    {
+      "code": 12141,
+      "name": "UnauthorizedLister",
+      "msg": "Unauthorized lister"
+    },
+    {
+      "code": 12142,
+      "name": "CannotCancelWithActiveBids",
+      "msg": "Cannot cancel listing with active bids"
     },
     {
       "code": 12150,

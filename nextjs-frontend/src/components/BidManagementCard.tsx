@@ -4,6 +4,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { BN } from '@coral-xyz/anchor';
 import { useBidManagement } from '../hooks/useBidManagement';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { PROGRAM_ID } from '@/utils/idl';
 
 interface BidData {
   bidId: number;
@@ -47,7 +48,6 @@ export const BidManagementCard: React.FC<BidManagementCardProps> = ({
       }
 
       // Derive the bid account PDA
-      const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
       const [bidAccount] = PublicKey.findProgramAddressSync(
         [Buffer.from('bid'), bidData.nftMint.toBuffer(), Buffer.from(new BN(bidId).toArray('le', 8))],
         PROGRAM_ID
@@ -78,7 +78,6 @@ export const BidManagementCard: React.FC<BidManagementCardProps> = ({
       }
 
       // Derive the required accounts
-      const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
       
       // Derive bid listing account
       const [bidListingAccount] = PublicKey.findProgramAddressSync(

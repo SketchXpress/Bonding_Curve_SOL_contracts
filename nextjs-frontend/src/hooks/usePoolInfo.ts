@@ -5,9 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import { IDL } from '../utils/idl';
-
-const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
+import { IDL, PROGRAM_ID } from '../utils/idl';
 
 export interface PoolInfo {
   address: PublicKey;
