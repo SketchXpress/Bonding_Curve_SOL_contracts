@@ -4,9 +4,7 @@ import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+import { PROGRAM_ID, IDL } from '../utils/idl';
 
 export const useBidListing = () => {
   const { connection } = useConnection();
@@ -42,7 +40,7 @@ export const useBidListing = () => {
     setIsLoading(true);
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive PDAs
       const [bidListingPda] = PublicKey.findProgramAddressSync(
@@ -57,7 +55,7 @@ export const useBidListing = () => {
       );
 
       // Fetch minter tracker to get collection mint
-      const minterTrackerData = await program.account.minterTracker.fetch(minterTrackerPda);
+      const minterTrackerData = await (program.account as any).minterTracker.fetch(minterTrackerPda);
       const collectionMint = minterTrackerData.collection;
 
       const [poolPda] = PublicKey.findProgramAddressSync(
@@ -107,10 +105,10 @@ export const useBidListing = () => {
   const getBidListing = useCallback(async (listingPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       // Fetch listing account data
-      const listingData = await program.account.bidListing.fetch(listingPubkey);
+      const listingData = await (program.account as any).bidListing.fetch(listingPubkey);
       
       return {
         nftMint: listingData.nftMint,
@@ -137,10 +135,10 @@ export const useBidListing = () => {
   const getUserListings = useCallback(async (userPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       // Get all bid listing accounts where lister equals userPubkey
-      const bidListings = await program.account.bidListing.all([
+      const bidListings = await (program.account as any).bidListing.all([
         {
           memcmp: {
             offset: 8 + 32, // Skip discriminator (8) + nftMint (32) to get to lister field
@@ -149,7 +147,7 @@ export const useBidListing = () => {
         },
       ]);
 
-      return bidListings.map(listing => ({
+      return bidListings.map((listing: any) => ({
         publicKey: listing.publicKey,
         account: {
           nftMint: listing.account.nftMint,
@@ -180,10 +178,10 @@ export const useBidListing = () => {
     setIsLoading(true);
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Get listing data to find the NFT mint
-      const listingData = await program.account.bidListing.fetch(listingPubkey);
+      const listingData = await (program.account as any).bidListing.fetch(listingPubkey);
       const nftMint = listingData.nftMint;
 
       // Verify that the connected wallet is the lister

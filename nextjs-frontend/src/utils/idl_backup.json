@@ -1,7 +1,6 @@
 {
   "version": "0.1.0",
   "name": "bonding_curve_system",
-  "address": "Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa",
   "docs": [
     "SketchXpress Bonding Curve System",
     "Revolutionary NFT marketplace with dynamic pricing"
@@ -311,14 +310,7 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "SellNftArgs"
-          }
-        }
-      ]
+      "args": []
     },
     {
       "name": "listForBids",
@@ -615,14 +607,7 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CancelListingArgs"
-          }
-        }
-      ]
+      "args": []
     },
     {
       "name": "distributeCollectionFees",
@@ -657,14 +642,7 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "DistributeCollectionFeesArgs"
-          }
-        }
-      ]
+      "args": []
     },
     {
       "name": "migrateToTensor",
@@ -690,14 +668,7 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "MigrateToTensorArgs"
-          }
-        }
-      ]
+      "args": []
     }
   ],
   "accounts": [
@@ -1265,20 +1236,6 @@
       }
     },
     {
-      "name": "CancelListingArgs",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
-    {
-      "name": "SellNftArgs",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
-    {
       "name": "DistributeCollectionFeesArgs",
       "type": {
         "kind": "struct",
@@ -1409,32 +1366,6 @@
               "Duration in seconds"
             ],
             "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "BidStatus",
-      "docs": [
-        "Status of an individual bid"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Active"
-          },
-          {
-            "name": "Accepted"
-          },
-          {
-            "name": "Cancelled"
-          },
-          {
-            "name": "Expired"
-          },
-          {
-            "name": "Outbid"
           }
         ]
       }
@@ -1870,6 +1801,32 @@
           },
           {
             "name": "Expired"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BidStatus",
+      "docs": [
+        "Status of an individual bid"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Cancelled"
+          },
+          {
+            "name": "Expired"
+          },
+          {
+            "name": "Outbid"
           }
         ]
       }

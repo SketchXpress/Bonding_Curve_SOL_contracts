@@ -319,10 +319,9 @@ export function useBondingCurveHistory(limit: number = 50) {
         let coder;
         
         try {
-          // Attempt 1: Direct Program creation - bypass safe wrapper temporarily
-          console.log('useBondingCurveHistory: Attempting direct program creation...');
+          // Create program with corrected IDL
+          console.log('useBondingCurveHistory: Creating program with corrected IDL...');
           
-          // Ensure the IDL has the required address field
           const directIdl = {
             ...BondingCurveIDL,
             address: PROGRAM_ID
@@ -330,11 +329,11 @@ export function useBondingCurveHistory(limit: number = 50) {
           
           console.log('useBondingCurveHistory: IDL address field:', directIdl.address);
           console.log('useBondingCurveHistory: IDL instructions count:', directIdl.instructions?.length);
-          console.log('useBondingCurveHistory: IDL types count:', directIdl.types?.length);
+          console.log('useBondingCurveHistory: IDL accounts count:', directIdl.accounts?.length);
           
           program = new Program(directIdl as any, provider);
           coder = program.coder.instruction;
-          console.log('useBondingCurveHistory: Program created successfully with direct approach');
+          console.log('useBondingCurveHistory: ✓ Full IDL Program created successfully');
         } catch (directError) {
           console.warn('Safe program creation failed:', directError);
           

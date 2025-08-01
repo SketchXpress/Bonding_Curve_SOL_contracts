@@ -5,9 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+import { PROGRAM_ID, IDL } from '../utils/idl';
 
 export interface CreatePoolParams {
   collectionMint: PublicKey;
@@ -51,7 +49,7 @@ export const useCreatePool = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Verify the program exists
       console.log('Checking if program exists at:', PROGRAM_ID.toString());
@@ -88,7 +86,7 @@ export const useCreatePool = () => {
 
       // Check if pool already exists
       try {
-        const existingPool = await program.account.bondingCurvePool.fetch(poolPda);
+        const existingPool = await (program.account as any).bondingCurvePool.fetch(poolPda);
         if (existingPool) {
           throw new Error('Pool already exists for this collection');
         }
@@ -186,10 +184,10 @@ export const useCreatePool = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       const poolPda = getPoolPda(collectionMint);
-      const poolAccount = await program.account.bondingCurvePool.fetch(poolPda);
+      const poolAccount = await (program.account as any).bondingCurvePool.fetch(poolPda);
       
       return {
         address: poolPda,

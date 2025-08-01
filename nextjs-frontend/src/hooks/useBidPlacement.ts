@@ -2,10 +2,9 @@ import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+import { PROGRAM_ID, IDL } from '../utils/idl';
 
 export const useBidPlacement = () => {
   const { connection } = useConnection();
@@ -41,7 +40,7 @@ export const useBidPlacement = () => {
     setIsLoading(true);
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive PDAs
       const [bidListingPda] = PublicKey.findProgramAddressSync(
@@ -63,6 +62,13 @@ export const useBidPlacement = () => {
         PROGRAM_ID
       );
 
+      // Derive bonding curve pool PDA - assuming it's derived from collection mint
+      // You may need to adjust this based on actual derivation logic
+      const [bondingCurvePoolPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('pool'), nftMint.toBuffer()], 
+        PROGRAM_ID
+      );
+
       // Convert amount from SOL to lamports
       const amountInLamports = new BN(amount * 1e9);
 
@@ -75,7 +81,10 @@ export const useBidPlacement = () => {
           bidListing: bidListingPda,
           bid: bidPda,
           bidEscrow: bidEscrowPda,
+          bondingCurvePool: bondingCurvePoolPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         })
         .transaction();
 
@@ -95,10 +104,10 @@ export const useBidPlacement = () => {
   const getBid = useCallback(async (bidPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       // Fetch bid account data
-      const bidData = await program.account.bid.fetch(bidPubkey);
+      const bidData = await (program.account as any).bid.fetch(bidPubkey);
       
       return {
         bidId: bidData.bidId.toNumber(),
@@ -130,10 +139,10 @@ export const useBidPlacement = () => {
   const getUserBids = useCallback(async (userPubkey: PublicKey) => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       // Get all bid accounts where bidder equals userPubkey
-      const bids = await program.account.bid.all([
+      const bids = await (program.account as any).bid.all([
         {
           memcmp: {
             offset: 8 + 8 + 32, // Skip discriminator (8) + bidId (8) + details struct start, then nftMint (32) to get to bidder field
@@ -142,7 +151,7 @@ export const useBidPlacement = () => {
         },
       ]);
 
-      return bids.map(bid => ({
+      return bids.map((bid: any) => ({
         bidId: bid.account.bidId.toNumber(),
         nftMint: bid.account.details.nftMint,
         bidder: bid.account.details.bidder,
@@ -160,10 +169,10 @@ export const useBidPlacement = () => {
   const getBidsForNft = useCallback(async (nftMint: PublicKey) => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       // Get all bid accounts where nftMint equals the specified mint
-      const bids = await program.account.bid.all([
+      const bids = await (program.account as any).bid.all([
         {
           memcmp: {
             offset: 8 + 8, // Skip discriminator (8) + bidId (8) to get to details.nftMint field
@@ -172,7 +181,7 @@ export const useBidPlacement = () => {
         },
       ]);
 
-      return bids.map(bid => ({
+      return bids.map((bid: any) => ({
         bidId: bid.account.bidId.toNumber(),
         nftMint: bid.account.details.nftMint,
         bidder: bid.account.details.bidder,
@@ -190,11 +199,11 @@ export const useBidPlacement = () => {
   const getHighestBid = useCallback(async (nftMint: PublicKey) => {
     try {
       const bids = await getBidsForNft(nftMint);
-      const activeBids = bids.filter(bid => bid.status === 'Active');
+      const activeBids = bids.filter((bid: any) => bid.status === 'Active');
       
       if (activeBids.length === 0) return null;
       
-      return activeBids.reduce((highest, current) => 
+      return activeBids.reduce((highest: any, current: any) => 
         current.amount > highest.amount ? current : highest
       );
     } catch (error) {

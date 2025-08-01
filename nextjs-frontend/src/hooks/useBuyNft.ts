@@ -12,9 +12,7 @@ import {
   getAccount,
 } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+import { PROGRAM_ID, IDL } from '../utils/idl';
 
 export interface BuyNftParams {
   nftMint: PublicKey;
@@ -57,7 +55,7 @@ export const useBuyNft = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -69,7 +67,7 @@ export const useBuyNft = () => {
       );
 
       // Get NFT data to find the pool and current owner
-      const nftDataAccount = await program.account.nftData.fetch(nftDataPda);
+      const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
       const poolAddress = nftDataAccount.collectionId; // Assuming collection_id references the pool
       const currentOwner = nftDataAccount.owner;
 
@@ -166,7 +164,7 @@ export const useBuyNft = () => {
   const getCurrentPrice = useCallback(async (nftMint: PublicKey): Promise<number | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -177,8 +175,8 @@ export const useBuyNft = () => {
         PROGRAM_ID
       );
 
-      const nftDataAccount = await program.account.nftData.fetch(nftDataPda);
-      const poolAccount = await program.account.bondingCurvePool.fetch(nftDataAccount.collectionId);
+      const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
+      const poolAccount = await (program.account as any).bondingCurvePool.fetch(nftDataAccount.collectionId);
       
       // Return the last price from NFT data (in lamports, convert to SOL)
       return nftDataAccount.lastPrice.toNumber() / 1e9;
@@ -191,7 +189,7 @@ export const useBuyNft = () => {
   const getNftOwner = useCallback(async (nftMint: PublicKey): Promise<PublicKey | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive NFT data PDA
       const [nftDataPda] = PublicKey.findProgramAddressSync(
@@ -202,7 +200,7 @@ export const useBuyNft = () => {
         PROGRAM_ID
       );
 
-      const nftDataAccount = await program.account.nftData.fetch(nftDataPda);
+      const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
       return nftDataAccount.owner;
     } catch (err) {
       console.error('Error getting NFT owner:', err);

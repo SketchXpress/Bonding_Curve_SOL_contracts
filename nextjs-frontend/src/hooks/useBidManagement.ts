@@ -4,9 +4,7 @@ import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+import { PROGRAM_ID, IDL } from '../utils/idl';
 
 export interface BidManagementResult {
   isLoading: boolean;
@@ -51,10 +49,10 @@ export const useBidManagement = (): BidManagementResult => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Get bid data to find NFT mint and bid listing
-      const bidData = await program.account.bid.fetch(bidAccount);
+      const bidData = await (program.account as any).bid.fetch(bidAccount);
       const nftMint = bidData.details.nftMint;
 
       // Derive the bid listing account
@@ -104,14 +102,14 @@ export const useBidManagement = (): BidManagementResult => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Get bid listing data
-      const bidListingData = await program.account.bidListing.fetch(bidListingAccount);
+      const bidListingData = await (program.account as any).bidListing.fetch(bidListingAccount);
       const nftMint = bidListingData.nftMint;
 
       // Get bid data
-      const bidData = await program.account.bid.fetch(bidAccount);
+      const bidData = await (program.account as any).bid.fetch(bidAccount);
       const bidder = bidData.details.bidder;
 
       // Derive the minter tracker account
@@ -138,7 +136,7 @@ export const useBidManagement = (): BidManagementResult => {
       );
 
       // Get creator from minter tracker
-      const minterTrackerData = await program.account.minterTracker.fetch(minterTrackerAccount);
+      const minterTrackerData = await (program.account as any).minterTracker.fetch(minterTrackerAccount);
       const creator = minterTrackerData.originalMinter;
       const collection = minterTrackerData.collection;
 

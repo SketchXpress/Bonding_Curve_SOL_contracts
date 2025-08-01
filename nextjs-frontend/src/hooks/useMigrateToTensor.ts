@@ -9,9 +9,7 @@ import {
   getAssociatedTokenAddress,
 } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
-import idl from '../idl/bonding_curve_system.json';
-
-const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
+import { PROGRAM_ID, IDL } from '../utils/idl';
 
 export interface MigrateToTensorParams {
   collectionMint: PublicKey;
@@ -53,7 +51,7 @@ export const useMigrateToTensor = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
 
       // Derive pool PDA
       const [poolPda] = PublicKey.findProgramAddressSync(
@@ -93,7 +91,7 @@ export const useMigrateToTensor = () => {
 
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
@@ -103,7 +101,7 @@ export const useMigrateToTensor = () => {
         PROGRAM_ID
       );
 
-      const poolAccount = await program.account.bondingCurvePool.fetch(poolPda);
+      const poolAccount = await (program.account as any).bondingCurvePool.fetch(poolPda);
       
       // Check if the market cap has reached the threshold with proper error handling
       const thresholdMarketCap = 690_000_000; // $69k in lamports (690 SOL * 1e6 from constants)
@@ -127,7 +125,7 @@ export const useMigrateToTensor = () => {
   } | null> => {
     try {
       const provider = getProvider();
-      const program = new Program(idl as any, PROGRAM_ID, provider) as Program<BondingCurveSystem>;
+      const program = new Program(IDL as any, provider);
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
@@ -137,7 +135,7 @@ export const useMigrateToTensor = () => {
         PROGRAM_ID
       );
 
-      const poolAccount = await program.account.bondingCurvePool.fetch(poolPda);
+      const poolAccount = await (program.account as any).bondingCurvePool.fetch(poolPda);
       
       // Add proper error handling for stats.marketCap
       if (!poolAccount?.stats?.marketCap) {

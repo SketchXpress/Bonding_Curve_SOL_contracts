@@ -1,9 +1,4 @@
-import { PublicKey } from '@solana/web3.js';
-
-export const PROGRAM_ID = new PublicKey('Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa');
-
-export const IDL = {
-  "address": "Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa",
+{
   "version": "0.1.0",
   "name": "bonding_curve_system",
   "docs": [
@@ -2317,4 +2312,4 @@ export const IDL = {
       "msg": "Invalid percentage"
     }
   ]
-} as const;
+}
