@@ -37,12 +37,10 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "basePrice",
-          "type": "u64"
-        },
-        {
-          "name": "growthFactor",
-          "type": "u64"
+          "name": "args",
+          "type": {
+            "defined": "CreatePoolArgs"
+          }
         }
       ]
     },
@@ -105,16 +103,10 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "symbol",
-          "type": "string"
-        },
-        {
-          "name": "uri",
-          "type": "string"
+          "name": "args",
+          "type": {
+            "defined": "CreateCollectionNftArgs"
+          }
         }
       ]
     },
@@ -184,16 +176,10 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "symbol",
-          "type": "string"
-        },
-        {
-          "name": "uri",
-          "type": "string"
+          "name": "args",
+          "type": {
+            "defined": "MintNftArgs"
+          }
         }
       ]
     },
@@ -253,9 +239,9 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "maxPrice",
+          "name": "args",
           "type": {
-            "option": "u64"
+            "defined": "BuyNftArgs"
           }
         }
       ]
@@ -392,13 +378,9 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "minBid",
-          "type": "u64"
-        },
-        {
-          "name": "durationHours",
+          "name": "args",
           "type": {
-            "option": "u32"
+            "defined": "ListForBidsArgs"
           }
         }
       ]
@@ -452,8 +434,10 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "amount",
-          "type": "u64"
+          "name": "args",
+          "type": {
+            "defined": "PlaceBidArgs"
+          }
         }
       ]
     },
@@ -523,8 +507,10 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "bidId",
-          "type": "u64"
+          "name": "args",
+          "type": {
+            "defined": "AcceptBidArgs"
+          }
         }
       ]
     },
@@ -576,8 +562,10 @@ export const IDL = {
       ],
       "args": [
         {
-          "name": "bidId",
-          "type": "u64"
+          "name": "args",
+          "type": {
+            "defined": "CancelBidArgs"
+          }
         }
       ]
     },
@@ -690,7 +678,7 @@ export const IDL = {
   ],
   "accounts": [
     {
-      "name": "nftHolderFeeClaim",
+      "name": "NftHolderFeeClaim",
       "type": {
         "kind": "struct",
         "fields": [
@@ -722,7 +710,7 @@ export const IDL = {
       }
     },
     {
-      "name": "bidListing",
+      "name": "BidListing",
       "docs": [
         "Account for managing NFT bid listings with dynamic pricing"
       ],
@@ -1081,7 +1069,7 @@ export const IDL = {
       }
     },
     {
-      "name": "bondingCurvePool",
+      "name": "BondingCurvePool",
       "docs": [
         "Bonding curve pool - main account"
       ],
@@ -1133,7 +1121,7 @@ export const IDL = {
       }
     },
     {
-      "name": "userAccount",
+      "name": "UserAccount",
       "type": {
         "kind": "struct",
         "fields": [
