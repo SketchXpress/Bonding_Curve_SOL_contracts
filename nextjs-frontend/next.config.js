@@ -9,7 +9,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Try specifying the directories explicitly
+  // Remove deprecated appDir setting - it's enabled by default in Next.js 15
   experimental: {},
 };
 

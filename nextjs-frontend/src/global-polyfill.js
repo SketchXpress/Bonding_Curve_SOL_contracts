@@ -5,6 +5,9 @@ if (typeof window !== 'undefined') {
   console.log('Global polyfill: Applying BN patch immediately');
   
   try {
+    // Import deep Solana patch first
+    import('./utils/deep-solana-patch.ts');
+    
     // Import the polyfill directly
     require('./utils/bn-polyfill-direct.js');
     console.log('Global polyfill: Successfully applied');
