@@ -1,0 +1,23 @@
+version: '3'
+services:
+  solana-dev:
+    image: random-sol_contracts-solana-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - solana-config:/root/.config/solana
+      - cargo-registry:/root/.cargo/registry
+      - yarn-cache:/usr/local/share/.cache/yarn
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    environment:
+      - ANCHOR_WALLET=/root/.config/solana/id.json
+    command: tail -f /dev/null
+
+volumes:
+  solana-config:
+  cargo-registry:
+  yarn-cache:

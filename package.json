@@ -1,50 +1,52 @@
 {
-  "name": "nextjs-frontend",
-  "version": "0.1.0",
+  "name": "sketchxpress-bonding-curve-system",
+  "version": "1.0.0",
+  "description": "SketchXpress Bonding Curve System - Dynamic NFT marketplace on Solana",
   "private": true,
+  "author": "SketchXpress Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SketchXpress/Bonding_Curve_SOL_contracts.git"
+  },
+  "keywords": [
+    "solana",
+    "nft",
+    "marketplace",
+    "bonding-curve",
+    "defi",
+    "web3",
+    "anchor",
+    "nextjs"
+  ],
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "prestart": "node bn-polyfill-loader.js",
-    "start": "cross-env NODE_ENV=production node server.js",
-    "start:custom": "cross-env NODE_ENV=production node server.js",
-    "lint": "next lint",
-    "rebuild": "npm rebuild bigint-buffer --update-binary"
+    "dev": "cd nextjs-frontend && npm run dev",
+    "build": "anchor build && cd nextjs-frontend && npm run build",
+    "test": "anchor test",
+    "test:frontend": "cd nextjs-frontend && npm run test",
+    "deploy": "anchor deploy",
+    "deploy:devnet": "anchor deploy --provider.cluster devnet",
+    "deploy:mainnet": "anchor deploy --provider.cluster mainnet",
+    "lint": "cd nextjs-frontend && npm run lint",
+    "format": "cargo fmt && cd nextjs-frontend && npm run format",
+    "setup": "npm install && cd nextjs-frontend && npm install",
+    "start": "cd nextjs-frontend && npm run start",
+    "clean": "anchor clean && cd nextjs-frontend && rm -rf .next node_modules",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.29.0",
-    "@solana/spl-token": "^0.4.13",
-    "@solana/wallet-adapter-base": "^0.9.25",
-    "@solana/wallet-adapter-react": "^0.15.37",
-    "@solana/wallet-adapter-react-ui": "^0.9.37",
-    "@solana/wallet-adapter-wallets": "^0.19.35",
-    "@solana/web3.js": "^1.98.0",
-    "axios": "^1.9.0",
-    "bn.js": "^5.2.1",
-    "chart.js": "^4.4.9",
-    "helius-sdk": "^1.5.1",
-    "next": "15.3.1",
-    "pino-pretty": "^13.0.0",
-    "react": "^19.0.0",
-    "react-chartjs-2": "^5.3.0",
-    "react-dom": "^19.0.0"
+    "@coral-xyz/anchor": "^0.29.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/bn.js": "^5.1.6",
     "@types/chai": "^5.2.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/webpack": "^5.28.5",
-    "bigint-buffer": "^1.1.5",
-    "cross-env": "^7.0.3",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.1",
-    "node-gyp": "^11.2.0",
-    "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
