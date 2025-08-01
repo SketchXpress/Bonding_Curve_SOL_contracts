@@ -4,10 +4,8 @@ import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider } from '@coral-xyz/anchor';
-import { 
-  TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddress,
-} from '@solana/spl-token';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { IDL, PROGRAM_ID } from '../utils/idl';
 

@@ -10,12 +10,11 @@ import {
   ComputeBudgetProgram
 } from '@solana/web3.js';
 
-// Define the correct program IDs directly
-const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+// Import centralized program IDs
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 
-// Import SPL Token functions using require to avoid TypeScript issues
-const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, getAccount } = require('@solana/spl-token');
+// Import SPL Token functions directly to avoid package conflicts
+import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
 
@@ -70,7 +69,8 @@ export const useMintNft = () => {
   const mintNft = async (
     name: string,
     symbol: string,
-    uri: string
+    uri: string,
+    collectionMint: string
   ) => {
     if (!program || !wallet.publicKey || !provider) {
       setError('Program not initialized or wallet not connected');
@@ -88,11 +88,11 @@ export const useMintNft = () => {
     
     try {
       // Validate inputs
-      if (!name || !symbol || !uri) {
-        throw new Error('Name, symbol, and URI are required');
+      if (!name || !symbol || !uri || !collectionMint) {
+        throw new Error('Name, symbol, URI, and collection mint are required');
       }
       
-      console.log('Using minimal mint NFT with:', { name, symbol, uri });
+      console.log('Minting NFT with collection:', { name, symbol, uri, collectionMint });
       
       // Add debugging for program context
       console.log('Program ID from context:', program.programId?.toString());
@@ -127,7 +127,19 @@ export const useMintNft = () => {
       console.log('ASSOCIATED_TOKEN_PROGRAM_ID:', ASSOCIATED_TOKEN_PROGRAM_ID.toString());
       console.log('TOKEN_METADATA_PROGRAM_ID:', TOKEN_METADATA_PROGRAM_ID.toString());
 
-      // Derive metadata account PDA
+      // Convert collection mint string to PublicKey
+      const collectionMintPubkey = new PublicKey(collectionMint);
+      
+      // Derive pool PDA for the collection
+      const [poolAddress] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('pool'),
+          collectionMintPubkey.toBuffer(),
+        ],
+        program.programId
+      );
+
+      // Derive metadata account PDA for NFT
       const [metadataAddress] = PublicKey.findProgramAddressSync(
         [
           Buffer.from('metadata'),
@@ -137,20 +149,37 @@ export const useMintNft = () => {
         TOKEN_METADATA_PROGRAM_ID
       );
 
-      console.log('Derived metadata address:', metadataAddress.toString());
+      // Derive collection metadata account PDA
+      const [collectionMetadataAddress] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('metadata'),
+          TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+          collectionMintPubkey.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+      );
 
-      // Execute the transaction to mint the NFT with minimal args structure
+      console.log('Derived addresses:');
+      console.log('- NFT metadata:', metadataAddress.toString());
+      console.log('- Collection metadata:', collectionMetadataAddress.toString());
+      console.log('- Pool:', poolAddress.toString());
+
+      // Execute the transaction to mint the NFT with collection integration
       const tx = await program.methods
         .mintNft({
           name: name,
           symbol: symbol,
-          uri: uri
+          uri: uri,
+          collectionMint: collectionMintPubkey
         })
         .accounts({
           minter: wallet.publicKey,
           nftMint: nftMint,
           minterTokenAccount: minterTokenAccount,
+          collectionMint: collectionMintPubkey,
+          pool: poolAddress,
           metadata: metadataAddress,
+          collectionMetadata: collectionMetadataAddress,
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,

@@ -2,10 +2,11 @@ import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from '@solana/spl-token';
+import { getAssociatedTokenAddress, getMint } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { PROGRAM_ID, IDL } from '../utils/idl';
 
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 export interface BidManagementResult {
   isLoading: boolean;
   error: string | null;

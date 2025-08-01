@@ -16,6 +16,20 @@ try {
   console.warn('[Enhanced Global Polyfill] Could not load Solana BN patch:', error);
 }
 
+// Validate Solana program IDs early in the process
+try {
+  if (typeof require !== 'undefined') {
+    const { validateProgramIds } = require('./utils/solana-constants');
+    if (validateProgramIds()) {
+      console.log('[Enhanced Global Polyfill] ✓ Solana program IDs validated');
+    } else {
+      console.error('[Enhanced Global Polyfill] ✗ Solana program ID validation failed');
+    }
+  }
+} catch (error) {
+  console.warn('[Enhanced Global Polyfill] Could not validate Solana program IDs:', error);
+}
+
 // Import and initialize the isPublicKeyData patch
 try {
   if (typeof require !== 'undefined') {

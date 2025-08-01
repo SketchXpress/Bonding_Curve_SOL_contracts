@@ -8,12 +8,8 @@ import {
   SYSVAR_RENT_PUBKEY,
   Keypair
 } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 import { PROGRAM_ID } from '@/utils/idl';
-import { 
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-} from '@solana/spl-token';
-
 // Import SPL Token functions using require to avoid TypeScript issues
 const { getAssociatedTokenAddress } = require('@solana/spl-token');
 

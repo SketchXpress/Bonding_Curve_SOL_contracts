@@ -1,3 +1,4 @@
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from './solana-constants';
 /**
  * nft.ts
  * Utility functions for NFT operations in the marketplace
@@ -10,7 +11,6 @@ import {
   JsonMetadata,   // Type for NFT metadata JSON
   findMetadataPda // Helper to find metadata PDAs
 } from '@metaplex-foundation/js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor';
 import { Listing } from '../types/marketplace';
 import { PROGRAM_ID } from './idl';

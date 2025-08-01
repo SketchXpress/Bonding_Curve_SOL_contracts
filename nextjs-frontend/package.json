@@ -9,7 +9,9 @@
     "start": "cross-env NODE_ENV=production node server.js",
     "start:custom": "cross-env NODE_ENV=production node server.js",
     "lint": "next lint",
-    "rebuild": "yarn rebuild"
+    "rebuild": "yarn rebuild",
+    "patch-tokens": "node patch-token-imports.js",
+    "postinstall": "node patch-token-imports.js"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

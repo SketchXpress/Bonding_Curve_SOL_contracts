@@ -6,10 +6,11 @@ use anchor_lang::prelude::*;
 use mpl_token_metadata::{instructions::CreateMetadataAccountV3, types::DataV2};
 use anchor_lang::solana_program::program::invoke;
 use crate::ErrorCode;
+use crate::math::bonding_curve::calculate_bonding_curve_price;
 
-/// Minimal NFT minting instruction to test stack overflow fix
+/// NFT minting instruction with collection and bonding curve integration
 pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
-    msg!("Starting minimal NFT mint");
+    msg!("Starting NFT mint for collection: {}", args.collection_mint);
 
     // Validate input
     if args.name.is_empty() || args.symbol.is_empty() {
@@ -17,9 +18,21 @@ pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     }
     msg!("Input validation passed");
 
-    // Simple fixed price for testing
-    let price = 1_000_000u64; // 0.001 SOL
-    msg!("Price set to {} lamports", price);
+    // Get current price from bonding curve pool
+    let pool = &mut ctx.accounts.pool;
+    let current_supply = pool.state.current_supply;
+    let price = calculate_bonding_curve_price(
+        pool.config.base_price,
+        pool.config.growth_factor,
+        current_supply
+    )?;
+    msg!("Current NFT price: {} lamports for supply: {}", price, current_supply);
+
+    // Update pool state
+    pool.state.current_supply = pool.state.current_supply.checked_add(1)
+        .ok_or(ErrorCode::MathOverflow)?;
+    pool.stats.total_trades = pool.stats.total_trades.checked_add(1)
+        .ok_or(ErrorCode::MathOverflow)?;
 
     // Mint the NFT token
     let cpi_accounts = anchor_spl::token::MintTo {
@@ -32,14 +45,19 @@ pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     anchor_spl::token::mint_to(cpi_ctx, 1)?;
     msg!("NFT token minted successfully");
 
-    // Create NFT metadata
+    // Create NFT metadata with collection reference
+    let collection = Some(mpl_token_metadata::types::Collection {
+        verified: false, // Will be verified by collection update authority
+        key: args.collection_mint,
+    });
+
     let data_v2 = DataV2 {
         name: args.name.clone(),
         symbol: args.symbol.clone(),
         uri: args.uri.clone(),
         seller_fee_basis_points: 0,
         creators: None,
-        collection: None,
+        collection,
         uses: None,
     };
 

@@ -124,8 +124,29 @@
           "isSigner": false
         },
         {
+          "name": "collectionMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Collection mint that this NFT belongs to"
+          ]
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Pool associated with the collection"
+          ]
+        },
+        {
           "name": "metadata",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1268,6 +1289,10 @@
           {
             "name": "uri",
             "type": "string"
+          },
+          {
+            "name": "collectionMint",
+            "type": "publicKey"
           }
         ]
       }

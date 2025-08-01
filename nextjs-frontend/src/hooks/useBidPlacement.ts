@@ -2,10 +2,10 @@ import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { PROGRAM_ID, IDL } from '../utils/idl';
 
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 export const useBidPlacement = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
