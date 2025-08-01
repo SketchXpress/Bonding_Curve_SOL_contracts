@@ -2,6 +2,7 @@
 export const IDL = {
     "version":  "0.1.0",
     "name":  "bonding_curve_system",
+    "address": "Du1BzHwLWSic1Hhmyszy5opgBn1wBUvvxydwfn56uoqa",
     "docs":  [
                  "SketchXpress Bonding Curve System",
                  "Revolutionary NFT marketplace with dynamic pricing"

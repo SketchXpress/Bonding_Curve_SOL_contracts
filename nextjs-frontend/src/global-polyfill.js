@@ -16,6 +16,21 @@ try {
   console.warn('[Enhanced Global Polyfill] Could not load Solana BN patch:', error);
 }
 
+// Import and initialize the isPublicKeyData patch
+try {
+  if (typeof require !== 'undefined') {
+    require('./utils/isPublicKeyData-patch');
+  } else if (typeof window !== 'undefined') {
+    // Dynamic import for browser environment
+    import('./utils/isPublicKeyData-patch.ts').catch(err => {
+      console.warn('[Enhanced Global Polyfill] Could not load isPublicKeyData patch:', err);
+    });
+  }
+  console.log('[Enhanced Global Polyfill] ✓ isPublicKeyData patch loaded and executed');
+} catch (error) {
+  console.warn('[Enhanced Global Polyfill] Could not load isPublicKeyData patch:', error);
+}
+
 // Ultra-comprehensive BN.js compatibility patch - enhanced with real library requirements
 function ultraComprehensiveBNPatch() {
   console.log('[Ultra Comprehensive BN Patch] Starting enhanced BN compatibility...');

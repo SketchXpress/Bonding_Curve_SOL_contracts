@@ -7,6 +7,7 @@ import { PublicKey } from '@solana/web3.js';
 import { createContext, useContext } from 'react';
 import { IDL } from '../utils/idl';
 import { useAnchorFallback } from '../hooks/useAnchorFallback';
+import dynamic from 'next/dynamic';
 
 // Apply BN patch immediately when this module loads
 if (typeof window !== 'undefined') {
@@ -16,6 +17,9 @@ if (typeof window !== 'undefined') {
     
     // Import the deep Solana patch
     import('../utils/deep-solana-patch');
+    
+    // Import the targeted isPublicKeyData patch
+    import('../utils/isPublicKeyData-patch');
     
     // Ensure BN is available and properly patched
     const BN = require('bn.js');
@@ -73,9 +77,20 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
   const [program, setProgram] = useState<Program | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Set isClient to true when component mounts (client-side only)
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Initialize provider and program when wallet connects
   useEffect(() => {
+    // Only initialize when on client side
+    if (!isClient) {
+      return;
+    }
+
     const initializeAnchor = async () => {
       try {
         if (!wallet.publicKey || !wallet.signAllTransactions || !wallet.signTransaction) {
@@ -382,7 +397,7 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
     };
 
     initializeAnchor();
-  }, [connection, wallet.publicKey, wallet.signAllTransactions, wallet.signTransaction]);
+  }, [connection, wallet.publicKey, wallet.signAllTransactions, wallet.signTransaction, isClient]);
 
   // Handle fallback mode - retry with enhanced BN patching
   useEffect(() => {
@@ -462,9 +477,11 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
 
   return (
     <AnchorContext.Provider value={contextValue}>
-      {children}
+      {/* Only render children when on client side to prevent SSR issues */}
+      {isClient ? children : <div>Loading Anchor context...</div>}
     </AnchorContext.Provider>
   );
 };
 
-export default AnchorContextProvider;
+// Export with SSR disabled for Next.js compatibility
+export default dynamic(() => Promise.resolve(AnchorContextProvider), { ssr: false });

@@ -3,6 +3,13 @@ import type { AppProps } from "next/app";
 import { useEffect } from "react";
 import GlobalPatcher from "@/components/GlobalPatcher"; // Import GlobalPatcher
 
+// Import wallet adapter components
+import WalletContextProvider from "../contexts/WalletContextProvider";
+import AnchorContextProvider from "../contexts/AnchorContextProvider";
+
+// Import wallet adapter styles
+import "@solana/wallet-adapter-react-ui/styles.css";
+
 // Import BN polyfill patches - these are likely handled by GlobalPatcher now or bn-polyfill-client
 // import "../utils/compiled/bn-polyfill";
 // import "../utils/compiled/bn-polyfill-client"; // This is called by GlobalPatcher
@@ -80,7 +87,11 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <GlobalPatcher /> {/* Add GlobalPatcher here */}
-      <Component {...pageProps} />
+      <WalletContextProvider>
+        <AnchorContextProvider>
+          <Component {...pageProps} />
+        </AnchorContextProvider>
+      </WalletContextProvider>
     </>
   );
 }

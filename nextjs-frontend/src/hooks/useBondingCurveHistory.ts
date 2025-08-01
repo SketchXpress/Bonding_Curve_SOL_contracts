@@ -12,6 +12,8 @@ import { PROGRAM_ID } from "../utils/idl";
 import { BondingCurveSystem } from "../types/bonding_curve_system";
 // Import IDL directly from JSON file to avoid any TypeScript compilation issues
 import BondingCurveIDL from "../idl/bonding_curve_system.json";
+// Import safe IDL utilities
+import { createSafeProgram, isValidBondingCurveIdl } from "../utils/safe-idl";
 
 // Enhanced BN patches for this module - based on library analysis
 if (typeof window !== 'undefined') {
@@ -321,13 +323,21 @@ export function useBondingCurveHistory(limit: number = 50) {
         let coder;
         
         try {
-          // Attempt 1: Direct program creation with enhanced BN compatibility
-          console.log('useBondingCurveHistory: Attempting program creation with enhanced compatibility...');
-          program = new Program(BondingCurveIDL as unknown as Idl, provider);
+          // Attempt 1: Safe program creation with enhanced IDL validation
+          console.log('useBondingCurveHistory: Attempting safe program creation...');
+          
+          // Ensure IDL has address field (our IDL from utils/idl.ts should already have it)
+          const safeIdl = { ...BondingCurveIDL, address: PROGRAM_ID };
+          
+          if (!isValidBondingCurveIdl(safeIdl)) {
+            throw new Error('Invalid IDL structure detected');
+          }
+          
+          program = await createSafeProgram(safeIdl, provider);
           coder = program.coder.instruction;
-          console.log('useBondingCurveHistory: Program created successfully with standard coder');
+          console.log('useBondingCurveHistory: Program created successfully with safe IDL approach');
         } catch (directError) {
-          console.warn('Direct program creation failed:', directError);
+          console.warn('Safe program creation failed:', directError);
           
           try {
             // Attempt 2: Enhanced BN patching with retry
