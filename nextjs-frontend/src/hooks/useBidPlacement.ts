@@ -65,7 +65,7 @@ export const useBidPlacement = () => {
       // Derive bonding curve pool PDA - assuming it's derived from collection mint
       // You may need to adjust this based on actual derivation logic
       const [bondingCurvePoolPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('pool'), nftMint.toBuffer()], 
+        [Buffer.from('bonding-curve-pool'), nftMint.toBuffer()], 
         PROGRAM_ID
       );
 

@@ -133,7 +133,7 @@ export const useMintNft = () => {
       // Derive pool PDA for the collection
       const [poolAddress] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('pool'),
+          Buffer.from('bonding-curve-pool'),
           collectionMintPubkey.toBuffer(),
         ],
         program.programId

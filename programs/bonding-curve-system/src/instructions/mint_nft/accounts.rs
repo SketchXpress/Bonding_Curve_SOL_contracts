@@ -38,7 +38,7 @@ pub struct MintNft<'info> {
     /// Pool associated with the collection
     #[account(
         mut,
-        seeds = [b"pool", args.collection_mint.as_ref()],
+        seeds = [b"bonding-curve-pool", args.collection_mint.as_ref()],
         bump,
     )]
     pub pool: Account<'info, crate::state::BondingCurvePool>,

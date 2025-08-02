@@ -1,8 +1,8 @@
 // bn-polyfill-loader.js
 // This script ensures the bigint-buffer polyfill is loaded early in the environment
 
-// Import the polyfill
-require('./src/utils/bn-polyfill');
+// Import the polyfill - use the direct JS version
+require('./src/utils/bn-polyfill-direct.js');
 
 // Apply additional runtime patches
 const BN = require('bn.js');

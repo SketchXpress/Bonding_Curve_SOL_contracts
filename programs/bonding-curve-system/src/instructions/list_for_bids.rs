@@ -15,7 +15,7 @@ pub struct ListForBids<'info> {
 
     /// The bonding curve pool for dynamic pricing
     #[account(
-        seeds = [b"pool", collection_mint.key().as_ref()],
+        seeds = [b"bonding-curve-pool", collection_mint.key().as_ref()],
         bump,
     )]
     pub pool: Account<'info, BondingCurvePool>,

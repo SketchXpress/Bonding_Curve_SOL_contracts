@@ -60,7 +60,7 @@ export const useBidListing = () => {
       const collectionMint = minterTrackerData.collection;
 
       const [poolPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('pool'), collectionMint.toBuffer()],
+        [Buffer.from('bonding-curve-pool'), collectionMint.toBuffer()],
         PROGRAM_ID
       );
 

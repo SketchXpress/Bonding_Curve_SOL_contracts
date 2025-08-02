@@ -67,7 +67,7 @@ export const usePoolInfo = () => {
       
       const [poolPda] = PublicKey.findProgramAddressSync(
         [
-          Buffer.from('pool'),
+          Buffer.from('bonding-curve-pool'),
           collectionMint.toBuffer(),
         ],
         PROGRAM_ID
@@ -164,7 +164,7 @@ export const usePoolInfo = () => {
   const getPoolPda = useCallback((collectionMint: PublicKey): PublicKey => {
     const [poolPda] = PublicKey.findProgramAddressSync(
       [
-        Buffer.from('pool'),
+        Buffer.from('bonding-curve-pool'),
         collectionMint.toBuffer(),
       ],
       PROGRAM_ID
