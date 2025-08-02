@@ -18,7 +18,7 @@ Before contributing, ensure you have:
 
 1. **Fork the repository**
    ```bash
-   git clone https://github.com/your-username/Bonding_Curve_SOL_contracts.git
+   git clone https://github.com/SketchXpress/Bonding_Curve_SOL_contracts.git
    cd Bonding_Curve_SOL_contracts
    ```
 
