@@ -720,7 +720,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **📧 Email**: support@sketchxpress.com
+- **📧 Email**: mrarejimmy@icloud.com
 - **💬 Discord**: [Join our community](https://discord.gg/sketchxpress)
 - **🐛 Issues**: [GitHub Issues](https://github.com/SketchXpress/Bonding_Curve_SOL_contracts/issues)
 - **📖 Documentation**: [docs.sketchxpress.com](https://docs.sketchxpress.com)
