@@ -114,11 +114,6 @@ export type BondingCurveSystem = {
           "isSigner": true
         },
         {
-          "name": "bondingCurvePool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -129,18 +124,29 @@ export type BondingCurveSystem = {
           "isSigner": false
         },
         {
-          "name": "nftEscrow",
-          "isMut": true,
-          "isSigner": false
+          "name": "collectionMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Collection mint that this NFT belongs to"
+          ]
         },
         {
-          "name": "minterTracker",
+          "name": "pool",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "Pool associated with the collection"
+          ]
         },
         {
           "name": "metadata",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1283,6 +1289,10 @@ export type BondingCurveSystem = {
           {
             "name": "uri",
             "type": "string"
+          },
+          {
+            "name": "collectionMint",
+            "type": "publicKey"
           }
         ]
       }
@@ -2430,11 +2440,6 @@ export const IDL: BondingCurveSystem = {
           "isSigner": true
         },
         {
-          "name": "bondingCurvePool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -2445,18 +2450,29 @@ export const IDL: BondingCurveSystem = {
           "isSigner": false
         },
         {
-          "name": "nftEscrow",
-          "isMut": true,
-          "isSigner": false
+          "name": "collectionMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Collection mint that this NFT belongs to"
+          ]
         },
         {
-          "name": "minterTracker",
+          "name": "pool",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "Pool associated with the collection"
+          ]
         },
         {
           "name": "metadata",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -3599,6 +3615,10 @@ export const IDL: BondingCurveSystem = {
           {
             "name": "uri",
             "type": "string"
+          },
+          {
+            "name": "collectionMint",
+            "type": "publicKey"
           }
         ]
       }

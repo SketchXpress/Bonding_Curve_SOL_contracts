@@ -114,11 +114,6 @@
           "isSigner": true
         },
         {
-          "name": "bondingCurvePool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -129,18 +124,29 @@
           "isSigner": false
         },
         {
-          "name": "nftEscrow",
-          "isMut": true,
-          "isSigner": false
+          "name": "collectionMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Collection mint that this NFT belongs to"
+          ]
         },
         {
-          "name": "minterTracker",
+          "name": "pool",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "Pool associated with the collection"
+          ]
         },
         {
           "name": "metadata",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1283,6 +1289,10 @@
           {
             "name": "uri",
             "type": "string"
+          },
+          {
+            "name": "collectionMint",
+            "type": "publicKey"
           }
         ]
       }
@@ -2311,8 +2321,5 @@
       "name": "InvalidPercentage",
       "msg": "Invalid percentage"
     }
-  ],
-  "metadata": {
-    "address": "ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE"
-  }
+  ]
 }

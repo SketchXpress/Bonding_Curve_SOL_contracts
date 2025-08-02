@@ -3,7 +3,6 @@ import { PublicKey } from '@solana/web3.js';
 export const PROGRAM_ID = new PublicKey('ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE');
 
 export const IDL = {
-  "address": "ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE",
   "version": "0.1.0",
   "name": "bonding_curve_system",
   "docs": [
@@ -119,11 +118,6 @@ export const IDL = {
           "isSigner": true
         },
         {
-          "name": "bondingCurvePool",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": true
@@ -134,18 +128,29 @@ export const IDL = {
           "isSigner": false
         },
         {
-          "name": "nftEscrow",
-          "isMut": true,
-          "isSigner": false
+          "name": "collectionMint",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Collection mint that this NFT belongs to"
+          ]
         },
         {
-          "name": "minterTracker",
+          "name": "pool",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "Pool associated with the collection"
+          ]
         },
         {
           "name": "metadata",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1288,6 +1293,10 @@ export const IDL = {
           {
             "name": "uri",
             "type": "string"
+          },
+          {
+            "name": "collectionMint",
+            "type": "publicKey"
           }
         ]
       }
@@ -2317,4 +2326,4 @@ export const IDL = {
       "msg": "Invalid percentage"
     }
   ]
-} as const;
+};
