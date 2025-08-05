@@ -3,13 +3,49 @@
 
 console.log('[Enhanced Global Polyfill] Initializing ultra-comprehensive polyfills...');
 
+// CRITICAL: Apply BigInt polyfill FIRST
+try {
+  if (typeof require !== 'undefined' && typeof window === 'undefined') {
+    // Server side
+    require('./utils/bigint-polyfill');
+  } else if (typeof window !== 'undefined') {
+    // Browser side - use dynamic imports
+    import('./utils/bigint-polyfill').then(() => {
+      console.log('[Enhanced Global Polyfill] ✓ BigInt polyfill loaded in browser');
+    }).catch(err => {
+      console.warn('[Enhanced Global Polyfill] Could not load BigInt polyfill in browser:', err);
+    });
+  }
+  console.log('[Enhanced Global Polyfill] ✓ BigInt polyfill initialization completed');
+} catch (error) {
+  console.warn('[Enhanced Global Polyfill] Could not load BigInt polyfill:', error);
+}
+
+// Suppress bigint warnings AFTER polyfill
+try {
+  if (typeof require !== 'undefined' && typeof window === 'undefined') {
+    // Only on server side
+    require('./utils/suppress-bigint-warning');
+  }
+} catch (error) {
+  console.warn('[Enhanced Global Polyfill] Could not load bigint warning suppressor:', error);
+}
+
 // Import our targeted Solana BN patch immediately - browser compatible
 try {
-  if (typeof require !== 'undefined') {
+  if (typeof require !== 'undefined' && typeof window === 'undefined') {
+    // Only on server side
     const { patchBNForSolana } = require('./solana-bn-patch');
     patchBNForSolana();
-  } else if (typeof window !== 'undefined' && window.patchBNForSolana) {
-    window.patchBNForSolana();
+  } else if (typeof window !== 'undefined') {
+    // Browser side - use dynamic imports
+    import('./solana-bn-patch').then(module => {
+      if (module.patchBNForSolana) {
+        module.patchBNForSolana();
+      }
+    }).catch(err => {
+      console.warn('[Enhanced Global Polyfill] Could not load Solana BN patch in browser:', err);
+    });
   }
   console.log('[Enhanced Global Polyfill] ✓ Targeted Solana BN patch loaded and executed');
 } catch (error) {
@@ -18,7 +54,8 @@ try {
 
 // Validate Solana program IDs early in the process
 try {
-  if (typeof require !== 'undefined') {
+  if (typeof require !== 'undefined' && typeof window === 'undefined') {
+    // Only on server side
     const { validateProgramIds } = require('./utils/solana-constants');
     if (validateProgramIds()) {
       console.log('[Enhanced Global Polyfill] ✓ Solana program IDs validated');
@@ -32,12 +69,15 @@ try {
 
 // Import and initialize the isPublicKeyData patch
 try {
-  if (typeof require !== 'undefined') {
+  if (typeof require !== 'undefined' && typeof window === 'undefined') {
+    // Only on server side
     require('./utils/isPublicKeyData-patch');
   } else if (typeof window !== 'undefined') {
-    // Dynamic import for browser environment
-    import('./utils/isPublicKeyData-patch.ts').catch(err => {
-      console.warn('[Enhanced Global Polyfill] Could not load isPublicKeyData patch:', err);
+    // Browser side - use dynamic imports
+    import('./utils/isPublicKeyData-patch').then(() => {
+      console.log('[Enhanced Global Polyfill] ✓ isPublicKeyData patch loaded in browser');
+    }).catch(err => {
+      console.warn('[Enhanced Global Polyfill] Could not load isPublicKeyData patch in browser:', err);
     });
   }
   console.log('[Enhanced Global Polyfill] ✓ isPublicKeyData patch loaded and executed');

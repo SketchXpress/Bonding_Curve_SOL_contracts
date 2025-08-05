@@ -1,5 +1,6 @@
 'use client';
 
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { 
@@ -10,16 +11,10 @@ import {
   ComputeBudgetProgram
 } from '@solana/web3.js';
 
-// Import centralized program IDs
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
-
 // Import SPL Token functions directly to avoid package conflicts
 import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
-
-// Import anchor with require to avoid TypeScript issues
-const anchor = require('@coral-xyz/anchor');
 
 // Metaplex Token Metadata Program ID
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -64,7 +59,6 @@ export const useMintNft = () => {
   const [error, setError] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [nftMintAddress, setNftMintAddress] = useState<string | null>(null);
-  const [escrowAddress, setEscrowAddress] = useState<string | null>(null);
 
   const mintNft = async (
     name: string,
@@ -213,7 +207,7 @@ export const useMintNft = () => {
     }
   };
 
-  return { mintNft, loading, error, txSignature, nftMintAddress, escrowAddress };
+  return { mintNft, loading, error, txSignature, nftMintAddress };
 };
 
 // Named export for useSellNft

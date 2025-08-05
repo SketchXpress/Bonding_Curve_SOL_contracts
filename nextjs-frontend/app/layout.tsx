@@ -3,10 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalPatcher from "@/components/GlobalPatcher"; // Import GlobalPatcher
 
-// Import our enhanced BN patches immediately - enhanced with library analysis
-import "../src/global-polyfill.js";
-import "../src/solana-bn-patch.js";
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -29,6 +25,129 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* BigInt polyfill - MUST be first */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Immediate BigInt polyfill
+              if (typeof BigInt === 'undefined') {
+                window.BigInt = function(value) {
+                  if (typeof value === 'string') {
+                    const num = parseInt(value, 10);
+                    if (isNaN(num)) throw new Error('Cannot convert string to BigInt: ' + value);
+                    return num;
+                  } else if (typeof value === 'number') {
+                    if (value % 1 !== 0) throw new Error('Cannot convert non-integer Number to BigInt');
+                    return value;
+                  }
+                  return value;
+                };
+                window.BigInt.asUintN = function(bits, bigint) { return bigint; };
+                window.BigInt.asIntN = function(bits, bigint) { return bigint; };
+              }
+              
+              // Ensure bigint global is available
+              if (typeof window.bigint === 'undefined') {
+                window.bigint = window.BigInt;
+              }
+              
+              // Critical: Setup BN._bn property as early as possible
+              function setupBNProperty() {
+                try {
+                  // Try to get BN from window or require
+                  let BN = window.BN;
+                  if (!BN && typeof require !== 'undefined') {
+                    try {
+                      BN = require('bn.js');
+                    } catch (e) {
+                      // BN.js not loaded yet, will try again later
+                      return false;
+                    }
+                  }
+                  
+                  if (BN && BN.prototype && !Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+                    Object.defineProperty(BN.prototype, '_bn', {
+                      get: function() { return this; },
+                      set: function(value) { /* Allow setting for compatibility */ },
+                      configurable: true,
+                      enumerable: false
+                    });
+                    console.log('[Layout] ✓ Early BN._bn property added');
+                    return true;
+                  }
+                } catch (error) {
+                  console.warn('[Layout] Could not setup BN._bn property:', error);
+                }
+                return false;
+              }
+              
+              // Try to setup BN property immediately
+              if (!setupBNProperty()) {
+                // If failed, try again after a short delay
+                setTimeout(setupBNProperty, 100);
+                setTimeout(setupBNProperty, 500);
+                setTimeout(setupBNProperty, 1000);
+              }
+              
+              console.log('[Layout] BigInt and BN polyfills applied');
+            `,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Early BN.js patch for Solana compatibility
+              if (typeof window !== 'undefined') {
+                console.log('[Early BN Patch] Applying...');
+                
+                // Function to patch BN when it becomes available
+                window.patchBNWhenReady = function() {
+                  function patchBN() {
+                    try {
+                      let BN = window.BN;
+                      if (!BN && typeof require !== 'undefined') {
+                        try {
+                          BN = require('bn.js');
+                        } catch (e) {}
+                      }
+                      
+                      if (BN && BN.prototype && !Object.prototype.hasOwnProperty.call(BN.prototype, '_bn')) {
+                        Object.defineProperty(BN.prototype, '_bn', {
+                          get: function() { return this; },
+                          set: function(value) {},
+                          configurable: true,
+                          enumerable: false
+                        });
+                        window.BN = BN;
+                        console.log('[Early BN Patch] ✓ Applied successfully');
+                        return true;
+                      }
+                    } catch (error) {
+                      console.warn('[Early BN Patch] Failed:', error);
+                    }
+                    return false;
+                  }
+                  
+                  // Try to patch immediately
+                  if (!patchBN()) {
+                    // Retry every 100ms for up to 5 seconds
+                    let retries = 50;
+                    const interval = setInterval(() => {
+                      if (patchBN() || --retries <= 0) {
+                        clearInterval(interval);
+                      }
+                    }, 100);
+                  }
+                };
+                
+                // Apply patch immediately
+                window.patchBNWhenReady();
+              }
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

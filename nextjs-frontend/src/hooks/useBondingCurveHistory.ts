@@ -1,3 +1,85 @@
+// CRITICAL: Apply BN patches BEFORE any Solana imports
+(() => {
+  try {
+    console.log('useBondingCurveHistory: Applying CRITICAL early BN patches...');
+    
+    // 1. Ensure BN is available and patch it immediately
+    let BN = null;
+    
+    // Try multiple ways to get BN
+    if (typeof window !== 'undefined' && (window as any).BN) {
+      BN = (window as any).BN;
+    } else if (typeof global !== 'undefined' && (global as any).BN) {
+      BN = (global as any).BN;
+    } else {
+      try {
+        BN = require('bn.js');
+      } catch (e) {
+        console.warn('useBondingCurveHistory: BN.js not available, will apply patches later');
+      }
+    }
+    
+    // Apply critical _bn property patch
+    function patchBN(BNClass: any) {
+      if (!BNClass || !BNClass.prototype) return false;
+      
+      // Check if already patched
+      if (Object.getOwnPropertyDescriptor(BNClass.prototype, '_bn')) {
+        console.log('useBondingCurveHistory: BN already has _bn property');
+        return true;
+      }
+      
+      // Add the critical _bn property
+      Object.defineProperty(BNClass.prototype, '_bn', {
+        get: function() { 
+          return this; 
+        },
+        set: function(value) { 
+          // Allow setting for compatibility but don't actually set anything
+        },
+        configurable: true,
+        enumerable: false
+      });
+      
+      console.log('useBondingCurveHistory: ✓ CRITICAL _bn property added to BN prototype');
+      return true;
+    }
+    
+    if (BN && !patchBN(BN)) {
+      console.warn('useBondingCurveHistory: Failed to patch BN immediately');
+    }
+    
+    // Set up a safety net for BN patching after module loads
+    if (typeof window !== 'undefined') {
+      // Continuously try to patch BN until it works
+      const patchInterval = setInterval(() => {
+        let currentBN = null;
+        
+        if ((window as any).BN) {
+          currentBN = (window as any).BN;
+        } else {
+          try {
+            currentBN = require('bn.js');
+          } catch (e) {
+            // BN.js still not available
+            return;
+          }
+        }
+        
+        if (currentBN && patchBN(currentBN)) {
+          clearInterval(patchInterval);
+        }
+      }, 50);
+      
+      // Clear the interval after 5 seconds to avoid infinite polling
+      setTimeout(() => clearInterval(patchInterval), 5000);
+    }
+    
+  } catch (error) {
+    console.error('useBondingCurveHistory: CRITICAL error in early BN patching:', error);
+  }
+})();
+
 import { useState, useEffect, useCallback } from "react";
 import {
   PublicKey,
@@ -279,7 +361,61 @@ export function useBondingCurveHistory(limit: number = 50) {
       
       setIsInitializing(true);
       try {
-        console.log('useBondingCurveHistory: Starting initialization (relying on existing polyfills)...');
+        console.log('useBondingCurveHistory: Starting initialization...');
+        
+        // CRITICAL: Ensure BN is properly patched before ANY Solana operations
+        console.log('useBondingCurveHistory: Applying final BN safety checks...');
+        try {
+          let BN = null;
+          
+          // Try to get BN from multiple sources
+          if (typeof require !== 'undefined') {
+            try {
+              BN = require('bn.js');
+            } catch (e) {
+              console.warn('useBondingCurveHistory: Could not require bn.js:', e);
+            }
+          }
+          
+          if (!BN && typeof window !== 'undefined') {
+            BN = (window as any).BN;
+          }
+          
+          if (!BN && typeof global !== 'undefined') {
+            BN = (global as any).BN;
+          }
+          
+          if (BN && BN.prototype) {
+            // Ensure _bn property exists before ANY Solana operations
+            if (!Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+              console.log('useBondingCurveHistory: Adding missing _bn property...');
+              Object.defineProperty(BN.prototype, '_bn', {
+                get: function() { return this; },
+                set: function(value) { /* Allow setting for compatibility */ },
+                configurable: true,
+                enumerable: false
+              });
+              console.log('useBondingCurveHistory: ✓ _bn property added successfully');
+            } else {
+              console.log('useBondingCurveHistory: ✓ _bn property already exists');
+            }
+            
+            // Test _bn property access
+            try {
+              const testBN = new BN(1);
+              const testAccess = (testBN as any)._bn;
+              console.log('useBondingCurveHistory: ✓ _bn property access test successful');
+            } catch (testError) {
+              console.error('useBondingCurveHistory: ✗ _bn property access test failed:', testError);
+              throw new Error('BN._bn property is not accessible');
+            }
+          } else {
+            console.warn('useBondingCurveHistory: BN.js not found, this may cause issues');
+          }
+        } catch (bnError) {
+          console.error('useBondingCurveHistory: Critical error in BN safety check:', bnError);
+          throw new Error(`BN safety check failed: ${bnError}`);
+        }
         
         // Extended delay to ensure all polyfills are in effect
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -319,10 +455,57 @@ export function useBondingCurveHistory(limit: number = 50) {
         let coder;
         
         try {
+          // CRITICAL: Ensure BN._bn property exists before ANY program creation
+          console.log('useBondingCurveHistory: Applying critical BN._bn fix before program creation...');
+          
+          // Get BN from multiple sources
+          let BN = null;
+          if (typeof window !== 'undefined' && (window as any).BN) {
+            BN = (window as any).BN;
+          } else if (typeof require !== 'undefined') {
+            try {
+              BN = require('bn.js');
+            } catch (e) {
+              console.warn('Could not require bn.js:', e);
+            }
+          }
+          
+          if (BN && BN.prototype) {
+            // Ensure _bn property exists with robust configuration
+            if (!Object.getOwnPropertyDescriptor(BN.prototype, '_bn')) {
+              Object.defineProperty(BN.prototype, '_bn', {
+                get: function() { return this; },
+                set: function(value) { /* Allow setting */ },
+                configurable: true,
+                enumerable: false
+              });
+              console.log('useBondingCurveHistory: ✓ Critical BN._bn property added');
+            }
+            
+            // Also patch the constructor to ensure instances have _bn
+            if (!BN._criticallyPatched) {
+              const originalConstructor = BN.prototype.constructor;
+              BN.prototype.constructor = function(...args: any[]) {
+                const result = originalConstructor.apply(this, args);
+                if (!this._bn) {
+                  Object.defineProperty(this, '_bn', {
+                    value: this,
+                    writable: true,
+                    configurable: true,
+                    enumerable: false
+                  });
+                }
+                return result;
+              };
+              BN._criticallyPatched = true;
+              console.log('useBondingCurveHistory: ✓ Critical BN constructor patched');
+            }
+          }
+          
           // Create program with standardized IDL
           console.log('useBondingCurveHistory: Creating program with standardized IDL...');
           
-          console.log('useBondingCurveHistory: IDL address field:', IDL.address);
+          console.log('useBondingCurveHistory: IDL name field:', IDL.name);
           console.log('useBondingCurveHistory: IDL instructions count:', IDL.instructions?.length);
           console.log('useBondingCurveHistory: IDL accounts count:', IDL.accounts?.length);
           
