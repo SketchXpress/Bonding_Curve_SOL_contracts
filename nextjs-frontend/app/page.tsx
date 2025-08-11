@@ -12,11 +12,8 @@ import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
 import CreateCollectionNftCard from '@/components/CreateCollectionNftCard';
-import BondingCurveHistoryCard from "@/components/BondingCurveHistoryCard";
 import { CollectionFeesCard } from '@/components/CollectionFeesCard';
-import { BidListingCard } from '@/components/BidListingCard';
-import { BidPlacementCard } from '@/components/BidPlacementCard';
-import { BidManagementCard } from '@/components/BidManagementCard';
+import BondingCurveHistoryCard from "@/components/BondingCurveHistoryCard";
 import { useTransactionIntegration } from "@/hooks/useTransactionIntegration";
 import BigIntPatcher from '@/components/BigIntPatcher';
 
