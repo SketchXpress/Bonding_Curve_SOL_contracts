@@ -16,7 +16,7 @@ SketchXpress is a groundbreaking NFT marketplace that combines **exponential bon
 - **🔄 Exponential Bonding Curves**: Dynamic pricing based on supply and demand
 - **🏦 Token-Owned Escrow (TOE)**: Every NFT backed by guaranteed SOL value
 - **💰 Dynamic Bidding System**: Bids must exceed bonding curve price + premium
-- **📊 Fair Revenue Distribution**: 95% to minter, 4% to platform, 1% to collection holders
+- **📊 Fair Revenue Distribution**: 95% to minter (Else 90%, as 5% Royalty), 4% to platform, 1% to collection holders
 - **🔄 Automatic Migration**: Seamless transition to Tensor at 690 SOL market cap
 
 ---
