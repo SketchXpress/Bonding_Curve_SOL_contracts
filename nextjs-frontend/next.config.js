@@ -27,6 +27,7 @@ const nextConfig = {
         url: false,
         fs: false,
         path: false,
+        buffer: require.resolve('buffer'),
       };
     }
     
@@ -34,10 +35,17 @@ const nextConfig = {
     config.plugins = config.plugins || [];
     const webpack = require('webpack');
     
-    // Define global variables for BigInt support
+    // Define global variables for BigInt support and Buffer
     config.plugins.push(
       new webpack.DefinePlugin({
         __SUPPRESS_BIGINT_WARNING__: JSON.stringify(true),
+      })
+    );
+    
+    // Provide Buffer globally
+    config.plugins.push(
+      new webpack.ProvidePlugin({
+        Buffer: ['buffer', 'Buffer'],
       })
     );
     

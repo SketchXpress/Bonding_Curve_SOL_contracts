@@ -68,7 +68,7 @@ WORKDIR /app
 COPY . .
 
 # Make scripts executable
-RUN chmod +x anchor_cli_demo.sh test_cli.sh test_detailed.sh verify_contract.sh setup-wallet.sh
+RUN chmod +x scripts/anchor_cli_demo.sh scripts/test_cli.sh scripts/test_detailed.sh scripts/verify_contract.sh scripts/setup-wallet.sh
 
 # Set up Solana config for devnet (both root and ubuntu users)
 RUN mkdir -p /root/.config/solana \
@@ -99,6 +99,12 @@ RUN chmod +x ./rebuild-native-modules.sh && \
     # Run the rebuild script
     bash ./rebuild-native-modules.sh
 
+# Copy the fix script and run it to ensure 'use client' is at the top of files
+COPY fix-use-client.sh ./
+RUN chmod +x ./fix-use-client.sh && \
+    sed -i 's/\r$//' ./fix-use-client.sh && \
+    bash ./fix-use-client.sh
+
 # Build the Next.js application
 RUN yarn build
 
@@ -106,4 +112,4 @@ RUN yarn build
 EXPOSE 8080 3000
 
 # Default command to run NextJS and provide helpful information
-CMD ["bash", "-c", "cd /app && ./setup-wallet.sh && echo 'NextJS frontend available at http://localhost:3000' && echo 'Solana Bonding Curve Development Environment' && echo 'Available commands:' && echo '  - anchor build: Build the program' && echo '  - anchor test: Run tests' && echo '  - anchor deploy: Deploy to devnet' && echo '  - solana airdrop 2: Get SOL for testing' && echo '  - ./setup-wallet.sh: Setup wallet for current user' && echo 'Starting Next.js frontend...' && cd /app/nextjs-frontend && yarn start"]
+CMD ["bash", "-c", "cd /app && ./scripts/setup-wallet.sh && echo 'NextJS frontend available at http://localhost:3000' && echo 'Solana Bonding Curve Development Environment' && echo 'Available commands:' && echo '  - anchor build: Build the program' && echo '  - anchor test: Run tests' && echo '  - anchor deploy: Deploy to devnet' && echo '  - solana airdrop 2: Get SOL for testing' && echo '  - ./scripts/setup-wallet.sh: Setup wallet for current user' && echo 'Starting Next.js frontend...' && cd /app/nextjs-frontend && yarn start"]

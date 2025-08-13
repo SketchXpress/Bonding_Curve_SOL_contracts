@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { 
   PublicKey, 
@@ -8,10 +9,10 @@ import {
   SYSVAR_RENT_PUBKEY,
   Keypair
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { PROGRAM_ID } from '@/utils/idl';
 // Import SPL Token functions using require to avoid TypeScript issues
-const { getAssociatedTokenAddress } = require('@solana/spl-token');
+// const { getAssociatedTokenAddress } = require('@solana/spl-token');
 
 // Import anchor with require to avoid TypeScript issues
 const anchor = require('@coral-xyz/anchor');

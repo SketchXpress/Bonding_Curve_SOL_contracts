@@ -65,7 +65,8 @@ export function validateProgramIds(): boolean {
 }
 
 // Helper functions for associated token addresses
-export { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+// Note: Import these directly from @solana/spl-token in your files to avoid conflicts
+// export { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 
 // Export commonly used types
-export type { Account, Mint } from '@solana/spl-token';
+// export type { Account, Mint } from '@solana/spl-token';

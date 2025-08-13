@@ -1,12 +1,13 @@
+'use client';
+
 import { useState, useCallback } from 'react';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { PROGRAM_ID, IDL } from '../utils/idl';
-
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 export const useBidListing = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();

@@ -1,6 +1,9 @@
 'use client';
 
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
+
+// Import SPL Token functions directly to avoid package conflicts
+import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { 
@@ -10,9 +13,6 @@ import {
   SYSVAR_RENT_PUBKEY,
   ComputeBudgetProgram
 } from '@solana/web3.js';
-
-// Import SPL Token functions directly to avoid package conflicts
-import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 import { useState } from 'react';
 import { safePublicKey, isValidPublicKeyFormat } from '@/utils/bn-polyfill';
 
