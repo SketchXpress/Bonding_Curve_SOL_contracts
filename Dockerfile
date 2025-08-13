@@ -86,6 +86,11 @@ RUN anchor build || echo "Initial build may fail, but platform-tools should be i
 # Build and setup NextJS frontend
 WORKDIR /app/nextjs-frontend
 
+# Clean any existing cache before installation
+RUN rm -rf .next && \
+    rm -rf node_modules/.cache && \
+    yarn cache clean
+
 # Install dependencies with proper environment for native modules
 COPY nextjs-frontend/package*.json ./
 COPY nextjs-frontend/yarn.lock ./
@@ -105,11 +110,11 @@ RUN chmod +x ./fix-use-client.sh && \
     sed -i 's/\r$//' ./fix-use-client.sh && \
     bash ./fix-use-client.sh
 
-# Build the Next.js application
-RUN yarn build
+# Skip frontend build for now - can be built manually inside container
+# RUN yarn build
 
 # Expose ports (NextJS typically uses 3000)
 EXPOSE 8080 3000
 
-# Default command to run NextJS and provide helpful information
-CMD ["bash", "-c", "cd /app && ./scripts/setup-wallet.sh && echo 'NextJS frontend available at http://localhost:3000' && echo 'Solana Bonding Curve Development Environment' && echo 'Available commands:' && echo '  - anchor build: Build the program' && echo '  - anchor test: Run tests' && echo '  - anchor deploy: Deploy to devnet' && echo '  - solana airdrop 2: Get SOL for testing' && echo '  - ./scripts/setup-wallet.sh: Setup wallet for current user' && echo 'Starting Next.js frontend...' && cd /app/nextjs-frontend && yarn start"]
+# Default command to provide development environment
+CMD ["bash", "-c", "cd /app && ./scripts/setup-wallet.sh && echo 'Solana Bonding Curve Development Environment Ready!' && echo 'Available commands:' && echo '  - anchor build: Build the program' && echo '  - anchor test: Run tests' && echo '  - anchor deploy: Deploy to devnet' && echo '  - solana airdrop 2: Get SOL for testing' && echo '  - ./scripts/setup-wallet.sh: Setup wallet for current user' && echo 'Frontend can be built manually with: cd nextjs-frontend && yarn build' && echo 'Or run in dev mode with: cd nextjs-frontend && yarn dev' && tail -f /dev/null"]

@@ -6,13 +6,13 @@ import WalletSection from '@/components/WalletSection';
 import CreatePoolCard from '@/components/CreatePoolCard';
 import CreateNftCard from '@/components/CreateNftCard';
 import PoolVerificationCard from '@/components/PoolVerificationCard';
-import SellNftCard from '@/components/SellNftCard';
+import { SellNftCard } from '@/components/SellNftCard';
 import { BuyNftCard } from '@/components/BuyNftCard';
 import MigrateToTensorCard from '@/components/MigrateToTensorCard';
 import PoolInfoCard from '@/components/PoolInfoCard';
 import TransactionHistory from '@/components/TransactionHistory';
 import CreateCollectionNftCard from '@/components/CreateCollectionNftCard';
-import { CollectionFeesCard } from '@/components/CollectionFeesCard';
+import { BiddingSystemCard } from '@/components/BiddingSystemCard';
 import BondingCurveHistoryCard from "@/components/BondingCurveHistoryCard";
 import { useTransactionIntegration } from "@/hooks/useTransactionIntegration";
 import BigIntPatcher from '@/components/BigIntPatcher';
@@ -95,28 +95,8 @@ const AppContent = () => {
 
           {/* Bidding System */}
           <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-4 text-gray-700">Bidding System</h3>
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md mb-4">
-              <p className="text-yellow-800 text-sm">
-                <strong>Note:</strong> The bidding system allows NFT holders to list their NFTs for bidding and enables users to place bids. 
-                To use these features, you'll need specific NFT mint addresses and listing information.
-              </p>
-            </div>
-            <div className="text-gray-600 text-sm mb-4">
-              <p>The bidding system includes:</p>
-              <ul className="list-disc list-inside ml-4 mt-2">
-                <li><strong>List for Bids:</strong> Allow others to bid on your NFTs</li>
-                <li><strong>Place Bids:</strong> Bid on NFTs listed by other users</li>
-                <li><strong>Manage Bids:</strong> Accept or cancel bids on your listings</li>
-                <li><strong>Collection Fees:</strong> Claim your share of secondary sale fees</li>
-              </ul>
-            </div>
-            <div className="bg-gray-50 border border-gray-200 p-4 rounded-md">
-              <p className="text-gray-700 text-sm">
-                <strong>Implementation Note:</strong> The bidding system components require specific NFT data (mint addresses, listing IDs, etc.). 
-                These will be integrated with NFT selection interfaces in a future update. For now, the core trading functions above provide the full NFT marketplace experience.
-              </p>
-            </div>
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">Complete Bidding System</h3>
+            <BiddingSystemCard />
           </div>
 
           {/* Collection Fees */}
