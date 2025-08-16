@@ -5,7 +5,6 @@ use anchor_lang::prelude::*;
 // Program ID
 declare_id!("ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE");
 
-// === MODULES ===
 pub mod constants;
 pub mod errors;
 pub mod instructions;
@@ -13,20 +12,18 @@ pub mod math;
 pub mod state;
 pub mod utils;
 
-// === IMPORTS ===
-use instructions::*;
+use crate::instructions::*;
 pub use errors::{ErrorCode, ErrorContext};
 
-// Macros are defined in errors/context.rs
 pub mod macros {
-    // Keeping module for organizational purposes
+    // Macros are defined in errors/context.rs
 }
 
 /// SketchXpress Bonding Curve System
-/// Revolutionary NFT marketplace with dynamic pricing
 #[program]
 pub mod bonding_curve_system {
     use super::*;
+    use anchor_lang::solana_program::entrypoint::ProgramResult;
 
     // === POOL MANAGEMENT ===
     pub fn create_pool(ctx: Context<CreatePool>, args: CreatePoolArgs) -> Result<()> {
