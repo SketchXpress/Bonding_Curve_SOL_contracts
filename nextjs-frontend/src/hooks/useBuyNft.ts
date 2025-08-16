@@ -170,13 +170,20 @@ export const useBuyNft = () => {
         PROGRAM_ID
       );
 
+      // Check if account exists first
+      const accountInfo = await connection.getAccountInfo(nftDataPda);
+      if (!accountInfo) {
+        console.log(`🔍 NFT data account does not exist: ${nftDataPda.toString()}`);
+        return null;
+      }
+
       const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
       const poolAccount = await (program.account as any).bondingCurvePool.fetch(nftDataAccount.collectionId);
       
       // Return the last price from NFT data (in lamports, convert to SOL)
       return nftDataAccount.lastPrice.toNumber() / 1e9;
     } catch (err) {
-      console.error('Error getting current price:', err);
+      console.log(`⚠️ Could not get price for NFT ${nftMint.toString()}: This NFT might not be from our bonding curve system`);
       return null;
     }
   }, [getProvider]);
@@ -195,13 +202,20 @@ export const useBuyNft = () => {
         PROGRAM_ID
       );
 
+      // Check if account exists first
+      const accountInfo = await connection.getAccountInfo(nftDataPda);
+      if (!accountInfo) {
+        console.log(`🔍 NFT data account does not exist: ${nftDataPda.toString()}`);
+        return null;
+      }
+
       const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
       return nftDataAccount.owner;
     } catch (err) {
-      console.error('Error getting NFT owner:', err);
+      console.log(`⚠️ Could not get owner for NFT ${nftMint.toString()}: This NFT might not be from our bonding curve system`);
       return null;
     }
-  }, [getProvider]);
+  }, [getProvider, connection]);
 
   return {
     buyNft,

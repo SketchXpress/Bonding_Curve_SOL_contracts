@@ -2,12 +2,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, Transaction } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 import { PROGRAM_ID, IDL } from '../utils/idl';
 import { TOKEN_PROGRAM_ID, SYSTEM_PROGRAM_ID, METADATA_PROGRAM_ID } from '../utils/solana-constants';
+
+// Import anchor using require to avoid TypeScript issues
+const anchor = require('@coral-xyz/anchor');
+const { Program, AnchorProvider } = anchor;
 
 interface SellNftCardProps {
   className?: string;
@@ -45,11 +48,11 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
       connection,
       {
         publicKey,
-        signTransaction: async (tx) => {
+        signTransaction: async (tx: Transaction) => {
           const signed = await sendTransaction(tx, connection);
           return tx;
         },
-        signAllTransactions: async (txs) => {
+        signAllTransactions: async (txs: Transaction[]) => {
           return txs;
         },
       },
@@ -65,18 +68,27 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
     }
 
     setLoadingInfo(true);
+    console.log('🔍 Starting NFT info fetch for:', mintAddress);
+    console.log('🔍 Connected wallet:', publicKey?.toString());
+    console.log('🔍 RPC endpoint:', connection.rpcEndpoint);
+    
     try {
       const provider = getProvider();
       const program = new Program(IDL as any, PROGRAM_ID, provider);
       const mintPubkey = new PublicKey(mintAddress);
 
+      console.log('🔍 PROGRAM_ID:', PROGRAM_ID.toString());
+
       // Check if user owns this NFT
       const userTokenAccount = await getAssociatedTokenAddress(mintPubkey, publicKey!);
+      console.log('🔍 User token account:', userTokenAccount.toString());
       
       try {
         const tokenAccountInfo = await getAccount(connection, userTokenAccount);
+        console.log('✅ Token account found. Amount:', tokenAccountInfo.amount.toString());
         
         if (tokenAccountInfo.amount < 1n) {
+          console.log('❌ Token amount is 0, user does not own this NFT');
           setNftInfo({
             mint: mintAddress,
             name: `NFT ${mintAddress.slice(0, 8)}...${mintAddress.slice(-4)}`,
@@ -87,6 +99,7 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
           return;
         }
       } catch (err) {
+        console.log('❌ Token account not found or error:', err);
         setNftInfo({
           mint: mintAddress,
           name: `NFT ${mintAddress.slice(0, 8)}...${mintAddress.slice(-4)}`,
@@ -104,7 +117,25 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
           PROGRAM_ID
         );
 
+        console.log('🔍 NFT Data PDA derived:', nftDataPda.toString());
+        console.log('🔍 PDA seeds used: ["nft_data", mint_pubkey]');
+        
+        // Check if the account exists first
+        const accountInfo = await connection.getAccountInfo(nftDataPda);
+        if (!accountInfo) {
+          console.log('❌ NFT data account does not exist:', nftDataPda.toString());
+          console.log('❌ This likely means the NFT was not minted through our bonding curve system');
+          throw new Error(`NFT data account does not exist: ${nftDataPda.toString()}`);
+        }
+
+        console.log('✅ NFT data account exists, owner:', accountInfo.owner.toString());
+        console.log('✅ NFT data account size:', accountInfo.data.length);
+
         const nftDataAccount = await (program.account as any).nftData.fetch(nftDataPda);
+        console.log('✅ NFT data fetched successfully:', nftDataAccount);
+        console.log('✅ Collection ID:', nftDataAccount.collectionId.toString());
+        console.log('✅ Creator:', nftDataAccount.creator.toString());
+        
         const collectionId = nftDataAccount.collectionId;
         
         // Get the pool for this collection
@@ -113,7 +144,25 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
           PROGRAM_ID
         );
 
+        console.log('🔍 Pool PDA derived:', poolPda.toString());
+        console.log('🔍 Pool PDA seeds used: ["bonding-curve-pool", collection_id]');
+        
+        // Check if the pool account exists first
+        const poolAccountInfo = await connection.getAccountInfo(poolPda);
+        if (!poolAccountInfo) {
+          console.log('❌ Pool account does not exist:', poolPda.toString());
+          console.log('❌ This should not happen if NFT data exists');
+          throw new Error(`Pool account does not exist: ${poolPda.toString()}`);
+        }
+
+        console.log('✅ Pool account exists, owner:', poolAccountInfo.owner.toString());
+        console.log('✅ Pool account size:', poolAccountInfo.data.length);
+
         const poolAccount = await (program.account as any).bondingCurvePool.fetch(poolPda);
+        console.log('✅ Pool data fetched successfully:', poolAccount);
+        console.log('✅ Current supply:', poolAccount.state.currentSupply);
+        console.log('✅ Base price:', poolAccount.config.basePrice.toString());
+        console.log('✅ Growth factor:', poolAccount.config.growthFactor);
         
         // Calculate current sell price (simplified - actual calculation may be more complex)
         const currentSupply = poolAccount.state.currentSupply;
@@ -122,6 +171,8 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
         
         // Simple bonding curve formula: price = basePrice * (growthFactor/10000)^(supply-1)
         const currentPrice = basePrice * Math.pow(growthFactor / 10000, Math.max(0, currentSupply - 1));
+        
+        console.log('✅ Calculated sell price:', currentPrice, 'lamports =', currentPrice / 1e9, 'SOL');
         
         setNftInfo({
           mint: mintAddress,
@@ -133,6 +184,11 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
         });
       } catch (nftDataErr) {
         // NFT might not be from our bonding curve system
+        console.log('⚠️ NFT data error:', nftDataErr);
+        console.log('⚠️ Error type:', nftDataErr instanceof Error ? nftDataErr.constructor.name : typeof nftDataErr);
+        console.log('⚠️ Error message:', nftDataErr instanceof Error ? nftDataErr.message : 'Unknown error');
+        console.log('⚠️ This NFT might not be from our bonding curve system');
+        
         setNftInfo({
           mint: mintAddress,
           name: `NFT ${mintAddress.slice(0, 8)}...${mintAddress.slice(-4)}`,
@@ -142,7 +198,12 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
         });
       }
     } catch (err) {
-      console.error('Error fetching NFT info:', err);
+      console.error('❌ Error fetching NFT info:', err);
+      console.error('❌ Error details:', {
+        mintAddress,
+        publicKey: publicKey?.toString(),
+        error: err instanceof Error ? err.message : 'Unknown error'
+      });
       setNftInfo(null);
     } finally {
       setLoadingInfo(false);
@@ -268,6 +329,40 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
     }
   };
 
+  // Debug function to test connectivity
+  const testConnectivity = async () => {
+    try {
+      console.log('🔍 Testing connectivity...');
+      console.log('🔍 RPC Endpoint:', connection.rpcEndpoint);
+      console.log('🔍 Wallet connected:', !!publicKey);
+      console.log('🔍 Wallet address:', publicKey?.toString());
+      console.log('🔍 Program ID:', PROGRAM_ID.toString());
+      
+      // Test RPC connection
+      const slot = await connection.getSlot();
+      console.log('✅ Current slot:', slot);
+      
+      // Test wallet balance
+      if (publicKey) {
+        const balance = await connection.getBalance(publicKey);
+        console.log('✅ Wallet balance:', balance / 1e9, 'SOL');
+      }
+      
+      // Test program account info
+      const programInfo = await connection.getAccountInfo(PROGRAM_ID);
+      if (programInfo) {
+        console.log('✅ Program account found, owner:', programInfo.owner.toString());
+      } else {
+        console.log('❌ Program account not found!');
+      }
+      
+      alert('✅ Connectivity test completed! Check console for details.');
+    } catch (err) {
+      console.error('❌ Connectivity test failed:', err);
+      alert('❌ Connectivity test failed! Check console for details.');
+    }
+  };
+
   const formatAddress = (address: string) => {
     return `${address.slice(0, 8)}...${address.slice(-4)}`;
   };
@@ -302,6 +397,13 @@ export const SellNftCard: React.FC<SellNftCardProps> = ({ className = '' }) => {
               className="px-4 py-3 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loadingInfo ? '↻' : '🔄'}
+            </button>
+            <button
+              onClick={testConnectivity}
+              className="px-4 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+              title="Test connectivity and program"
+            >
+              🔧
             </button>
           </div>
           {nftMint && !PublicKey.isOnCurve(nftMint) && (

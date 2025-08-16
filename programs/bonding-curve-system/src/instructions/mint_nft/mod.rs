@@ -9,7 +9,7 @@ use crate::ErrorCode;
 use crate::math::bonding_curve::calculate_bonding_curve_price;
 
 /// NFT minting instruction with collection and bonding curve integration
-pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
+pub fn mint_nft(mut ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     msg!("Starting NFT mint for collection: {}", args.collection_mint);
 
     // Validate input
@@ -90,6 +90,9 @@ pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
         &metadata_infos,
     )?;
     msg!("NFT metadata created successfully");
+
+    // Initialize minter tracker PDA
+    super::tracker::initialize_minter_tracker(&mut ctx)?;
 
     msg!("Minimal NFT mint completed successfully");
     msg!("NFT: {}", ctx.accounts.nft_mint.key());

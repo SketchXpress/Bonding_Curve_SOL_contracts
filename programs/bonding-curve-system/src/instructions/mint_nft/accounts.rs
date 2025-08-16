@@ -51,6 +51,15 @@ pub struct MintNft<'info> {
             token_metadata_program.key().as_ref(),
             nft_mint.key().as_ref(),
         ],
+            /// Minter tracker PDA for this NFT
+            #[account(
+                init,
+                payer = minter,
+                space = crate::state::MinterTracker::SPACE,
+                seeds = [b"minter-tracker", nft_mint.key().as_ref()],
+                bump,
+            )]
+            pub minter_tracker: Account<'info, crate::state::MinterTracker>,
         bump,
         seeds::program = token_metadata_program.key(),
     )]

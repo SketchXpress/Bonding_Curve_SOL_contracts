@@ -37,7 +37,7 @@ const WalletContextProvider: FC<WalletContextProviderProps> = ({ children }) => 
   console.log('WalletContextProvider render - window:', typeof window, 'isClient:', isClient);
 
   // Always render on client side - Next.js 15 handles hydration better
-  if (typeof window === 'undefined') {
+  if (!isClient) {
     console.log('Returning server-side loading message');
     return <div>Initializing wallet providers...</div>;
   }

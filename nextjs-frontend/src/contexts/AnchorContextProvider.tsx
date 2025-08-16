@@ -438,8 +438,8 @@ export const AnchorContextProvider: FC<AnchorContextProviderProps> = ({ children
 
   return (
     <AnchorContext.Provider value={contextValue}>
-      {/* Only render children when on client side to prevent SSR issues */}
-      {isClient ? children : <div>Loading Anchor context...</div>}
+      {/* Consistent rendering for SSR/client to prevent hydration mismatch */}
+      {isClient ? children : <div>Initializing wallet providers...</div>}
     </AnchorContext.Provider>
   );
 };

@@ -2,12 +2,15 @@
 
 import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
+import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, getMint } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { PROGRAM_ID, IDL } from '../utils/idl';
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
+
+// Import anchor using require to avoid TypeScript issues
+const anchor = require('@coral-xyz/anchor');
+const { AnchorProvider, Program, BN } = anchor;
 export interface BidManagementResult {
   isLoading: boolean;
   error: string | null;
@@ -28,11 +31,11 @@ export const useBidManagement = (): BidManagementResult => {
       connection,
       {
         publicKey,
-        signTransaction: async (tx) => {
+        signTransaction: async (tx: Transaction) => {
           const signed = await sendTransaction(tx, connection);
           return tx;
         },
-        signAllTransactions: async (txs) => {
+        signAllTransactions: async (txs: Transaction[]) => {
           return txs;
         },
       },
@@ -53,8 +56,18 @@ export const useBidManagement = (): BidManagementResult => {
       const provider = getProvider();
       const program = new Program(IDL as any, PROGRAM_ID, provider);
 
+      console.log('🔍 Fetching bid data from account:', bidAccount.toString());
+      
+      // Check if the bid account exists first
+      const bidAccountInfo = await connection.getAccountInfo(bidAccount);
+      if (!bidAccountInfo) {
+        console.log('❌ Bid account does not exist:', bidAccount.toString());
+        throw new Error(`Bid account does not exist: ${bidAccount.toString()}`);
+      }
+
       // Get bid data to find NFT mint and bid listing
       const bidData = await (program.account as any).bid.fetch(bidAccount);
+      console.log('✅ Bid data fetched successfully:', bidData);
       const nftMint = bidData.details.nftMint;
 
       // Derive the bid listing account
@@ -85,7 +98,13 @@ export const useBidManagement = (): BidManagementResult => {
       return tx;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to cancel bid';
-      console.error('Cancel bid error:', err);
+      console.error('❌ Cancel bid error:', err);
+      console.error('❌ Cancel bid error details:', {
+        bidAccount: bidAccount.toString(),
+        bidId,
+        publicKey: publicKey?.toString(),
+        error: errorMessage
+      });
       setError(errorMessage);
       return null;
     } finally {

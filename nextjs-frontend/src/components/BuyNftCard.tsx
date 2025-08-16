@@ -71,7 +71,8 @@ export const BuyNftCard: React.FC<BuyNftCardProps> = ({ className = '' }) => {
   // Auto-fetch info when mint changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (nftMint) {
+      // Only fetch if we have a valid mint address
+      if (nftMint && PublicKey.isOnCurve(nftMint)) {
         fetchNftInfo(nftMint);
       }
     }, 500); // Debounce

@@ -3,11 +3,14 @@
 import { useState, useCallback } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
-import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { BondingCurveSystem } from '../types/bonding_curve_system';
 import { PROGRAM_ID, IDL } from '../utils/idl';
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
+
+// Import anchor using require to avoid TypeScript issues
+const anchor = require('@coral-xyz/anchor');
+const { Program, AnchorProvider, web3, BN } = anchor;
 export const useBidListing = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
@@ -20,11 +23,11 @@ export const useBidListing = () => {
       connection,
       {
         publicKey,
-        signTransaction: async (tx) => {
+        signTransaction: async (tx: Transaction) => {
           const signed = await sendTransaction(tx, connection);
           return tx;
         },
-        signAllTransactions: async (txs) => {
+        signAllTransactions: async (txs: Transaction[]) => {
           return txs;
         },
       },
@@ -56,8 +59,18 @@ export const useBidListing = () => {
         PROGRAM_ID
       );
 
+      console.log('🔍 Fetching minter tracker from PDA:', minterTrackerPda.toString());
+      
+      // Check if the minter tracker account exists first
+      const minterAccountInfo = await connection.getAccountInfo(minterTrackerPda);
+      if (!minterAccountInfo) {
+        console.log('❌ Minter tracker account does not exist:', minterTrackerPda.toString());
+        throw new Error(`Minter tracker account does not exist: ${minterTrackerPda.toString()}`);
+      }
+
       // Fetch minter tracker to get collection mint
       const minterTrackerData = await (program.account as any).minterTracker.fetch(minterTrackerPda);
+      console.log('✅ Minter tracker fetched successfully:', minterTrackerData);
       const collectionMint = minterTrackerData.collection;
 
       const [poolPda] = PublicKey.findProgramAddressSync(
@@ -97,7 +110,12 @@ export const useBidListing = () => {
       console.log('NFT listed for bids successfully:', signature);
       return bidListingPda;
     } catch (error) {
-      console.error('Error listing NFT for bids:', error);
+      console.error('❌ Error listing NFT for bids:', error);
+      console.error('❌ Error details:', {
+        nftMint: nftMint.toString(),
+        publicKey: publicKey?.toString(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       throw error;
     } finally {
       setIsLoading(false);
