@@ -4,7 +4,7 @@
 
 echo "Fixing Next.js auto-generated comments and 'use client' placement..."
 
-find src/hooks -name "*.ts" -type f | while read file; do
+find nextjs-frontend/src/hooks -name "*.ts" -type f | while read file; do
     echo "Processing $file..."
     
     # Create backup

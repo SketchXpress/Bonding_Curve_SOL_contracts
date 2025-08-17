@@ -128,7 +128,11 @@ export const BiddingSystemCard: React.FC<BiddingSystemCardProps> = ({ className 
       setDurationHours('24');
     } catch (err) {
       console.error('Error creating listing:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create listing');
+      if (err instanceof Error && err.message.includes('cannot be listed')) {
+        setError(err.message);
+      } else {
+        setError('Failed to create listing. Make sure you own the NFT and it was minted through the bonding curve system.');
+      }
     }
   };
 

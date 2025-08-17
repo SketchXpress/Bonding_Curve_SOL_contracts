@@ -1,3 +1,5 @@
+'use client';
+
 // CRITICAL: Apply BN patches BEFORE any Solana imports
 (() => {
   try {

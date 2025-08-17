@@ -1,3 +1,5 @@
+'use client';
+
 import { useAnchorContext } from "@/contexts/AnchorContextProvider";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";

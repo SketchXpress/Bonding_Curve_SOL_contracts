@@ -1,3 +1,5 @@
+'use client';
+
 // Export all hooks for easy importing
 export { useBidListing } from './useBidListing';
 export { useBidManagement } from './useBidManagement';
