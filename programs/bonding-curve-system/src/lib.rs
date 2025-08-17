@@ -3,7 +3,7 @@
 use anchor_lang::prelude::*;
 
 // Program ID
-declare_id!("ADpHtc58rmFaXYzMNeXKHCbornttL7Be2fUmgGQC3dpE");
+declare_id!("AfWjSFSNxYJeXxPTfJvRynbYXnmFrMRaN2UXgr2LTrt7");
 
 pub mod constants;
 pub mod errors;

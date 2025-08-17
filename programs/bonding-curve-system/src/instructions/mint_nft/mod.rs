@@ -10,7 +10,7 @@ use crate::ErrorCode;
 use crate::math::bonding_curve::calculate_bonding_curve_price;
 
 /// NFT minting instruction with collection and bonding curve integration
-pub fn mint_nft(ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
+pub fn mint_nft(mut ctx: Context<MintNft>, args: MintNftArgs) -> Result<()> {
     msg!("Starting NFT mint for collection: {}", args.collection_mint);
 
     // Validate input
