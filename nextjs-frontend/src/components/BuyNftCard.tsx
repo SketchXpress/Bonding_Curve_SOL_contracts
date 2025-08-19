@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import { useBuyNft } from '../hooks/useBuyNft';
+import { useBuyNft } from '@/hooks/useBuyNft';
 
 interface BuyNftCardProps {
   className?: string;

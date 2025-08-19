@@ -15,16 +15,16 @@ export default function GlobalPatcher() {
       // Load the comprehensive polyfills dynamically for browser only
       if (typeof window !== 'undefined') {
         Promise.all([
-          import('../utils/bn-fix').then(module => {
+          import('@/utils/bn-fix').then(module => {
             if (module.patchBNForSolana) {
               module.patchBNForSolana();
               console.log('GlobalPatcher: BN fix applied');
             }
           }),
-          import('../global-polyfill').then(() => {
+          import('@/global-polyfill').then(() => {
             console.log('GlobalPatcher: Global polyfill loaded');
           }),
-          import('../solana-bn-patch').then(module => {
+          import('@/solana-bn-patch').then(module => {
             if (module.patchBNForSolana) {
               module.patchBNForSolana();
               console.log('GlobalPatcher: Solana BN patch applied');

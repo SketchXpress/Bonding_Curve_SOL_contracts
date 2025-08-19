@@ -23,7 +23,6 @@ pub mod macros {
 #[program]
 pub mod bonding_curve_system {
     use super::*;
-    use anchor_lang::solana_program::entrypoint::ProgramResult;
 
     // === POOL MANAGEMENT ===
     pub fn create_pool(ctx: Context<CreatePool>, args: CreatePoolArgs) -> Result<()> {

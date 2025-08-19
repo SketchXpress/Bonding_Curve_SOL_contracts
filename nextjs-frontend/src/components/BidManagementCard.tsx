@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { BN } from '@coral-xyz/anchor';
-import { useBidManagement } from '../hooks/useBidManagement';
+import { useBidManagement } from '@/hooks/useBidManagement';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { PROGRAM_ID } from '@/utils/idl';
 

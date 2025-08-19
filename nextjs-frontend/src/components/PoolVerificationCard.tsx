@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import { useAnchorContext } from '../contexts/AnchorContextProvider';
+import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 
 const PoolVerificationCard = () => {
   const [collectionMintAddress, setCollectionMintAddress] = useState('');

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useCollectionFees } from '../hooks/useCollectionFees';
-import { useAnchorContext } from '../contexts/AnchorContextProvider';
+import { useCollectionFees } from '@/hooks/useCollectionFees';
+import { useAnchorContext } from '@/contexts/AnchorContextProvider';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 interface CollectionFeesCardProps {

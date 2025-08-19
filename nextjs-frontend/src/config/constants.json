@@ -1,0 +1,26 @@
+{
+  "name": "Bonding Curve System",
+  "version": "0.1.0",
+  "programId": "AfWjSFSNxYJeXxPTfJvRynbYXnmFrMRaN2UXgr2LTrt7",
+  "networkConfig": {
+    "devnet": {
+      "url": "https://api.devnet.solana.com",
+      "wsUrl": "wss://api.devnet.solana.com"
+    },
+    "mainnet": {
+      "url": "https://api.mainnet-beta.solana.com",
+      "wsUrl": "wss://api.mainnet-beta.solana.com"
+    }
+  },
+  "feeConfig": {
+    "platformFeePercentage": 4,
+    "creatorFeePercentage": 95,
+    "holderFeePercentage": 1
+  },
+  "defaultPoolConfig": {
+    "basePrice": 0.01,
+    "growthFactor": 0.1,
+    "bidPremiumPercentage": 5
+  },
+  "migrationThreshold": 690
+}

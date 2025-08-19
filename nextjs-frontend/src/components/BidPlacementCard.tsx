@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useBidPlacement } from '../hooks/useBidPlacement';
-import { useBidListing } from '../hooks/useBidListing';
+import { useBidPlacement } from '@/hooks/useBidPlacement';
+import { useBidListing } from '@/hooks/useBidListing';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 interface BidPlacementCardProps {

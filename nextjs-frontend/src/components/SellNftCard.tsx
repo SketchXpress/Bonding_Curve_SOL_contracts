@@ -1,11 +1,12 @@
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '../utils/solana-constants';
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
-import { PROGRAM_ID, IDL } from '../utils/idl';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, SYSTEM_PROGRAM_ID, METADATA_PROGRAM_ID } from '../utils/solana-constants';
+import { PROGRAM_ID, IDL } from '@/utils/idl';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, SYSTEM_PROGRAM_ID, METADATA_PROGRAM_ID } from '@/utils/solana-constants';
 
 // Import anchor using require to avoid TypeScript issues
 const anchor = require('@coral-xyz/anchor');

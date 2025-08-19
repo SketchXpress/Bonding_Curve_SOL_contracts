@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 // Apply patch immediately when module loads
 if (typeof window !== 'undefined') {
   try {
-    require('../utils/bn-polyfill-direct.js');
+    require('@/utils/bn-polyfill-direct.js');
     console.log('BigIntPatcher: Module-level patch applied');
   } catch (error) {
     console.warn('BigIntPatcher: Module-level patch failed:', error);
@@ -44,7 +44,7 @@ function BigIntPatcher() {
     const aggressiveInterval = setInterval(() => {
       try {
         if (typeof window !== 'undefined') {
-          require('../utils/bn-polyfill-direct.js');
+          require('@/utils/bn-polyfill-direct.js');
         }
       } catch (error) {
         console.warn('BigIntPatcher: Error in aggressive interval:', error);
